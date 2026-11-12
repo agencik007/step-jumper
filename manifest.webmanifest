@@ -1,0 +1,20 @@
+{
+  "name": "Step Jumper",
+  "short_name": "Step Jumper",
+  "description": "Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od rozpędu.",
+  "lang": "pl",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape-primary",
+  "background_color": "#0a0d1f",
+  "theme_color": "#0a0d1f",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

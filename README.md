@@ -19,6 +19,12 @@ npx serve .
 Statyczna strona – Vercel wykrywa `index.html` w katalogu głównym (preset „Other”, bez komendy builda).
 Każdy push do `main` wdraża produkcję.
 
+## PWA
+
+`manifest.webmanifest`, `sw.js` i `icons/` pozwalają zainstalować grę jako aplikację (Android: menu Chrome → „Zainstaluj aplikację”).
+Po instalacji startuje na pełnym ekranie, w poziomie, i działa offline. Service worker bierze stronę najpierw z sieci,
+więc nowy deploy widać od razu.
+
 ## Strojenie
 
 - fizyka: obiekt `P` na górze skryptu,
