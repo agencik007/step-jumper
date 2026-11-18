@@ -4,6 +4,9 @@ import { initInput, pollGamepad, tilt, tiltDegrees } from './game/input.js';
 
 const game = new Game();
 initInput(game);
+if (import.meta.env.DEV) {             // suwaki fizyki lotu – tylko deweloperski podgląd, w buildzie produkcyjnym ich nie ma
+  import('./game/tuning.js').then((m) => m.initTuning(game));
+}
 
 if (import.meta.env.DEV) {             // podgląd stanu z konsoli – tylko w trybie deweloperskim
   window.__game = game;

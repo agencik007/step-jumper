@@ -6,8 +6,10 @@
 //    Math.pow / exp / sin mogą się różnić między wersjami silnika,
 //  - stan to zwykłe liczby i wartości logiczne – daje się zapisać do JSON-a jako punkt kontrolny.
 import {
-  AXIS_MAX, CAM_LERP, COMBO_TIME, FOLLOW, FOOT, GAP, H, HERO_H, HURRY_EVERY, HW, LEFT, MAX_HURRIES, P, RIGHT, START_FLOOR, STEP, W,
+  AXIS_MAX, CAM_LERP, COMBO_TIME, DEFAULT_TUNE, FOLLOW, FOOT, GAP, H, HERO_H, HURRY_EVERY, HW, LEFT, MAX_HURRIES, P, RIGHT, START_FLOOR,
+  STEP, W,
 } from './constants';
+import type { Tune } from './constants';
 import { floorSpan } from './floors';
 import { JUMP_TABLE, JUMP_TABLE_SIZE } from './jumpTable';
 
@@ -21,6 +23,7 @@ export interface Hero {
 
 export interface SimState {
   seed: number;
+  tune: Tune;          // sterowność w locie, z jaką rozgrywany jest ten bieg
   tick: number;
   hero: Hero;
   camY: number;
@@ -50,9 +53,10 @@ export function jumpCurve(k: number): number {
   return a + (JUMP_TABLE[i + 1] - a) * (t - i);
 }
 
-export function createState(seed: number): SimState {
+export function createState(seed: number, tune: Tune = DEFAULT_TUNE): SimState {
   const s: SimState = {
     seed: seed >>> 0,
+    tune: { airAccel: tune.airAccel, airBrake: tune.airBrake },
     tick: 0,
     hero: { x: W / 2, y: 0, vx: 0, vy: 0, face: 1, onFloor: 0, from: 0, spin: false },
     camY: -(H - 40),
@@ -128,13 +132,13 @@ export function step(s: SimState, axis: number, jump: boolean, events?: SimEvent
   const dir = Math.sign(ax);
   const grounded = h.onFloor >= 0;
 
-  // bieg z rozpędem
+  // bieg z rozpędem; w locie siłę sterowania i hamowanie po puszczeniu wyznacza strojenie biegu
   if (dir) {
     const turning = h.vx * dir < 0;
-    h.vx += ax * P.accel * (turning ? P.turn : 1) * dt;
+    h.vx += ax * (grounded ? P.accel : s.tune.airAccel) * (turning ? P.turn : 1) * dt;
     h.face = dir;
   } else {
-    const f = (grounded ? P.fricGround : P.fricAir) * dt;
+    const f = (grounded ? P.fricGround : s.tune.airBrake) * dt;
     h.vx = Math.abs(h.vx) <= f ? 0 : h.vx - Math.sign(h.vx) * f;
   }
   h.vx = Math.max(-P.maxVx, Math.min(P.maxVx, h.vx));

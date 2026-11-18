@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import {
-  AXIS_MAX, InputRecorder, createState, decodeInputs, encodeInputs, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
+  AXIS_MAX, DEFAULT_TUNE, InputRecorder, LEGACY_TUNE, createState, decodeInputs, encodeInputs, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
 } from '../src/sim';
 import { inputByte, momentumPilot, tiltPilot } from './helpers';
 import type { Pilot } from './helpers';
 
 /** Rozgrywa bieg „na żywo”, nagrywając wejścia tak, jak robi to gra. */
-function playLive(seed: number, pilot: Pilot, maxTicks = 120 * 60 * 4) {
-  const sim = createState(seed);
+function playLive(seed: number, pilot: Pilot, tune = DEFAULT_TUNE, maxTicks = 120 * 60 * 4) {
+  const sim = createState(seed, tune);
   const rec = new InputRecorder();
   while (!sim.over && sim.tick < maxTicks) {
     const i = pilot.next(sim);
@@ -57,7 +57,8 @@ describe('zapis biegu', () => {
   });
 
   test('zapis kilkuminutowego biegu na klawiszach mieści się w kilku kilobajtach', () => {
-    const { sim, rec } = playLive(503, momentumPilot(503 * 7));
+    // strojenie z pierwszej wersji gry, bo z nim ten „gracz” na tej wieży na pewno przeżywa długo
+    const { sim, rec } = playLive(503, momentumPilot(503 * 7), LEGACY_TUNE);
     expect(sim.tick).toBeGreaterThan(120 * 20);
     expect(encodeInputs(rec.ticks()).length).toBeLessThan(8 * 1024);
   });
