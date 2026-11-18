@@ -68,3 +68,9 @@ export function momentumPilot(seed: number): Pilot {
 export function inputByte(i: { axis: number; jump: boolean }): number {
   return packInput(i.axis, i.jump);
 }
+
+/** Gracz, który najpierw stoi bez ruchu (wieża nie rusza, dopóki nikt nie wskoczy wyżej), a potem gra jak inny pilot – daje dowolnie długi bieg. */
+export function idleThen(idleTicks: number, then: Pilot): Pilot {
+  let left = idleTicks;
+  return { next(s) { return left-- > 0 ? { axis: 0, jump: false } : then.next(s); } };
+}

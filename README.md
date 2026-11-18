@@ -26,8 +26,9 @@ Tryb przechyłu działa tylko po HTTPS albo z `localhost`.
 |---|---|
 | `src/sim/` | Rdzeń rozgrywki: deterministyczna symulacja, wieża, zapis i odtwarzanie biegu. Bez DOM – ten sam kod trafi na serwer weryfikujący wyniki. |
 | `src/game/` | Wszystko, co widać i słychać: rysowanie, mapy, postacie, dźwięk, sterowanie, ekrany. |
+| `server/` | Serwer rankingu: Cloudflare Worker + baza D1, weryfikuje zapisy biegów. Opis API: [`server/README.md`](server/README.md). |
 | `public/` | Manifest PWA, service worker, ikony. |
-| `tests/` | Testy symulacji. `tests/legacy/` to fizyka z pierwszej, jednoplikowej wersji gry – wzorzec, z którym porównywany jest nowy rdzeń. |
+| `tests/` | Testy symulacji i serwera (`tests/server/`, na lokalnej bazie D1). `tests/legacy/` to fizyka z pierwszej, jednoplikowej wersji gry – wzorzec, z którym porównywany jest nowy rdzeń. |
 | `scripts/` | Generator tablicy krzywej skoku. |
 
 ## Determinizm
