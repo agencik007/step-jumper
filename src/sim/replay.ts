@@ -87,6 +87,7 @@ export function decodeInputs(data: Uint8Array, maxTicks = 120 * 60 * 60 * 4): Ui
 /**
  * Odtwarza wejścia na wieży o danym ziarnie. Podany stan pozwala kontynuować od punktu kontrolnego
  * (serwer weryfikuje długie biegi porcjami). Wejścia po końcu gry są ignorowane.
+ * Bieg grany z innym strojeniem lotu niż domyślne trzeba odtwarzać od stanu createState(seed, tune).
  */
 export function runReplay(seed: number, ticks: Uint8Array, state: SimState = createState(seed)): SimState {
   if (state.seed !== seed >>> 0) throw new Error('Punkt kontrolny pochodzi z innej wieży');

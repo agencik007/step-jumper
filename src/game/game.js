@@ -1,7 +1,7 @@
 // Gra: maszyna stanów (tytuł / gra / pauza / koniec) i wszystko, co widać i słychać wokół symulacji.
 // Reguły rozgrywki są w src/sim – tutaj tylko podajemy im wejście i reagujemy na zdarzenia.
 import {
-  AXIS_MAX, H, InputRecorder, LEFT, RIGHT, SIM_VERSION, STEP, createState, encodeInputs, packInput, runReplay, score, stateHash, step,
+  AXIS_MAX, DEFAULT_TUNE, H, InputRecorder, LEFT, RIGHT, SIM_VERSION, STEP, createState, encodeInputs, packInput, runReplay, score, stateHash, step,
   unpackAxis, unpackJump,
 } from '../sim';
 import { sfx } from './audio.js';
@@ -33,6 +33,7 @@ export class Game {
     this.snow = Array.from({ length: 34 }, () => ({ x: rand(LEFT, RIGHT), y: rand(0, H), r: rand(0.8, 2.2), s: rand(12, 34), ph: rand(0, 7) }));
     this.events = [];
     this.rec = new InputRecorder();
+    this.tune = { ...DEFAULT_TUNE };     // strojenie lotu; zmienia je tylko panel suwaków w trybie DEV
     this.lastRun = null;                 // zapis ostatniego zakończonego biegu (ziarno + wejścia) – materiał dla rankingu
     this.reset();
     this.state = 'title';
@@ -47,14 +48,22 @@ export class Game {
   savePrefs() { saveJSON(PREFS, { char: this.charIdx, style: this.styleIdx, tilt: tilt.want }); }
 
   reset() {
-    this.sim = createState(newSeed());
+    this.sim = createState(newSeed(), this.tune);
     this.rec.reset();
+    this.retuned = false;                // suwak ruszony w trakcie biegu – takiego biegu nie da się odtworzyć z zapisu
     this.fx = { angle: 0, squash: 0, runPhase: 0 };   // stan czysto wizualny bohatera
     this.shake = 0; this.parts = []; this.msgs = [];
     this.acc = 0; this.trailT = 0; this.jumpLock = true; this.newBest = false; this.overT = 0;
   }
 
   get score() { return score(this.sim); }
+
+  /** Suwaki fizyki lotu (tylko DEV) zmieniły wartość: nowe strojenie działa od razu, także w trwającym biegu. */
+  retune(tune) {
+    Object.assign(this.tune, tune);
+    Object.assign(this.sim.tune, tune);
+    if (this.sim.tick > 0) this.retuned = true;
+  }
 
   start() {
     this.reset(); this.state = 'play';
@@ -106,10 +115,11 @@ export class Game {
     b.combo = Math.max(b.combo, s.bestCombo);
     saveJSON(STORE, b);
 
+    if (this.retuned) { this.lastRun = null; return; }   // strojenie zmieniało się po drodze, więc zapis nie opisuje tego biegu
     const ticks = this.rec.ticks();
-    this.lastRun = { simVersion: SIM_VERSION, seed: s.seed, ticks: ticks.length, score: this.score, inputs: encodeInputs(ticks) };
+    this.lastRun = { simVersion: SIM_VERSION, seed: s.seed, tune: { ...s.tune }, ticks: ticks.length, score: this.score, inputs: encodeInputs(ticks) };
     if (import.meta.env.DEV) {                           // kontrola determinizmu: zapis odtworzony od zera musi dać ten sam stan
-      const again = runReplay(s.seed, ticks);
+      const again = runReplay(s.seed, ticks, createState(s.seed, s.tune));
       if (stateHash(again) !== stateHash(s)) console.error('Symulacja nie jest deterministyczna: odtworzenie zapisu dało inny stan', { live: s, again });
     }
   }

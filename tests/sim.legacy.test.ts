@@ -1,6 +1,6 @@
 // Test zgodności: nowy rdzeń symulacji musi krok po kroku dawać ten sam stan, co fizyka z pierwszej wersji gry.
 import { describe, expect, test } from 'vitest';
-import { AXIS_MAX, STEP, createState, floorAt, jumpCurve, score, speed, step } from '../src/sim';
+import { AXIS_MAX, LEGACY_TUNE, STEP, createState, floorAt, jumpCurve, score, speed, step } from '../src/sim';
 import type { SimEvent, SimState } from '../src/sim';
 import { LegacyGame } from './legacy/legacy-game.js';
 import { momentumPilot, randomPilot, tiltPilot } from './helpers';
@@ -32,7 +32,7 @@ function snapshotSim(s: SimState) {
 /** Prowadzi obie symulacje tym samym wejściem aż do końca gry; zwraca statystyki przebiegu. */
 function runBoth(seed: number, pilot: Pilot, analog: boolean) {
   const legacy = new LegacyGame({ makeFloor: (n: number) => floorAt(seed, n), jumpCurve });
-  const sim = createState(seed);
+  const sim = createState(seed, LEGACY_TUNE);   // stara fizyka lotu = strojenie LEGACY_TUNE
   const events: SimEvent[] = [];
   const seen: Record<string, number> = {};
 
