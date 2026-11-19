@@ -117,7 +117,9 @@ export class Game {
 
     if (this.retuned) { this.lastRun = null; return; }   // strojenie zmieniało się po drodze, więc zapis nie opisuje tego biegu
     const ticks = this.rec.ticks();
-    this.lastRun = { simVersion: SIM_VERSION, seed: s.seed, tune: { ...s.tune }, ticks: ticks.length, score: this.score, inputs: encodeInputs(ticks) };
+    // ranked: serwer liczy zawsze z DEFAULT_TUNE, więc bieg na zmienionym strojeniu (suwaki DEV) nie idzie do rankingu
+    const ranked = s.tune.airAccel === DEFAULT_TUNE.airAccel && s.tune.airBrake === DEFAULT_TUNE.airBrake;
+    this.lastRun = { simVersion: SIM_VERSION, seed: s.seed, tune: { ...s.tune }, ranked, ticks: ticks.length, score: this.score, inputs: encodeInputs(ticks) };
     if (import.meta.env.DEV) {                           // kontrola determinizmu: zapis odtworzony od zera musi dać ten sam stan
       const again = runReplay(s.seed, ticks, createState(s.seed, s.tune));
       if (stateHash(again) !== stateHash(s)) console.error('Symulacja nie jest deterministyczna: odtworzenie zapisu dało inny stan', { live: s, again });

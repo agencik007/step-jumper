@@ -1,0 +1,32 @@
+// Serwer rankingu Step Jumpera: Cloudflare Worker + baza D1.
+//   lokalnie:  npm run server:dev        (baza lokalna w .wrangler/, bez konta Cloudflare)
+//   wdrożenie: npm run server:deploy     (wymaga `npx wrangler login`)
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "step-jumper-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "step-jumper",
+      "database_id": "053f4d3b-8ea0-41ce-8821-16655867546d",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Limit zakładania kont na adres IP. Adres służy tylko jako klucz licznika i nie trafia do bazy.
+  "ratelimits": [
+    { "name": "RL_NEW_PLAYER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }
+  ],
+
+  // Sprzątanie bazy raz na dobę (src/cleanup.ts).
+  "triggers": { "crons": ["17 3 * * *"] },
+
+  "vars": {
+    // Strony, z których przeglądarka może wołać API (demo web, podgląd Vite, aplikacja Capacitor).
+    "ALLOWED_ORIGINS": "http://localhost:5173,https://localhost,capacitor://localhost"
+  }
+}

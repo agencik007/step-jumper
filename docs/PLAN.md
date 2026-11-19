@@ -101,7 +101,7 @@ Zapis wejść: na krok tylko `{oś, skok}`, kodowane jako lista zmian (kilka KB 
 
 1. `POST /v1/players` → `{playerId, token}` przy pierwszym uruchomieniu online. Konto anonimowe, bez e-maila i hasła. Serwer trzyma tylko hash tokenu. Token w `Preferences` z włączonym Android Auto Backup, więc przeżywa reinstalację.
 2. `POST /v1/runs` → `{runId, seed, simVersion}`. Klient trzyma zapas 3 biletów, żeby start gry nie czekał na sieć i żeby dało się grać offline.
-3. Po przegranej: `PUT /v1/runs/:id/chunks/:seq` — porcje po maks. 6000 kroków. Serwer przelicza porcję od zapisanego punktu kontrolnego. **Porcjowanie jest konieczne**: darmowy plan Workers daje 10 ms CPU na żądanie, a długi bieg to ponad 100 tys. kroków.
+3. Po przegranej: `PUT /v1/runs/:id/chunks/:seq` — porcje po maks. 2000 kroków (pierwotnie 6000 – pomiar na Cloudflare pokazał 4–15 ms CPU na taką porcję). Serwer przelicza porcję od zapisanego punktu kontrolnego. **Porcjowanie jest konieczne**: darmowy plan Workers daje 10 ms CPU na żądanie, a długi bieg to ponad 100 tys. kroków.
 4. `POST /v1/runs/:id/finish` → serwer potwierdza, że symulacja doszła do końca gry, zapisuje wynik i zwraca miejsce w rankingach.
 5. `GET /v1/leaderboards/:okres` (top 50) i `GET /v1/leaderboards/:okres/me` (moje miejsce ± 5 sąsiadów); okres: `all`, `week`, `day`. Odpowiedzi w cache na 30 s.
 6. `PATCH /v1/me` (nick), `DELETE /v1/me` (usunięcie danych — wymóg Google Play).
@@ -224,7 +224,7 @@ Działalność nierejestrowana: limit **10 813,50 zł przychodu na kwartał** w 
 - **Symulacja**: testy Vitest odtwarzają zapisane biegi i porównują wynik oraz hash stanu; ten sam test przechodzi w Node, w `workerd` i raz ręcznie w WebView telefonu.
 - **Brak regresji rozgrywki**: po etapie 0–1 gra w przeglądarce zachowuje się jak dziś (porównanie z obecną wersją na `step-jumper.vercel.app`).
 - **Backend**: `wrangler dev` z lokalnym D1; testy API: poprawny bieg trafia do rankingu, zmieniony zapis wejść → `rejected`, zawyżony wynik → `rejected`, bieg „szybszy niż czas” → `rejected`, usunięcie konta czyści `bests` i `runs`.
-- **Limit CPU**: pomiar czasu porcji 6000 kroków na wdrożonym Workerze; cel < 5 ms.
+- **Limit CPU**: pomiar czasu porcji na wdrożonym Workerze (`wrangler tail`, pole `cpuTime`); cel: mediana ≤ 5 ms. Wynik 18.11.2026 przy 2000 krokach: mediana 5 ms, maks. 12 ms.
 - **Android**: `npx cap run android` na telefonie, podgląd przez `chrome://inspect`; scenariusze: bieg online, bieg offline i dosłanie wyniku później, reinstalacja (token wraca z kopii zapasowej), wszystkie 5 map i 4 tryby sterowania.
 - **Sklep**: raport przedpremierowy Google Play bez błędów krytycznych, test wewnętrzny, potem zamknięty.
 

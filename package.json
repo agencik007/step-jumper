@@ -8,11 +8,19 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p server",
+    "server:dev": "wrangler dev -c server/wrangler.jsonc",
+    "server:migrate": "wrangler d1 migrations apply step-jumper -c server/wrangler.jsonc --local",
+    "server:deploy": "wrangler d1 migrations apply step-jumper -c server/wrangler.jsonc --remote && wrangler deploy -c server/wrangler.jsonc"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20261102.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "4.156.2"
+  },
+  "dependencies": {
+    "hono": "4.13.16"
   }
 }
