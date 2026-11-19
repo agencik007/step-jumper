@@ -16,7 +16,7 @@ type AppEnv = { Bindings: Env; Variables: { player: Player } };
 type Ctx = Context<AppEnv>;
 
 const HOUR = 3_600_000;
-const MAX_TICKETS_PER_HOUR = 60;
+const MAX_TICKETS_PER_HOUR = 180;   // krótkie biegi i szybkie restarty są w tej grze normalne
 const MAX_OPEN_TICKETS = 5;
 const MAX_CHUNK_BYTES = 4 * CHUNK_TICKS;   // porcja to w najgorszym razie 2 bajty na krok
 const TOP_DEFAULT = 50, TOP_MAX = 100, NEIGHBOURS = 5;
@@ -29,6 +29,20 @@ class ApiError extends Error {
 }
 const fail = (status: ContentfulStatusCode, error: string, extra: Record<string, unknown> = {}) => new ApiError(status, { error, ...extra });
 
+/** Czyta ciało zapytania, przerywając, gdy przekroczy limit – bez wczytywania całości do pamięci. */
+async function readCapped(req: Request, max: number): Promise<Uint8Array> {
+  if (Number(req.headers.get('content-length') ?? 0) > max) throw fail(413, 'too_large');
+  if (!req.body) return new Uint8Array(0);
+  const reader = req.body.getReader(), out = new Uint8Array(max);
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return out.subarray(0, n);
+    if (n + value.length > max) { await reader.cancel(); throw fail(413, 'too_large'); }
+    out.set(value, n); n += value.length;
+  }
+}
+
 async function readJson(c: Ctx): Promise<Record<string, unknown>> {
   let v: unknown;
   try { v = await c.req.json(); } catch { throw fail(400, 'bad_json'); }
@@ -37,7 +51,8 @@ async function readJson(c: Ctx): Promise<Record<string, unknown>> {
 }
 
 const optText = (v: unknown, max: number) => (typeof v === 'string' && v.length <= max ? v : null);
-const displayName = (id: string, nick: string | null) => nick ?? `Gracz ${id.slice(0, 4).toUpperCase()}`;
+/** Krótki, stały znacznik gracza bez nicku (gra pokazuje go jako „Gracz AB12”, „Player AB12”… – zależnie od języka). */
+const playerTag = (id: string) => id.slice(0, 4).toUpperCase();
 
 interface RunRow {
   id: string; player_id: string; seed: number; sim_version: number; status: string;
@@ -166,12 +181,10 @@ export function createApp(deps: { now?: () => number } = {}) {
 
   // Porcja zapisu wejść (encodeInputs z maks. CHUNK_TICKS kroków). Porcje idą po kolei; powtórzenie już przyjętej jest nieszkodliwe.
   app.put('/v1/runs/:id/chunks/:seq', requirePlayer, async (c) => {
-    if (Number(c.req.header('content-length') ?? 0) > MAX_CHUNK_BYTES) throw fail(413, 'too_large');
     const seq = Number(c.req.param('seq'));
     if (!Number.isInteger(seq) || seq < 0) throw fail(404, 'not_found');
     const run = await loadRun(c);
-    const data = new Uint8Array(await c.req.arrayBuffer());
-    if (data.length > MAX_CHUNK_BYTES) throw fail(413, 'too_large');
+    const data = await readCapped(c.req.raw, MAX_CHUNK_BYTES);
 
     if (seq < run.next_seq) return c.json({ nextSeq: run.next_seq, duplicate: true });
     if (seq > run.next_seq) throw fail(409, 'seq', { nextSeq: run.next_seq });
@@ -248,7 +261,7 @@ export function createApp(deps: { now?: () => number } = {}) {
     'FROM bests b JOIN players p ON p.id = b.player_id WHERE b.period = ? AND p.banned = 0 ' +
     'ORDER BY b.score DESC, b.achieved_at ASC, b.player_id ASC LIMIT ? OFFSET ?';
   const entry = (r: BoardRow, rank: number) => ({
-    rank, name: displayName(r.player_id, r.nick), score: r.score, floor: r.floor, combo: r.combo, char: r.char_id, country: r.country,
+    rank, nick: r.nick, tag: playerTag(r.player_id), score: r.score, floor: r.floor, combo: r.combo, char: r.char_id, country: r.country,
   });
   function periodParam(c: Ctx): string {
     const kind = c.req.param('period') ?? '';

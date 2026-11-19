@@ -8,8 +8,10 @@ import {
   FONT, NEON, PEN, PENCILS, STYLES, brickPattern, burst, canvas, ctx, cycle, ditherPattern, hatchPattern, lowCanvas, lowCtx, mainCtx,
   rr, setCtx, stonePattern, style, text, themeOf, ui, wobblyRect,
 } from './gfx.js';
+import { haptics } from './haptics.js';
+import { LANG_NAMES, lang, t } from './i18n.js';
 import { isTouch, tilt } from './input.js';
-import { UIBOX, slotX } from './layout.js';
+import { PERIODS, SETTINGS, UIBOX, slotX } from './layout.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
@@ -39,6 +41,8 @@ export function render(g) {
   if (g.state === 'title') drawTitle(g);
   else if (g.state === 'pause') drawPause(g);
   else if (g.state === 'over') drawOver(g);
+  else if (g.state === 'board') drawBoard(g);
+  else if (g.state === 'settings') drawSettings(g);
   drawMessages(g);
   style.post?.(g);
 }
@@ -78,7 +82,7 @@ function drawWorld(g) {
 
 // ── tło ──
 function drawBackdrop(g) {
-  const c = ctx, t = g.t, bgY = g.sim.camY * 0.5;      // paralaksa
+  const c = ctx, time = g.t, bgY = g.sim.camY * 0.5;      // paralaksa
   const kLo = Math.max(0, Math.ceil((-260 - bgY - H - 120) / 440)), kHi = Math.floor((-260 - bgY + 140) / 440);
 
   if (style.world === 'neon') {
@@ -108,7 +112,7 @@ function drawBackdrop(g) {
       if (k % 4 === 0) {
         c.moveTo(x, y + 44); c.lineTo(x + 2, y); c.moveTo(x - 9, y + 13); c.lineTo(x + 2, y); c.lineTo(x + 12, y + 12); c.stroke();
         c.save(); c.translate(x + 40, y + 26); c.rotate(-0.12);
-        c.font = `700 14px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('wyżej!', 0, 0);
+        c.font = `700 14px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t('deco.higher'), 0, 0);
         c.restore();
       } else if (k % 4 === 1) {
         burst(x + 20, y + 24, 8, 19, 5, -Math.PI / 2); c.stroke();
@@ -258,11 +262,11 @@ function drawWalls(g) {
 
 // ── HUD ──
 function drawHud(g) {
-  const c = ctx, t = g.t;
+  const c = ctx, time = g.t;
   // zegar
-  const cx = 48, cy = 50, ringing = g.msgs.some((m) => m.title === 'SZYBCIEJ!');
+  const cx = 48, cy = 50, ringing = g.msgs.some((m) => m.hurry);
   c.save();
-  if (ringing && !reduceMotion) c.translate(Math.sin(t * 60) * 2, 0);
+  if (ringing && !reduceMotion) c.translate(Math.sin(time * 60) * 2, 0);
   c.fillStyle = ui.frame; c.beginPath(); c.arc(cx, cy, 33, 0, 7); c.fill();
   c.fillStyle = '#ffd24a'; c.beginPath(); c.arc(cx, cy, 30, 0, 7); c.fill();
   c.fillStyle = '#fff8e1'; c.beginPath(); c.arc(cx, cy, 25, 0, 7); c.fill();
@@ -272,16 +276,16 @@ function drawHud(g) {
     c.beginPath(); c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); c.lineTo(cx + Math.cos(a) * 23, cy + Math.sin(a) * 23); c.stroke();
   }
   const broken = g.sim.hurries >= MAX_HURRIES;
-  const ha = -Math.PI / 2 + (broken ? 2.2 + Math.sin(t * 40) * 0.06 : (g.sim.clock / HURRY_EVERY) * Math.PI * 2);
+  const ha = -Math.PI / 2 + (broken ? 2.2 + Math.sin(time * 40) * 0.06 : (g.sim.clock / HURRY_EVERY) * Math.PI * 2);
   c.strokeStyle = '#e5482f'; c.lineWidth = 3.5;
   c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(ha) * 19, cy + Math.sin(ha) * 19); c.stroke();
   c.fillStyle = '#12173a'; c.beginPath(); c.arc(cx, cy, 3.5, 0, 7); c.fill();
   c.restore();
-  text(g.sim.scrolling ? `TEMPO ${g.sim.level}` : 'TEMPO –', cx, 96, { size: 11, color: ui.hint, sw: 3, maxW: 88 });
+  text(g.sim.scrolling ? t('hud.tempo', { n: g.sim.level }) : t('hud.tempoOff'), cx, 96, { size: 11, color: ui.hint, sw: 3, maxW: 88 });
 
   // miernik combo
   const mx = 38, my = 122, mw = 20, mh = 170, frac = clamp(g.sim.combo.timer / COMBO_TIME, 0, 1);
-  text('COMBO', cx, 112, { size: 10, color: ui.hint, sw: 3 });
+  text(t('hud.combo'), cx, 112, { size: 10, color: ui.hint, sw: 3, maxW: 88 });
   c.fillStyle = ui.frame; rr(mx - 3, my - 3, mw + 6, mh + 6, 8); c.fill();
   c.fillStyle = ui.meterBg; rr(mx, my, mw, mh, 6); c.fill();
   if (frac > 0) {
@@ -291,20 +295,20 @@ function drawHud(g) {
   }
   c.fillStyle = 'rgba(255,255,255,.18)'; rr(mx + 3, my + 3, 4, mh - 6, 2); c.fill();
   const active = g.sim.combo.floors > 0;
-  burst(cx, 332, 20, 31, 10, t * (active ? 1.6 : 0.2));
+  burst(cx, 332, 20, 31, 10, time * (active ? 1.6 : 0.2));
   c.fillStyle = active ? '#ffd24a' : ui.off; c.fill();
   c.strokeStyle = ui.frame; c.lineWidth = 2.5; c.lineJoin = 'round'; c.stroke();
   text(String(g.sim.combo.floors), cx, 333, { size: 18, color: active ? '#fff' : ui.offText, stroke: active ? '#12173a' : ui.off, sw: 4 });
-  if (active) text('pięter', cx, 372, { size: 10, color: ui.note, sw: 3 });
+  if (active) text(t('hud.floors'), cx, 372, { size: 10, color: ui.note, sw: 3, maxW: 88 });
 
   // wynik
   const rx = RIGHT + WALL / 2;
   c.fillStyle = ui.panel; rr(RIGHT + 9, 10, WALL - 18, 152, 10); c.fill();
-  text('WYNIK', rx, 26, { size: 10, color: ui.label, sw: 0 });
+  text(t('hud.score'), rx, 26, { size: 10, color: ui.label, sw: 0, maxW: 80 });
   text(String(g.score), rx, 46, { size: 20, color: ui.gold, sw: 3, maxW: 70 });
-  text('PIĘTRO', rx, 74, { size: 10, color: ui.label, sw: 0 });
+  text(t('hud.floor'), rx, 74, { size: 10, color: ui.label, sw: 0, maxW: 80 });
   text(String(g.sim.maxFloor), rx, 94, { size: 20, sw: 3, maxW: 70 });
-  text('REKORD', rx, 122, { size: 10, color: ui.label, sw: 0 });
+  text(t('hud.best'), rx, 122, { size: 10, color: ui.label, sw: 0, maxW: 80 });
   text(String(Math.max(g.best.score, g.score)), rx, 141, { size: 15, color: ui.mint, sw: 3, maxW: 70 });
   if (sfx.muted) text('🔇', rx, 182, { size: 16, sw: 0 });
 
@@ -384,10 +388,20 @@ function drawSwatch(i, x, y, w, h) {
   c.restore();
 }
 
+/** Przycisk-prostokąt z napisem; on = podświetlony (wybrany). */
+function button(b, label, { on = false, accent = false, size = 12 } = {}) {
+  const c = ctx;
+  c.fillStyle = accent ? ui.btn : ui.panel; rr(b.x, b.y, b.w, b.h, 9); c.fill();
+  c.strokeStyle = on ? ui.gold : accent ? ui.frame : ui.line; c.lineWidth = on ? 2.5 : 1.5; c.stroke();
+  text(label, b.x + b.w / 2, b.y + b.h / 2 + 1, { size, color: accent ? ui.btnText : ui.hint, sw: 0, maxW: b.w - 14 });
+}
+
 function drawTitle(g) {
-  const c = ctx, t = g.t;
+  const c = ctx, time = g.t;
   dim(0.5);
-  c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(1 + Math.sin(t * 2) * 0.02, 1 + Math.sin(t * 2) * 0.02);
+  button(UIBOX.opts, isTouch ? t('title.opts') : `${t('title.opts')} · O`, { size: 11 });
+  button(UIBOX.rank, isTouch ? t('title.rank') : `${t('title.rank')} · R`, { size: 11 });
+  c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(1 + Math.sin(time * 2) * 0.02, 1 + Math.sin(time * 2) * 0.02);
   text('STEP JUMPER', 0, 4, { size: 54, maxW: 430, color: ui.frame, sw: 14, stroke: ui.frame });
   const grad = c.createLinearGradient(0, -30, 0, 30);
   grad.addColorStop(0, ui.title[0]); grad.addColorStop(0.5, ui.title[1]); grad.addColorStop(1, ui.title[2]);
@@ -396,22 +410,22 @@ function drawTitle(g) {
 
   // postacie
   panel(120, 98, 400, 128);
-  text('POSTAĆ', 138, 112, { size: 11, color: ui.label, align: 'left', sw: 0 });
+  text(t('title.char'), 138, 112, { size: 11, color: ui.label, align: 'left', sw: 0 });
   text('←  →', 502, 112, { size: 11, color: ui.label, align: 'right', sw: 0 });
   CHARS.forEach((ch, i) => {
     const x = slotX(i), on = i === g.charIdx;
     rr(x - 32, UIBOX.chars.y, 64, UIBOX.chars.h, 10);
     c.fillStyle = on ? ui.sel : 'rgba(128,128,160,.10)'; c.fill();
     if (on) { c.strokeStyle = ui.gold; c.lineWidth = 2.5; c.stroke(); }
-    const hop = on ? Math.abs(Math.sin(t * 4)) * 4 : 0;
-    drawHero({ x: x - 2, y: UIBOX.chars.y + 68 - hop, vx: on ? 260 : 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: on ? t * 22 : 0 }, t + i * 0.7, i);
+    const hop = on ? Math.abs(Math.sin(time * 4)) * 4 : 0;
+    drawHero({ x: x - 2, y: UIBOX.chars.y + 68 - hop, vx: on ? 260 : 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: on ? time * 22 : 0 }, time + i * 0.7, i);
   });
   const ch = CHARS[g.charIdx];
-  text(`${ch.name} – ${ch.tag}`, W / 2, 212, { size: 13, sw: 0, maxW: 370 });
+  text(`${ch.name} – ${t(`char.${ch.id}`)}`, W / 2, 212, { size: 13, sw: 0, maxW: 370 });
 
   // mapy
   panel(120, 236, 400, 98);
-  text('MAPA', 138, 250, { size: 11, color: ui.label, align: 'left', sw: 0 });
+  text(t('title.map'), 138, 250, { size: 11, color: ui.label, align: 'left', sw: 0 });
   text('↑  ↓', 502, 250, { size: 11, color: ui.label, align: 'right', sw: 0 });
   STYLES.forEach((st, i) => {
     const x = slotX(i), on = i === g.styleIdx;
@@ -419,14 +433,14 @@ function drawTitle(g) {
     rr(x - 32, UIBOX.maps.y, 64, UIBOX.maps.h, 7);
     c.strokeStyle = on ? ui.gold : ui.line; c.lineWidth = on ? 3 : 1; c.stroke();
   });
-  text(`${style.name} – ${style.desc}`, W / 2, 319, { size: 13, sw: 0, maxW: 370 });
+  text(`${t(`style.${style.id}.name`)} – ${t(`style.${style.id}.desc`)}`, W / 2, 319, { size: 13, sw: 0, maxW: 370 });
 
   // start
-  const b = UIBOX.play, pulse = 1 + Math.sin(t * 5) * 0.025;
+  const b = UIBOX.play, pulse = 1 + Math.sin(time * 5) * 0.025;
   c.save(); c.translate(b.x + b.w / 2, b.y + b.h / 2); c.scale(pulse, pulse);
   c.fillStyle = ui.btn; rr(-b.w / 2, -b.h / 2, b.w, b.h, 12); c.fill();
   c.strokeStyle = ui.frame; c.lineWidth = 2.5; c.stroke();
-  text(isTouch ? 'GRAJ' : 'GRAJ  ·  SPACJA', 0, 1, { size: 18, color: ui.btnText, sw: 0, maxW: b.w - 24 });
+  text(t(isTouch ? 'title.play' : 'title.playKey'), 0, 1, { size: 18, color: ui.btnText, sw: 0, maxW: b.w - 24 });
   c.restore();
 
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 436 };
@@ -434,47 +448,136 @@ function drawTitle(g) {
     const k = UIBOX.ctrl;
     c.fillStyle = ui.panel; rr(k.x, k.y, k.w, k.h, 13); c.fill();
     c.strokeStyle = tilt.active ? ui.gold : ui.line; c.lineWidth = tilt.active ? 2.5 : 1.5; c.stroke();
-    text(tilt.active ? 'STEROWANIE: PRZECHYŁ + DOTYK  ·  zmień' : tilt.want ? 'STEROWANIE: PRZECHYŁ  ·  dotknij, aby włączyć' : 'STEROWANIE: PRZYCISKI  ·  włącz przechył', W / 2, k.y + k.h / 2 + 1,
+    text(t(tilt.active ? 'title.ctrlTilt' : tilt.want ? 'title.ctrlTiltWant' : 'title.ctrlButtons'), W / 2, k.y + k.h / 2 + 1,
       { size: 12, color: tilt.active ? ui.gold : ui.hint, sw: 0, maxW: k.w - 24 });
-    text(tilt.active ? 'Przechylaj telefon, żeby biec  ·  dotknij ekranu, żeby skoczyć' : 'Przyciski ◀ ▶ – bieg, ▲ – skok', W / 2, 429, { ...hint, color: ui.hint });
-    text('Im szybciej biegniesz, tym wyżej skaczesz. Odbijaj się od ścian!', W / 2, 444, hint);
+    text(t(tilt.active ? 'title.tiltHelp' : 'title.buttonsHelp'), W / 2, 429, { ...hint, color: ui.hint });
+    text(t('title.tip'), W / 2, 444, hint);
   } else {
-    text('bieg ← → / A D   ·   skok SPACJA / ↑ / W   ·   pauza P   ·   dźwięk M', W / 2, 402, { ...hint, color: ui.hint });
-    text('Im szybciej biegniesz, tym wyżej skaczesz. Odbijaj się od ścian!', W / 2, 420, hint);
-    text('Skoki o 2+ piętra z rzędu łączą się w COMBO.', W / 2, 437, hint);
+    text(t('title.keys'), W / 2, 402, { ...hint, color: ui.hint });
+    text(t('title.tip'), W / 2, 420, hint);
+    text(t('title.combo'), W / 2, 437, hint);
   }
-  if (g.best.score > 0) text(`rekord ${g.best.score}  ·  piętro ${g.best.floor}  ·  combo ${g.best.combo}`, W / 2, 460, { size: 12, color: ui.mint, sw: 3, maxW: 436 });
+  if (g.best.score > 0) text(t('title.best', { score: g.best.score, floor: g.best.floor, combo: g.best.combo }), W / 2, 460, { size: 12, color: ui.mint, sw: 3, maxW: 436 });
 }
 
 function drawPause(g) {
   dim(0.55);
-  text('PAUZA', W / 2, 205, { size: 54, sw: 8 });
-  text('P lub SPACJA – wracamy do gry', W / 2, 258, { size: 15, color: ui.hint, sw: 4 });
-  text('ESC – menu (zmiana postaci i mapy)', W / 2, 284, { size: 13, color: ui.label, sw: 4 });
+  text(t('pause.title'), W / 2, 205, { size: 54, sw: 8, maxW: 430 });
+  text(t('pause.resume'), W / 2, 258, { size: 15, color: ui.hint, sw: 4, maxW: 430 });
+  text(t('pause.menu'), W / 2, 284, { size: 13, color: ui.label, sw: 4, maxW: 430 });
 }
 
 function drawOver(g) {
   const c = ctx, k = clamp(g.overT / 0.35, 0, 1);
   dim(0.6 * k);
   c.save(); c.globalAlpha = k; c.translate(0, (1 - easeOutBack(k)) * -40);
-  text('KONIEC GRY', W / 2, 100, { size: 50, color: ui.warn, sw: 8, maxW: 430 });
+  text(t('over.title'), W / 2, 100, { size: 50, color: ui.warn, sw: 8, maxW: 430 });
   panel(170, 142, 300, 170);
-  const rows = [['Wynik', g.score, ui.gold], ['Piętro', g.sim.maxFloor, ui.text], ['Najlepsze combo', g.sim.bestCombo, ui.text], ['Rekord', g.best.score, ui.mint]];
+  const rows = [[t('over.score'), g.score, ui.gold], [t('over.floor'), g.sim.maxFloor, ui.text], [t('over.combo'), g.sim.bestCombo, ui.text], [t('over.best'), g.best.score, ui.mint]];
   rows.forEach(([l, v, col], i) => {
-    text(l, 196, 172 + i * 36, { size: 15, color: ui.label, align: 'left', sw: 0, weight: 600 });
+    text(l, 196, 172 + i * 36, { size: 15, color: ui.label, align: 'left', sw: 0, weight: 600, maxW: 180 });
     text(String(v), 444, 172 + i * 36, { size: i ? 20 : 26, color: col, align: 'right', sw: 0 });
   });
   if (g.newBest) {
     c.save(); c.translate(486, 146); c.rotate(0.22);
     burst(0, 0, 30, 40, 12, g.t); c.fillStyle = '#ffd24a'; c.fill(); c.strokeStyle = '#12173a'; c.lineWidth = 2.5; c.stroke();
-    text('NOWY', 0, -7, { size: 12, color: '#12173a', sw: 0 }); text('REKORD', 0, 8, { size: 12, color: '#12173a', sw: 0 });
+    text(t('over.new1'), 0, -7, { size: 12, color: '#12173a', sw: 0, maxW: 58 }); text(t('over.new2'), 0, 8, { size: 12, color: '#12173a', sw: 0, maxW: 58 });
     c.restore();
   }
+  const net = netLine(g.net);
+  if (net) text(net[0], W / 2, 328, { size: 13, color: net[1], sw: 3, maxW: 440 });
   if (g.overT > 0.6) {
-    if (Math.sin(g.t * 5) > -0.3) text('SPACJA lub dotknij – jeszcze raz', W / 2, 348, { size: 18, sw: 5, maxW: 430 });
+    if (Math.sin(g.t * 5) > -0.3) text(t('over.again'), W / 2, 352, { size: 18, sw: 5, maxW: 430 });
     const b = UIBOX.menu;
     c.fillStyle = ui.panel; rr(b.x, b.y, b.w, b.h, 10); c.fill(); c.strokeStyle = ui.line; c.lineWidth = 1.5; c.stroke();
-    text('ESC / tutaj – zmień postać i mapę', W / 2, b.y + b.h / 2 + 1, { size: 12, color: ui.hint, sw: 0, maxW: b.w - 20 });
+    text(t('over.menu'), W / 2, b.y + b.h / 2 + 1, { size: 12, color: ui.hint, sw: 0, maxW: b.w - 20 });
   }
   c.restore();
+}
+
+// ───────────────────────── ranking online ─────────────────────────
+
+/** Jedna linijka o losie wyniku na ekranie końca gry: [tekst, kolor]. */
+function netLine(n) {
+  if (!n) return null;
+  switch (n.status) {
+    case 'sending': return [t('net.sending'), ui.hint];
+    case 'verified': return [t('net.verified', n.ranks), ui.mint];
+    case 'queued': return [t('net.queued'), ui.hint];
+    case 'rejected': return [t('net.rejected'), ui.warn];
+    case 'unranked': return [t(`net.${n.reason}`), ui.label];
+    default: return null;
+  }
+}
+
+function drawBoard(g) {
+  const c = ctx, b = g.board, kind = b.kind, d = b.data[kind], o = g.online;
+  dim(0.66);
+  text(t('board.title'), W / 2, 34, { size: 30, color: ui.gold, sw: 6, maxW: 420 });
+  PERIODS.forEach((k, i) => button(UIBOX.tab(i), t(`period.${k}`), { accent: k === kind, size: 13 }));
+
+  const L = UIBOX.list;
+  panel(L.x, L.y, L.w, L.h);
+  const msg = (s) => text(s, W / 2, L.y + L.h / 2, { size: 14, color: ui.hint, sw: 0, maxW: L.w - 30 });
+  if (!o.enabled) msg(t('board.off'));
+  else if (!d) msg(t('board.loading'));
+  else if (!d.top) msg(t('board.noConn'));
+  else if (!d.top.entries.length) msg(t(kind === 'day' ? 'board.emptyDay' : 'board.empty'));
+  else {
+    const head = { size: 10, color: ui.label, sw: 0 };
+    text('#', L.x + 36, L.y + 16, { ...head, align: 'right' });
+    text(t('board.colPlayer'), L.x + 52, L.y + 16, { ...head, align: 'left' });
+    text(t('board.colFloor'), L.x + 318, L.y + 16, { ...head, align: 'right' });
+    text(t('board.colScore'), L.x + L.w - 18, L.y + 16, { ...head, align: 'right' });
+    const myRank = d.me?.rank;
+    d.top.entries.forEach((e, i) => {
+      const y = L.y + 40 + i * 23, mine = e.rank === myRank;
+      if (mine) { c.fillStyle = ui.sel; rr(L.x + 8, y - 11, L.w - 16, 22, 6); c.fill(); }
+      const row = { size: 13, sw: 0 };
+      text(String(e.rank), L.x + 36, y, { ...row, align: 'right', color: e.rank <= 3 ? ui.gold : ui.label });
+      text(e.nick ?? t('board.player', { tag: e.tag }), L.x + 52, y, { ...row, align: 'left', color: mine ? ui.gold : ui.text, weight: 700, maxW: 200 });
+      text(String(e.floor), L.x + 318, y, { ...row, align: 'right', color: ui.label });
+      text(String(e.score), L.x + L.w - 18, y, { ...row, size: 14, align: 'right', color: ui.text });
+    });
+  }
+
+  if (o.enabled && d?.top) {
+    const me = d.me?.entries.find((e) => e.me);
+    const line = !d.me?.rank ? t('board.noScore')
+      : d.me.rank > 10 ? t('board.placeScore', { rank: d.me.rank, score: me?.score ?? '' }) : t('board.place', { rank: d.me.rank });
+    text(line, W / 2, 394, { size: 13, color: ui.mint, sw: 3, maxW: 420 });
+  }
+  if (o.pending) text(t('board.pending', { n: o.pending }), W / 2, 410, { size: 10, color: ui.label, sw: 0 });
+
+  const name = o.nick ?? (o.tag ? t('board.player', { tag: o.tag }) : '—');
+  button(UIBOX.nick, t(isTouch ? 'board.nick' : 'board.nickKey', { name: o.enabled ? name : '—' }), { size: 12 });
+  button(UIBOX.back, t(isTouch ? 'board.back' : 'board.backKey'), { size: 12 });
+}
+
+function drawSettings(g) {
+  const o = g.online, st = g.settings, confirming = g.t < st.confirmT;
+  dim(0.66);
+  text(t('set.title'), W / 2, 44, { size: 30, color: ui.gold, sw: 6, maxW: 420 });
+  const onOff = (v) => t(v ? 'set.on' : 'set.off');
+  const rows = {
+    lang: [lang() === 'en' ? t('set.lang') : `${t('set.lang')} / Language`, `◀  ${LANG_NAMES[lang()]}  ▶`],
+    sound: [t('set.sound'), onOff(!sfx.muted)],
+    vibrate: [t('set.vibrate'), haptics.available ? onOff(haptics.on) : t('set.na')],
+    online: [t('set.online'), onOff(o.enabled)],
+    delete: [t(confirming ? 'set.deleteConfirm' : 'set.delete'), ''],
+    back: [t(isTouch ? 'set.back' : 'set.backKey'), ''],
+  };
+  SETTINGS.forEach((k, i) => {
+    const r = UIBOX.row(i), sel = i === st.sel && !isTouch, [label, value] = rows[k];
+    panel(r.x, r.y, r.w, r.h);
+    if (sel || (k === 'delete' && confirming)) { ctx.strokeStyle = k === 'delete' ? ui.warn : ui.gold; ctx.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); ctx.stroke(); }
+    const col = k === 'delete' ? ui.warn : ui.text;
+    text(label, value ? r.x + 20 : r.x + r.w / 2, r.y + r.h / 2 + 1, { size: 14, color: col, sw: 0, align: value ? 'left' : 'center', weight: 700, maxW: value ? r.w - 170 : r.w - 40 });
+    if (value) text(value, r.x + r.w - 20, r.y + r.h / 2 + 1, { size: 14, color: value === t('set.on') || k === 'lang' ? ui.gold : ui.label, sw: 0, align: 'right', maxW: 140 });
+  });
+  const note = st.note ? t(st.note) : confirming ? t('set.deleteWarn') : '';
+  if (note) text(note, W / 2, 350, { size: 13, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 440 });
+  const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 440 };
+  text(t('set.privacy'), W / 2, 410, hint);
+  if (!isTouch) text(t('set.keys'), W / 2, 430, { ...hint, color: ui.hint });
 }

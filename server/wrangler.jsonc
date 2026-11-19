@@ -27,6 +27,6 @@
 
   "vars": {
     // Strony, z których przeglądarka może wołać API (demo web, podgląd Vite, aplikacja Capacitor).
-    "ALLOWED_ORIGINS": "http://localhost:5173,https://localhost,capacitor://localhost"
+    "ALLOWED_ORIGINS": "https://step-jumper.vercel.app,http://localhost:5173,https://localhost,capacitor://localhost"
   }
 }

@@ -34,6 +34,13 @@ describe('nick gracza', () => {
     for (const bad of ['kurwa', 'Kurw4_Mać', 'k u r w a', 'CHUJ123', 'fuck_you']) expect(checkNick(bad)).toEqual({ ok: false, reason: 'blocked' });
   });
 
+  test('tylko alfabet łaciński: litery z innych pism mogą udawać łacińskie', () => {
+    expect(checkNick('Аdmin')).toEqual({ ok: false, reason: 'chars' });   // cyrylickie „А”
+    expect(checkNick('Ниндзя')).toEqual({ ok: false, reason: 'chars' });
+    expect(checkNick('Gracz٣')).toEqual({ ok: false, reason: 'chars' });  // cyfra arabska
+    expect(checkNick('Ærøskøbing')).toMatchObject({ ok: true });
+  });
+
   test('odrzuca nazwy udające obsługę gry', () => {
     expect(checkNick('Admin')).toEqual({ ok: false, reason: 'blocked' });
     expect(checkNick('Step Jumper')).toEqual({ ok: false, reason: 'blocked' });

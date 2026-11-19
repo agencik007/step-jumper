@@ -31,6 +31,25 @@ Tryb przechyłu działa tylko po HTTPS albo z `localhost`.
 | `tests/` | Testy symulacji i serwera (`tests/server/`, na lokalnej bazie D1). `tests/legacy/` to fizyka z pierwszej, jednoplikowej wersji gry – wzorzec, z którym porównywany jest nowy rdzeń. |
 | `scripts/` | Generator tablicy krzywej skoku. |
 
+## Ranking online
+
+Gra bierze z zapasu bilet (ziarno wieży od serwera), a po przegranej wysyła zapis sterowania; serwer sam odtwarza
+bieg i wpisuje wynik do rankingu dziennego, tygodniowego i ogólnego (`src/net/online.ts`, serwer: `server/`).
+Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik bez połączenia czeka w kolejce.
+
+- `npm run dev` łączy się z lokalnym serwerem (`npm run server:dev`), żeby testy nie trafiały do prawdziwego rankingu;
+  `VITE_API_URL=…` wskazuje inny serwer.
+- Build produkcyjny łączy się z serwerem na Cloudflare.
+- W grze: RANKING (R) i OPCJE (O) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, wyłączenie rankingu
+  i usunięcie swoich danych z serwera.
+
+## Języki
+
+Polski, angielski, niemiecki, francuski i hiszpański. Przy pierwszym uruchomieniu gra wybiera język przeglądarki
+(nieobsługiwany → angielski); zmiana w OPCJACH. Teksty są w `src/game/strings.js` – test `tests/i18n.test.ts` pilnuje,
+żeby każdy język miał wszystkie klucze i te same `{zmienne}`. Nowy tekst: dopisz klucz we wszystkich pięciu językach
+i użyj `t('klucz')` z `src/game/i18n.js`.
+
 ## Determinizm
 
 Bieg da się odtworzyć z ziarna wieży i zapisu wejść (`src/sim/replay.ts`), co jest podstawą rankingu odpornego na podrabianie wyników. Dlatego w `src/sim/`:

@@ -42,6 +42,28 @@
   #padR { right: max(18px, env(safe-area-inset-right)); }
   @media (pointer: coarse) { .pad { display: flex; } }
   body.tilt .pad { display: none; }   /* w trybie przechyłu przyciski znikają – cały ekran to „skok” */
+
+  /* okienko nicku (zwykły formularz nad canvasem) */
+  #nick[hidden] { display: none; }
+  #nick {
+    position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 10;
+    width: min(360px, calc(100vw - 32px)); padding: 18px 18px 14px; border-radius: 14px;
+    background: rgba(12,16,44,.96); border: 1.5px solid rgba(159,216,255,.45); color: #fff;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6); font: 600 14px/1.4 system-ui, sans-serif;
+    -webkit-user-select: text; user-select: text; touch-action: auto;
+  }
+  #nick label { display: block; margin-bottom: 8px; color: #9fb4ee; font-size: 13px; }
+  #nick input {
+    width: 100%; padding: 10px 12px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45);
+    background: #141a36; color: #fff; font: 700 18px/1.2 system-ui, sans-serif;
+  }
+  #nick input:focus { outline: 2px solid #ffe066; outline-offset: 1px; }
+  #nick p { min-height: 1.4em; margin: 8px 0; color: #ff9a7f; font-size: 13px; }
+  #nick small { display: block; margin-top: 10px; color: #9fb4ee; font-size: 12px; }
+  #nick .row { display: flex; gap: 10px; justify-content: flex-end; }
+  #nick button { padding: 9px 16px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45); background: #1d2552; color: #fff; font: 700 14px system-ui, sans-serif; }
+  #nick button[type=submit] { background: #ffd24a; color: #12173a; border-color: #12173a; }
+  #nick button:disabled { opacity: .6; }
 </style>
 </head>
 <body>
@@ -62,14 +84,22 @@
   </filter>
 </svg>
 
-<div id="stage"><canvas id="game" aria-label="Step Jumper – gra zręcznościowa"></canvas></div>
+<div id="stage"><canvas id="game" aria-label="Step Jumper – gra zręcznościowa" data-i18n-aria="aria.game"></canvas></div>
 <div class="pad" id="padL">
-  <button data-act="left" aria-label="W lewo">◀</button>
-  <button data-act="right" aria-label="W prawo">▶</button>
+  <button data-act="left" aria-label="W lewo" data-i18n-aria="aria.left">◀</button>
+  <button data-act="right" aria-label="W prawo" data-i18n-aria="aria.right">▶</button>
 </div>
 <div class="pad" id="padR">
-  <button data-act="jump" aria-label="Skok">▲</button>
+  <button data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
 </div>
+
+<form id="nick" hidden autocomplete="off">
+  <label for="nickInput" data-i18n="nick.label">Twój nick w rankingu</label>
+  <input id="nickInput" maxlength="16" spellcheck="false" autocapitalize="off" enterkeyhint="done">
+  <p id="nickErr" role="alert"></p>
+  <div class="row"><button type="button" id="nickCancel" data-i18n="nick.cancel">Anuluj</button><button type="submit" id="nickSave" data-i18n="nick.save">Zapisz</button></div>
+  <small data-i18n="nick.rules">3–16 znaków: litery, cyfry, _ - i pojedyncze spacje.</small>
+</form>
 
 <script type="module" src="/src/main.js"></script>
 </body>
