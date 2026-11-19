@@ -1,9 +1,14 @@
 // Start gry: tworzy grę, podpina sterowanie i kręci pętlą klatek.
+import { online } from './net';
 import { Game } from './game/game.js';
 import { initInput, pollGamepad, tilt, tiltDegrees } from './game/input.js';
 
 const game = new Game();
 initInput(game);
+
+// ranking online: wczytaj konto, uzupełnij zapas biletów i dośli biegi, które czekały na sieć
+online.init().then(() => { online.refill(); online.flush(); });
+addEventListener('online', () => { online.refill(); online.flush(); });
 if (import.meta.env.DEV) {             // suwaki fizyki lotu – tylko deweloperski podgląd, w buildzie produkcyjnym ich nie ma
   import('./game/tuning.js').then((m) => m.initTuning(game));
 }

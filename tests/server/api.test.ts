@@ -93,9 +93,9 @@ describe('bilety na bieg', () => {
   test('limit biletów na godzinę', async () => {
     const token = await srv.newPlayer();
     const codes: number[] = [];
-    for (let i = 0; i < 61; i++) { codes.push((await srv.call('POST', '/v1/runs', { token, json: { simVersion: SIM_VERSION } })).status); srv.clock.now += 1000; }
-    expect(codes.slice(0, 60).every((c) => c === 201)).toBe(true);
-    expect(codes[60]).toBe(429);
+    for (let i = 0; i < 181; i++) { codes.push((await srv.call('POST', '/v1/runs', { token, json: { simVersion: SIM_VERSION } })).status); srv.clock.now += 1000; }
+    expect(codes.slice(0, 180).every((c) => c === 201)).toBe(true);
+    expect(codes[180]).toBe(429);
   });
 
   test('zablokowany gracz nie dostaje biletów', async () => {
@@ -196,6 +196,10 @@ describe('wysyłka i weryfikacja biegu', () => {
     const token = await srv.newPlayer();
     const { runId } = await srv.newRun(token);
     expect((await srv.call('PUT', `/v1/runs/${runId}/chunks/0`, { token, body: new Uint8Array(20_000) })).status).toBe(413);
+    // bez nagłówka Content-Length (strumień): limit liczony w trakcie czytania
+    const stream = new ReadableStream({ start(ctl) { for (let i = 0; i < 50; i++) ctl.enqueue(new Uint8Array(1000)); ctl.close(); } });
+    expect((await srv.call('PUT', `/v1/runs/${runId}/chunks/0`, { token, body: stream, headers: {} })).status).toBe(413);
+    expect((await srv.db.prepare('SELECT status FROM runs WHERE id = ?').bind(runId).first())).toEqual({ status: 'issued' });
   });
 });
 
@@ -217,7 +221,7 @@ describe('rankingi', () => {
     const scores = r.data.entries.map((e: any) => e.score);
     expect(scores).toEqual([...ps.map((p) => p.score)].sort((x, y) => y - x));
     expect(r.data.entries.map((e: any) => e.rank)).toEqual([1, 2, 3]);
-    expect(r.data.entries.find((e: any) => e.score === ps[2].score).name).toMatch(/^Gracz [0-9A-F]{4}$/);
+    expect(r.data.entries.find((e: any) => e.score === ps[2].score)).toMatchObject({ nick: null, tag: expect.stringMatching(/^[0-9A-F]{4}$/) });
     expect(JSON.stringify(r.data)).not.toContain(ps[0].token.split('.')[0]);   // identyfikatory graczy nie wyciekają
   });
 
@@ -227,7 +231,7 @@ describe('rankingi', () => {
     await srv.call('PATCH', '/v1/me', { token: b, json: { nick: 'Drugi' } });
     const ins = srv.db.prepare("INSERT INTO bests (period, player_id, score, floor, combo, char_id, run_id, achieved_at) VALUES ('all', ?, 500, 50, 0, 'fox', 'r', ?)");
     await srv.db.batch([ins.bind(b.split('.')[0], START + 2000), ins.bind(a.split('.')[0], START + 1000)]);
-    expect((await srv.call('GET', '/v1/leaderboards/all')).data.entries.map((e: any) => [e.rank, e.name])).toEqual([[1, 'Pierwszy'], [2, 'Drugi']]);
+    expect((await srv.call('GET', '/v1/leaderboards/all')).data.entries.map((e: any) => [e.rank, e.nick])).toEqual([[1, 'Pierwszy'], [2, 'Drugi']]);
     expect((await srv.call('GET', '/v1/leaderboards/all/me', { token: b })).data.rank).toBe(2);
   });
 
@@ -282,7 +286,7 @@ describe('rankingi', () => {
     await srv.db.prepare("UPDATE bests SET score = 999999 WHERE player_id = (SELECT id FROM players WHERE nick = 'Oszust')").run();
     await srv.db.prepare('UPDATE players SET banned = 1 WHERE nick = ?').bind('Oszust').run();
     const r = await srv.call('GET', '/v1/leaderboards/all');
-    expect(r.data.entries.map((e: any) => e.name)).toEqual(['Ala']);
+    expect(r.data.entries.map((e: any) => e.nick)).toEqual(['Ala']);
     expect((await srv.call('GET', '/v1/leaderboards/all/me', { token: ala.token })).data.rank).toBe(1);
   });
 

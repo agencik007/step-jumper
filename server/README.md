@@ -32,10 +32,10 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | `GET /v1/me` | moje konto | `{playerId, nick, createdAt}` |
 | `PATCH /v1/me` `{nick}` | nick 3–16 znaków, unikalny bez względu na wielkość liter | `{nick}` · `400 nick_length/nick_chars/nick_blocked` · `409 nick_taken` |
 | `DELETE /v1/me` | usuwa konto, biegi i wyniki | `204` |
-| `POST /v1/runs` `{simVersion}` | bilet: ziarno wieży; maks. 60/h, nadmiar ponad 5 niewykorzystanych przepada | `201 {runId, seed, simVersion, chunkTicks}` · `409 update_required` · `403 banned` · `429 too_many_runs` |
+| `POST /v1/runs` `{simVersion}` | bilet: ziarno wieży; maks. 180/h, nadmiar ponad 5 niewykorzystanych przepada | `201 {runId, seed, simVersion, chunkTicks}` · `409 update_required` · `403 banned` · `429 too_many_runs` |
 | `PUT /v1/runs/:id/chunks/:seq` (binarnie, `encodeInputs`) | porcja zapisu: dokładnie `chunkTicks` kroków, krótsza tylko ostatnia (kończąca grę) | `{nextSeq, ticks, over}` · powtórka: `{nextSeq, duplicate: true}` · `409 seq` · `413` · `422 rejected` |
 | `POST /v1/runs/:id/finish` `{score, char, style?, control?, appVersion?}` | zatwierdzenie | `{status: "verified", score, floor, combo, ticks, improved, ranks}` · `422 rejected` |
-| `GET /v1/leaderboards/:okres?limit=50` | `all` / `week` / `day`, cache 30 s | `{period, entries: [{rank, name, score, floor, combo, char, country}]}` |
+| `GET /v1/leaderboards/:okres?limit=50` | `all` / `week` / `day`, cache 30 s | `{period, entries: [{rank, nick, tag, score, floor, combo, char, country}]}` (bez nicku gra pokazuje „Gracz {tag}”) |
 | `GET /v1/leaderboards/:okres/me` | moje miejsce ± 5 sąsiadów | `{period, rank, entries: [... , me]}` |
 
 Powody odrzucenia biegu (`reason`): `corrupt`, `empty_chunk`, `chunk_too_long`, `short_chunk`, `inputs_after_end`,

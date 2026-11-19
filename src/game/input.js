@@ -2,6 +2,7 @@
 import { H, W } from '../sim';
 import { sfx } from './audio.js';
 import { canvas } from './gfx.js';
+import { t } from './i18n.js';
 import { clamp, mod } from './util.js';
 
 let game = null;                       // ustawiane przez initInput – ten moduł nie importuje gry, żeby nie robić pętli zależności
@@ -61,11 +62,12 @@ async function enableTilt() {
     tilt.seen = false;
     setTilt(true);
     setTimeout(() => {                                 // czujnik milczy (komputer, brak HTTPS) → wracamy do przycisków
-      if (tilt.active && !tilt.seen) { tilt.want = false; setTilt(false); game.savePrefs(); game.say('BRAK CZUJNIKA', 'przechył wymaga telefonu i strony po HTTPS', 'warn', 2.6); }
+      if (tilt.active && !tilt.seen) { tilt.want = false; setTilt(false); game.savePrefs(); game.say(t('msg.noSensor'), t('msg.noSensorSub'), 'warn', 2.6); }
     }, 1500);
   } catch (err) {
     tilt.want = false; setTilt(false); game.savePrefs();
-    game.say(err.message === 'denied' ? 'BRAK ZGODY' : 'BRAK CZUJNIKA', err.message === 'denied' ? 'zezwól stronie na dostęp do ruchu urządzenia' : 'zostają przyciski ekranowe', 'warn', 2.6);
+    const denied = err.message === 'denied';
+    game.say(t(denied ? 'msg.denied' : 'msg.noSensor'), t(denied ? 'msg.deniedSub' : 'msg.buttonsStay'), 'warn', 2.6);
   }
 }
 export function toggleTilt() {
@@ -95,6 +97,14 @@ export function pollGamepad() {
     if (pad.right && !was.right) game.pick('char', 1);
     if (pad.up && !was.up) game.pick('style', -1);
     if (pad.down && !was.down) game.pick('style', 1);
+  } else if (game.state === 'board') {
+    if (pad.left && !was.left) game.boardTab(-1);
+    if (pad.right && !was.right) game.boardTab(1);
+  } else if (game.state === 'settings') {
+    if (pad.up && !was.up) game.settingsMove(-1);
+    if (pad.down && !was.down) game.settingsMove(1);
+    if (pad.left && !was.left) game.settingsSide(-1);
+    if (pad.right && !was.right) game.settingsSide(1);
   }
 }
 
@@ -103,24 +113,37 @@ export function initInput(theGame) {
   game = theGame;
 
   addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement) return;   // pisanie nicku – klawisze należą do pola tekstowego
     sfx.unlock();
     const act = KEYMAP[e.code];
     if (act || e.code === 'ArrowDown' || e.code === 'KeyS') e.preventDefault();
     if (e.repeat) return;
+    const up = e.code === 'ArrowUp' || e.code === 'KeyW', dn = e.code === 'ArrowDown' || e.code === 'KeyS';
     if (game.state === 'title') {
       if (act === 'left') game.pick('char', -1);
       else if (act === 'right') game.pick('char', 1);
-      else if (e.code === 'ArrowUp' || e.code === 'KeyW') game.pick('style', -1);
-      else if (e.code === 'ArrowDown' || e.code === 'KeyS') game.pick('style', 1);
+      else if (up) game.pick('style', -1);
+      else if (dn) game.pick('style', 1);
+      else if (e.code === 'KeyR') game.openBoard();
+      else if (e.code === 'KeyO') game.openSettings();
+    } else if (game.state === 'board') {
+      if (act === 'left') game.boardTab(-1);
+      else if (act === 'right') game.boardTab(1);
+      else if (e.code === 'KeyN') { e.preventDefault(); game.editNick(); return; }   // bez „n” w otwieranym polu
+    } else if (game.state === 'settings') {
+      if (up) { game.settingsMove(-1); return; }
+      if (dn) { game.settingsMove(1); return; }
+      if (act === 'left' || act === 'right') { game.settingsSide(act === 'left' ? -1 : 1); return; }
     }
-    if (act) down.add(e.code);
+    if (act && game.state !== 'board' && game.state !== 'settings') down.add(e.code);
     if (e.code === 'Space' || e.code === 'Enter') input.edge = true;
     else if (e.code === 'KeyP') game.togglePause();
     else if (e.code === 'KeyT' && game.state === 'title') toggleTilt();
-    else if (e.code === 'Escape') { if (game.state === 'over' || game.state === 'pause') game.toTitle(); else game.pause(); }
+    else if (e.code === 'Escape') { if (['over', 'pause', 'board', 'settings'].includes(game.state)) game.toTitle(); else game.pause(); }
     else if (e.code === 'KeyM') {
       sfx.muted = !sfx.muted;
-      game.say(sfx.muted ? 'DŹWIĘK WYŁ.' : 'DŹWIĘK WŁ.', '', 'hint', 1);
+      game.savePrefs();
+      game.say(t(sfx.muted ? 'msg.soundOff' : 'msg.soundOn'), '', 'hint', 1);
     }
   });
   addEventListener('keyup', (e) => { down.delete(e.code); });
@@ -151,6 +174,7 @@ export function initInput(theGame) {
       set(true);
       if (act === 'jump') input.edge = true;
       else if (game.state === 'title') game.pick('char', act === 'left' ? -1 : 1);
+      else if (game.state === 'board') game.boardTab(act === 'left' ? -1 : 1);
     });
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) btn.addEventListener(ev, () => set(false));
     btn.addEventListener('contextmenu', (e) => e.preventDefault());

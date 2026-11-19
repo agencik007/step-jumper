@@ -32,7 +32,9 @@ export async function startServer() {
     if (opts.token) headers.authorization = `Bearer ${opts.token}`;
     let body = opts.body;
     if (opts.json !== undefined) { headers['content-type'] = 'application/json'; body = JSON.stringify(opts.json); }
-    const res = await app.request(path, { method, headers, body }, env);
+    const init: RequestInit & { duplex?: 'half' } = { method, headers, body };
+    if (body instanceof ReadableStream) init.duplex = 'half';   // strumień bez Content-Length
+    const res = await app.request(path, init, env);
     const text = await res.text();
     let data: any = null;
     try { data = text ? JSON.parse(text) : null; } catch { data = text; }
