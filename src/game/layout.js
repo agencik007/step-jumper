@@ -11,8 +11,8 @@ export const UIBOX = {
   list: { x: 110, y: 102, w: 420, h: 276 },
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
   // opcje
-  row: (i) => ({ x: 140, y: 72 + i * 38, w: 360, h: 32 }),
+  row: (i) => ({ x: 140, y: 66 + i * 34, w: 360, h: 30 }),
 };
 export const PERIODS = ['day', 'week', 'all'];
-export const SETTINGS = ['lang', 'sound', 'music', 'vibrate', 'online', 'delete', 'back'];
+export const SETTINGS = ['lang', 'sound', 'music', 'vibrate', 'hand', 'online', 'delete', 'back'];
 export const inBox = (x, y, b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;

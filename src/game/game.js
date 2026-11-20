@@ -27,7 +27,7 @@ const BOARD_TTL = 30;                    // s – tyle samo serwer trzyma rankin
 export class Game {
   constructor() {
     this.best = loadJSON(STORE, { score: 0, floor: 0, combo: 0 });
-    const prefs = loadJSON(PREFS, { char: 0, style: 0, tilt: false, sound: true, music: true, vibrate: true, lang: null });
+    const prefs = loadJSON(PREFS, { char: 0, style: 0, tilt: false, sound: true, music: true, vibrate: true, lefty: false, lang: null });
     setLang(prefs.lang ?? detectLang());   // pierwsze uruchomienie: język przeglądarki
     this.charIdx = clamp(prefs.char | 0, 0, CHARS.length - 1);
     this.styleIdx = clamp(prefs.style | 0, 0, STYLES.length - 1);
@@ -35,6 +35,7 @@ export class Game {
     sfx.muted = !prefs.sound;
     sfx.musicOn = prefs.music !== false;
     haptics.on = !!prefs.vibrate;
+    this.setLefty(!!prefs.lefty);
     applyStyle(this.styleIdx);
     this.t = 0;
     this.snow = Array.from({ length: 34 }, () => ({ x: rand(LEFT, RIGHT), y: rand(0, H), r: rand(0.8, 2.2), s: rand(12, 34), ph: rand(0, 7) }));
@@ -58,7 +59,9 @@ export class Game {
     this.savePrefs();
     sfx.pick();
   }
-  savePrefs() { saveJSON(PREFS, { char: this.charIdx, style: this.styleIdx, tilt: tilt.want, sound: !sfx.muted, music: sfx.musicOn, vibrate: haptics.on, lang: lang() }); }
+  savePrefs() { saveJSON(PREFS, { char: this.charIdx, style: this.styleIdx, tilt: tilt.want, sound: !sfx.muted, music: sfx.musicOn, vibrate: haptics.on, lefty: this.lefty, lang: lang() }); }
+  /** Układ przycisków ekranowych: leworęczny = skok pod lewym kciukiem, ◀ ▶ pod prawym. */
+  setLefty(on) { this.lefty = on; if (typeof document !== 'undefined') document.body.classList.toggle('lefty', on); }
   cycleLang(d) { setLang(LANGS[mod(LANGS.indexOf(lang()) + d, LANGS.length)]); this.savePrefs(); sfx.pick(); }
 
   reset(seed = newSeed()) {
@@ -132,8 +135,12 @@ export class Game {
   // ── opcje ──
   openSettings() { sfx.pick(); this.state = 'settings'; this.settings.sel = 0; this.settings.note = ''; this.settings.confirmT = 0; }
   settingsMove(d) { this.settings.sel = mod(this.settings.sel + d, SETTINGS.length); sfx.pick(); }
-  /** ← → w opcjach: zmienia język, gdy wybrany jest wiersz języka. */
-  settingsSide(d) { if (SETTINGS[this.settings.sel] === 'lang') this.cycleLang(d); }
+  /** ← → w opcjach: zmienia język albo układ przycisków, gdy wybrany jest ich wiersz. */
+  settingsSide(d) {
+    const k = SETTINGS[this.settings.sel];
+    if (k === 'lang') this.cycleLang(d);
+    else if (k === 'hand') this.activate(this.settings.sel);
+  }
   activate(i) {
     const st = this.settings;
     st.sel = i;
@@ -141,6 +148,7 @@ export class Game {
       case 'lang': this.cycleLang(1); break;
       case 'sound': sfx.muted = !sfx.muted; this.savePrefs(); sfx.pick(); break;
       case 'music': sfx.musicOn = !sfx.musicOn; this.savePrefs(); sfx.pick(); break;
+      case 'hand': this.setLefty(!this.lefty); this.savePrefs(); sfx.pick(); break;
       case 'vibrate':
         if (!haptics.available) return;
         haptics.on = !haptics.on; this.savePrefs(); haptics.buzz(40); sfx.pick(); break;

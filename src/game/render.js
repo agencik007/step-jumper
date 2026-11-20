@@ -613,6 +613,7 @@ function drawSettings(g) {
     sound: [t('set.sound'), onOff(!sfx.muted)],
     music: [t('set.music'), onOff(sfx.musicOn)],
     vibrate: [t('set.vibrate'), haptics.available ? onOff(haptics.on) : t('set.na')],
+    hand: [t('set.hand'), `◀  ${t(g.lefty ? 'set.handLeft' : 'set.handRight')}  ▶`],
     online: [t('set.online'), onOff(o.enabled)],
     delete: [t(confirming ? 'set.deleteConfirm' : 'set.delete'), ''],
     back: [t(isTouch ? 'set.back' : 'set.backKey'), ''],
@@ -623,7 +624,7 @@ function drawSettings(g) {
     if (sel || (k === 'delete' && confirming)) { ctx.strokeStyle = k === 'delete' ? ui.warn : ui.gold; ctx.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); ctx.stroke(); }
     const col = k === 'delete' ? ui.warn : ui.text;
     text(label, value ? r.x + 20 : r.x + r.w / 2, r.y + r.h / 2 + 1, { size: 14, color: col, sw: 0, align: value ? 'left' : 'center', weight: 700, maxW: value ? r.w - 170 : r.w - 40 });
-    if (value) text(value, r.x + r.w - 20, r.y + r.h / 2 + 1, { size: 14, color: value === t('set.on') || k === 'lang' ? ui.gold : ui.label, sw: 0, align: 'right', maxW: 140 });
+    if (value) text(value, r.x + r.w - 20, r.y + r.h / 2 + 1, { size: 14, color: value === t('set.on') || k === 'lang' || k === 'hand' ? ui.gold : ui.label, sw: 0, align: 'right', maxW: 140 });
   });
   const note = st.note ? t(st.note) : confirming ? t('set.deleteWarn') : '';
   if (note) text(note, W / 2, 350, { size: 13, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 440 });

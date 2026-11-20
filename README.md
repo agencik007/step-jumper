@@ -49,7 +49,7 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
 - `npm run dev` łączy się z lokalnym serwerem (`npm run server:dev`), żeby testy nie trafiały do prawdziwego rankingu;
   `VITE_API_URL=…` wskazuje inny serwer.
 - Build produkcyjny łączy się z serwerem na Cloudflare.
-- W grze: RANKING (R) i OPCJE (O) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, wyłączenie rankingu
+- W grze: RANKING (R) i OPCJE (O) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
   i usunięcie swoich danych z serwera.
 
 ## Języki
