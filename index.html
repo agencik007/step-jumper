@@ -43,6 +43,23 @@
   @media (pointer: coarse) { .pad { display: flex; } }
   body.tilt .pad { display: none; }   /* w trybie przechyłu przyciski znikają – cały ekran to „skok” */
 
+  /* pełny ekran: mały przycisk w prawym górnym rogu okna (poza płótnem na większości ekranów) */
+  #fs {
+    position: fixed; z-index: 6;
+    top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right));
+    width: 40px; height: 40px; padding: 0; display: grid; place-items: center;
+    border-radius: 10px; border: 1.5px solid rgba(255,255,255,.3); background: rgba(255,255,255,.1);
+    color: #fff; cursor: pointer; opacity: .75; touch-action: manipulation;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  }
+  #fs[hidden] { display: none; }
+  #fs:hover, #fs:focus-visible { opacity: 1; background: rgba(255,255,255,.2); }
+  #fs:focus-visible { outline: 2px solid #ffe066; outline-offset: 2px; }
+  #fs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  #fs .ico-exit, #fs.on .ico-enter { display: none; }
+  #fs.on .ico-exit { display: block; }
+  :fullscreen #fs { opacity: .45; }
+
   /* okienko nicku (zwykły formularz nad canvasem) */
   #nick[hidden] { display: none; }
   #nick {
@@ -92,6 +109,11 @@
 <div class="pad" id="padR">
   <button data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
 </div>
+
+<button id="fs" type="button" aria-label="Pełny ekran (F)" title="Pełny ekran (F)" data-i18n-aria="aria.fs">
+  <svg class="ico-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+  <svg class="ico-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg>
+</button>
 
 <form id="nick" hidden autocomplete="off">
   <label for="nickInput" data-i18n="nick.label">Twój nick w rankingu</label>

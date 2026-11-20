@@ -79,6 +79,9 @@ const pl = {
 
   'deco.higher': 'wyżej!',   // bazgroł na marginesie mapy „Zeszyt”
   'aria.game': 'Step Jumper – gra zręcznościowa', 'aria.left': 'W lewo', 'aria.right': 'W prawo', 'aria.jump': 'Skok',
+  'aria.fs': 'Pełny ekran (F)', 'aria.fsExit': 'Zamknij pełny ekran (F)',
+  'msg.fsHome': 'PEŁNY EKRAN', 'msg.fsHomeSub': 'Udostępnij → „Do ekranu początkowego” i graj z ikony',
+  'msg.fsFail': 'PEŁNY EKRAN NIEDOSTĘPNY',
 };
 
 const en = {
@@ -156,6 +159,9 @@ const en = {
 
   'deco.higher': 'higher!',
   'aria.game': 'Step Jumper – arcade game', 'aria.left': 'Left', 'aria.right': 'Right', 'aria.jump': 'Jump',
+  'aria.fs': 'Full screen (F)', 'aria.fsExit': 'Exit full screen (F)',
+  'msg.fsHome': 'FULL SCREEN', 'msg.fsHomeSub': 'Share → “Add to Home Screen”, then play from the icon',
+  'msg.fsFail': 'FULL SCREEN UNAVAILABLE',
 };
 
 const de = {
@@ -233,6 +239,9 @@ const de = {
 
   'deco.higher': 'höher!',
   'aria.game': 'Step Jumper – Geschicklichkeitsspiel', 'aria.left': 'Links', 'aria.right': 'Rechts', 'aria.jump': 'Springen',
+  'aria.fs': 'Vollbild (F)', 'aria.fsExit': 'Vollbild beenden (F)',
+  'msg.fsHome': 'VOLLBILD', 'msg.fsHomeSub': 'Teilen → „Zum Home-Bildschirm“ und über das Symbol spielen',
+  'msg.fsFail': 'VOLLBILD NICHT VERFÜGBAR',
 };
 
 const fr = {
@@ -310,6 +319,9 @@ const fr = {
 
   'deco.higher': 'plus haut !',
   'aria.game': 'Step Jumper – jeu d’adresse', 'aria.left': 'Gauche', 'aria.right': 'Droite', 'aria.jump': 'Sauter',
+  'aria.fs': 'Plein écran (F)', 'aria.fsExit': 'Quitter le plein écran (F)',
+  'msg.fsHome': 'PLEIN ÉCRAN', 'msg.fsHomeSub': 'Partager → « Sur l’écran d’accueil », puis jouez depuis l’icône',
+  'msg.fsFail': 'PLEIN ÉCRAN INDISPONIBLE',
 };
 
 const es = {
@@ -387,6 +399,9 @@ const es = {
 
   'deco.higher': '¡más alto!',
   'aria.game': 'Step Jumper – juego de habilidad', 'aria.left': 'Izquierda', 'aria.right': 'Derecha', 'aria.jump': 'Saltar',
+  'aria.fs': 'Pantalla completa (F)', 'aria.fsExit': 'Salir de pantalla completa (F)',
+  'msg.fsHome': 'PANTALLA COMPLETA', 'msg.fsHomeSub': 'Compartir → «Añadir a pantalla de inicio» y juega desde el icono',
+  'msg.fsFail': 'PANTALLA COMPLETA NO DISPONIBLE',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

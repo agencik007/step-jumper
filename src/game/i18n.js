@@ -28,5 +28,8 @@ export function setLang(code) {
   if (typeof document === 'undefined') return;
   document.documentElement.lang = cur;
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
-  for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  for (const el of document.querySelectorAll('[data-i18n-aria]')) {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria));
+    if (el.hasAttribute('title')) el.title = t(el.dataset.i18nAria);
+  }
 }
