@@ -1,5 +1,5 @@
 export * from './constants';
-export { floorAt, floorSpan } from './floors';
+export { floorAt, floorSpan, narrowLevel } from './floors';
 export type { Floor } from './floors';
 export { createState, jumpCurve, score, speed, step } from './sim';
 export type { Hero, SimEvent, SimState } from './sim';

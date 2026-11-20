@@ -1,6 +1,6 @@
 // Rysowanie: świat, HUD i ekrany. Funkcje tylko czytają stan gry (g) – niczego w nim nie zmieniają.
 import {
-  COMBO_TIME, FIELD, GAP, H, HURRY_EVERY, ITEM_LIFT, ITEM_R, LEFT, MAX_HURRIES, PLAT_H, RIGHT, SLOW_TIME, W, WALL, floorAt,
+  BLOCK, COMBO_TIME, FIELD, GAP, H, HURRY_EVERY, ITEM_LIFT, ITEM_R, LEFT, MAX_HURRIES, NARROW_BY, PLAT_H, RIGHT, SLOW_TIME, W, WALL, floorAt, narrowLevel,
 } from '../sim';
 import { sfx } from './audio.js';
 import { CHARS, drawHero } from './characters.js';
@@ -210,7 +210,8 @@ function drawPlatform(g, p) {
   c.fillStyle = th.dark; rr(p.x, y + PLAT_H - 6, p.w, 6, [0, 0, 6, 6]); c.fill();
   if (th.decor === 'seams') {
     c.fillStyle = th.dark; c.globalAlpha = 0.55;
-    for (let sx = p.x + 32; sx < p.x + p.w - 6; sx += 32) c.fillRect(sx, y + 4, 1.5, PLAT_H - 4);
+    const block = BLOCK - NARROW_BY * narrowLevel(p.n);   // szczeliny między klockami, z których złożone jest piętro
+    for (let sx = p.x + block; sx < p.x + p.w - 6; sx += block) c.fillRect(sx, y + 4, 1.5, PLAT_H - 4);
     c.globalAlpha = 1;
   } else if (th.decor === 'rivets') {
     c.fillStyle = th.top;

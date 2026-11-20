@@ -1,11 +1,19 @@
 // Stałe rozgrywki. Każda zmiana tutaj zmienia przebieg biegów, więc wymaga podbicia SIM_VERSION –
 // serwer odtwarza zapis biegu tą samą wersją symulacji, którą grał gracz.
-export const SIM_VERSION = 3;   // 2: mocniejsze sterowanie i hamowanie w locie (DEFAULT_TUNE); 3: booster wyrzutu i spowolnienie wieży
+export const SIM_VERSION = 4;   // 2: mocniejsze sterowanie i hamowanie w locie (DEFAULT_TUNE); 3: booster wyrzutu i spowolnienie wieży; 4: piętra węższe co 100 pięter
 
 export const W = 640, H = 480;
 export const WALL = 96, LEFT = WALL, RIGHT = W - WALL, FIELD = RIGHT - LEFT;
 export const GAP = 80;             // odstęp pięter
 export const PLAT_H = 18;
+/**
+ * Zwężanie pięter: piętro to 4–9 klocków; klocek ma BLOCK px i co NARROW_EVERY pięter traci NARROW_BY px,
+ * aż do NARROW_MAX stopni (piętra 0–99: 128–288 px, od 800. piętra: 64–144 px). Co 50. piętro zostaje na całą szerokość.
+ */
+export const BLOCK = 32;
+export const NARROW_EVERY = 100;
+export const NARROW_BY = 2;
+export const NARROW_MAX = 8;
 export const TICK_RATE = 120;      // kroków fizyki na sekundę
 export const STEP = 1 / TICK_RATE;
 export const HW = 13;              // połowa szerokości bohatera (ściany)
