@@ -1,7 +1,7 @@
 // Gra: maszyna stanów (tytuł / gra / pauza / koniec / ranking / opcje) i wszystko, co widać i słychać wokół symulacji.
 // Reguły rozgrywki są w src/sim – tutaj tylko podajemy im wejście i reagujemy na zdarzenia.
 import {
-  AXIS_MAX, DEFAULT_TUNE, H, InputRecorder, LEFT, RIGHT, SIM_VERSION, STEP, createState, encodeInputs, packInput, runReplay, score, stateHash, step,
+  AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, InputRecorder, MAX_HURRIES, LEFT, RIGHT, SIM_VERSION, STEP, createState, encodeInputs, packInput, runReplay, score, stateHash, step,
   unpackAxis, unpackJump,
 } from '../sim';
 import { online } from '../net';
@@ -27,12 +27,13 @@ const BOARD_TTL = 30;                    // s – tyle samo serwer trzyma rankin
 export class Game {
   constructor() {
     this.best = loadJSON(STORE, { score: 0, floor: 0, combo: 0 });
-    const prefs = loadJSON(PREFS, { char: 0, style: 0, tilt: false, sound: true, vibrate: true, lang: null });
+    const prefs = loadJSON(PREFS, { char: 0, style: 0, tilt: false, sound: true, music: true, vibrate: true, lang: null });
     setLang(prefs.lang ?? detectLang());   // pierwsze uruchomienie: język przeglądarki
     this.charIdx = clamp(prefs.char | 0, 0, CHARS.length - 1);
     this.styleIdx = clamp(prefs.style | 0, 0, STYLES.length - 1);
     tilt.want = !!prefs.tilt;
     sfx.muted = !prefs.sound;
+    sfx.musicOn = prefs.music !== false;
     haptics.on = !!prefs.vibrate;
     applyStyle(this.styleIdx);
     this.t = 0;
@@ -56,7 +57,7 @@ export class Game {
     this.savePrefs();
     sfx.pick();
   }
-  savePrefs() { saveJSON(PREFS, { char: this.charIdx, style: this.styleIdx, tilt: tilt.want, sound: !sfx.muted, vibrate: haptics.on, lang: lang() }); }
+  savePrefs() { saveJSON(PREFS, { char: this.charIdx, style: this.styleIdx, tilt: tilt.want, sound: !sfx.muted, music: sfx.musicOn, vibrate: haptics.on, lang: lang() }); }
   cycleLang(d) { setLang(LANGS[mod(LANGS.indexOf(lang()) + d, LANGS.length)]); this.savePrefs(); sfx.pick(); }
 
   reset(seed = newSeed()) {
@@ -83,6 +84,7 @@ export class Game {
     // wieża z biletu rankingu (ziarno od serwera); bez biletu – losowa wieża i bieg poza rankingiem
     this.ticket = this.officialTune ? online.takeTicket() : null;
     this.reset(this.ticket ? this.ticket.seed : newSeed()); this.state = 'play';
+    sfx.music.reset();
     if (tilt.active) navigator.wakeLock?.request('screen').catch(() => {});   // ekran nie gaśnie w trakcie gry
   }
   toTitle() { this.reset(); this.state = 'title'; }
@@ -119,6 +121,7 @@ export class Game {
     switch (SETTINGS[i]) {
       case 'lang': this.cycleLang(1); break;
       case 'sound': sfx.muted = !sfx.muted; this.savePrefs(); sfx.pick(); break;
+      case 'music': sfx.musicOn = !sfx.musicOn; this.savePrefs(); sfx.pick(); break;
       case 'vibrate':
         if (!haptics.available) return;
         haptics.on = !haptics.on; this.savePrefs(); haptics.buzz(40); sfx.pick(); break;
@@ -163,7 +166,7 @@ export class Game {
     } else if (this.state === 'settings') {
       for (let i = 0; i < SETTINGS.length; i++) if (inBox(x, y, UIBOX.row(i))) return this.activate(i);
     } else if (this.state === 'pause') {
-      this.togglePause();
+      if (inBox(x, y, UIBOX.pmenu)) { sfx.pick(); this.toTitle(); } else this.togglePause();
     } else if (this.state === 'over' && this.overT > 0.6) {
       if (inBox(x, y, UIBOX.menu)) this.toTitle(); else this.start();
     }
@@ -320,7 +323,29 @@ export class Game {
         if (s.y > H + 4) { s.y = -4; s.x = rand(LEFT, RIGHT); }
       }
     }
+    sfx.song(this.state === 'play' ? this.musicParams() : null, dt);
+    if (document.body.dataset.state !== this.state) this.showState();
     render(this);
+  }
+
+  /** Stan gry na <body>: CSS pokazuje przycisk pauzy tylko w biegu i w pauzie (wtedy z ikoną „graj”). */
+  showState() {
+    document.body.dataset.state = this.state;
+    const btn = document.getElementById('pause');
+    if (!btn) return;
+    btn.dataset.i18nAria = this.state === 'pause' ? 'aria.resume' : 'aria.pause';
+    btn.setAttribute('aria-label', t(btn.dataset.i18nAria));
+    btn.title = t(btn.dataset.i18nAria);
+  }
+
+  /** Stan biegu dla muzyki: poziom tempa wieży, postęp do kolejnego przyspieszenia i jak blisko dołu jest bohater (0…1). */
+  musicParams() {
+    const s = this.sim;
+    return {
+      level: s.scrolling ? s.level : 0,
+      progress: s.hurries < MAX_HURRIES ? s.clock / HURRY_EVERY : 1,
+      danger: s.scrolling ? clamp((s.hero.y - s.camY - 320) / 180, 0, 1) : 0,
+    };
   }
 }
 

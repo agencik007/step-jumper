@@ -4,6 +4,7 @@ import { sfx } from './audio.js';
 import { canvas } from './gfx.js';
 import { t } from './i18n.js';
 import { toggleFullscreen } from './fullscreen.js';
+import { hideInstall, installOpen } from './install.js';
 import { clamp, mod } from './util.js';
 
 let game = null;                       // ustawiane przez initInput – ten moduł nie importuje gry, żeby nie robić pętli zależności
@@ -115,6 +116,10 @@ export function initInput(theGame) {
 
   addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return;   // pisanie nicku – klawisze należą do pola tekstowego
+    if (installOpen()) {                                 // instrukcja iOS na wierzchu: klawisze tylko ją zamykają
+      if (['Escape', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); hideInstall(); }
+      return;
+    }
     sfx.unlock();
     const act = KEYMAP[e.code];
     if (act || e.code === 'ArrowDown' || e.code === 'KeyS') e.preventDefault();
@@ -180,6 +185,14 @@ export function initInput(theGame) {
     });
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) btn.addEventListener(ev, () => set(false));
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // przycisk pauzy (widoczny tylko w trakcie biegu i pauzy – CSS na body[data-state])
+  const pauseBtn = document.getElementById('pause');
+  if (pauseBtn) {
+    pauseBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); });   // w trybie przechyłu to nie jest skok
+    pauseBtn.addEventListener('click', (e) => { e.stopPropagation(); sfx.unlock(); sfx.pick(); game.togglePause(); pauseBtn.blur(); });
+    pauseBtn.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   // zapamiętany tryb przechyłu: Android włącza się od razu, iOS dopiero po pierwszym kliknięciu (wymóg zgody)

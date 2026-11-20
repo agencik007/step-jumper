@@ -463,8 +463,9 @@ function drawTitle(g) {
 function drawPause(g) {
   dim(0.55);
   text(t('pause.title'), W / 2, 205, { size: 54, sw: 8, maxW: 430 });
-  text(t('pause.resume'), W / 2, 258, { size: 15, color: ui.hint, sw: 4, maxW: 430 });
-  text(t('pause.menu'), W / 2, 284, { size: 13, color: ui.label, sw: 4, maxW: 430 });
+  text(t(isTouch ? 'pause.tap' : 'pause.resume'), W / 2, 258, { size: 15, color: ui.hint, sw: 4, maxW: 430 });
+  if (!isTouch) text(t('pause.menu'), W / 2, 284, { size: 13, color: ui.label, sw: 4, maxW: 430 });
+  button(UIBOX.pmenu, t('pause.menuBtn'), { size: 13 });
 }
 
 function drawOver(g) {
@@ -562,6 +563,7 @@ function drawSettings(g) {
   const rows = {
     lang: [lang() === 'en' ? t('set.lang') : `${t('set.lang')} / Language`, `◀  ${LANG_NAMES[lang()]}  ▶`],
     sound: [t('set.sound'), onOff(!sfx.muted)],
+    music: [t('set.music'), onOff(sfx.musicOn)],
     vibrate: [t('set.vibrate'), haptics.available ? onOff(haptics.on) : t('set.na')],
     online: [t('set.online'), onOff(o.enabled)],
     delete: [t(confirming ? 'set.deleteConfirm' : 'set.delete'), ''],

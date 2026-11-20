@@ -1,10 +1,11 @@
 // Pełny ekran: przycisk w rogu ekranu i klawisz F.
 // Fullscreen API ze wszystkimi prefiksami (Chrome / Firefox / Edge / Safari na Macu i iPadzie / stare WebKity).
-// iPhone nie pozwala na pełny ekran zwykłej strony – tam przycisk podpowiada „Do ekranu początkowego”,
+// iPhone nie pozwala na pełny ekran zwykłej strony – tam przycisk otwiera instrukcję „Do ekranu początkowego” (install.js),
 // bo zainstalowana gra startuje bez pasków przeglądarki (manifest: display „fullscreen”).
 import { sfx } from './audio.js';
 import { t } from './i18n.js';
 import { isTouch } from './input.js';
+import { isIOS, showInstall, standalone } from './install.js';
 
 const root = document.documentElement;
 const btn = document.getElementById('fs');
@@ -14,9 +15,6 @@ const exit = document.exitFullscreen || document.webkitExitFullscreen || documen
 
 export const fsSupported = !!request && (document.fullscreenEnabled ?? document.webkitFullscreenEnabled ?? document.mozFullScreenEnabled ?? document.msFullscreenEnabled ?? true) !== false;
 
-/** Gra już działa bez pasków przeglądarki (zainstalowana aplikacja albo pełny ekran z F11). */
-const standalone = () => matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone === true;
-const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 export const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement || document.webkitCurrentFullScreenElement || document.mozFullScreenElement || document.msFullscreenElement);
 
@@ -43,7 +41,7 @@ function leave() {
 export function toggleFullscreen() {
   sfx.unlock(); sfx.pick();
   if (!fsSupported) {
-    if (isIOS && !standalone()) game?.say(t('msg.fsHome'), t('msg.fsHomeSub'), 'hint', 3.2);
+    if (isIOS && !standalone()) { game?.pause(); showInstall(); }
     return;
   }
   if (isFullscreen()) leave(); else enter();
