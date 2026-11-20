@@ -40,6 +40,9 @@
   .pad button.on { background: rgba(255,255,255,.32); }
   #padL { left: max(18px, env(safe-area-inset-left)); }
   #padR { right: max(18px, env(safe-area-inset-right)); }
+  /* układ leworęczny: skok pod lewym kciukiem, ◀ ▶ pod prawym */
+  body.lefty #padL { left: auto; right: max(18px, env(safe-area-inset-right)); }
+  body.lefty #padR { right: auto; left: max(18px, env(safe-area-inset-left)); }
   @media (pointer: coarse) { .pad { display: flex; } }
   body.tilt .pad { display: none; }   /* w trybie przechyłu przyciski znikają – cały ekran to „skok” */
 
