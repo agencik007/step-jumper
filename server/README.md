@@ -22,6 +22,14 @@ Wdrożenie (jednorazowo):
 
 Po wdrożeniu `SMOKE_URL=https://… npx vitest run tests/server/smoke` sprawdza całą ścieżkę i sprząta po sobie.
 
+Potem serwer wdraża się sam: `.github/workflows/deploy-server.yml` po każdym scaleniu do `main`, które zmienia
+`server/`, `src/sim/` albo zależności (testy → migracje → wdrożenie → test `smoke`). Wymaga sekretów repozytorium
+`CLOUDFLARE_API_TOKEN` (uprawnienia „Workers Scripts: Edit” i „D1: Edit”) i `CLOUDFLARE_ACCOUNT_ID`.
+Ręcznie: zakładka Actions → „Wdrożenie serwera rankingu” → Run workflow.
+
+Gra (Vercel) i serwer wdrażają się niezależnie, więc przez chwilę mogą mieć różne `SIM_VERSION`. Gra nowsza od
+serwera pokazuje wtedy „serwer rankingu jest aktualizowany” i co minutę sprawdza, czy serwer już ją dogonił.
+
 ## API
 
 Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1/players`). Błędy mają postać `{ "error": "kod" }`.

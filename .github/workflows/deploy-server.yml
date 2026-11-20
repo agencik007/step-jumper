@@ -1,0 +1,47 @@
+# Wdrożenie serwera rankingu (Cloudflare Worker + migracje D1) po każdej zmianie na main, która go dotyczy.
+#
+# Gra na Vercelu wdraża się sama po scaleniu PR. Serwer musi iść razem z nią, bo liczy biegi tą samą symulacją
+# (src/sim): gdy SIM_VERSION gry i serwera się rozjadą, biegi graczy nie trafiają do rankingu.
+#
+# Wymagane sekrety repozytorium (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   – token z uprawnieniami „Workers Scripts: Edit” i „D1: Edit”
+#   CLOUDFLARE_ACCOUNT_ID  – identyfikator konta Cloudflare
+name: Wdrożenie serwera rankingu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'src/sim/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Migracje D1 i wdrożenie Workera
+        run: npm run server:deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Test na żywo wdrożonego serwera
+        run: npx vitest run tests/server/smoke
+        env:
+          SMOKE_URL: https://step-jumper-api.step-jumper.workers.dev

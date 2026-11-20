@@ -33,6 +33,7 @@ const pl = {
   'net.off': 'Ranking online jest wyłączony (OPCJE)',
   'net.outdated': 'Zaktualizuj grę, żeby grać w rankingu',
   'net.offline': 'Bieg poza rankingiem – brak połączenia przy starcie',
+  'net.server': 'Bieg poza rankingiem – serwer rankingu jest właśnie aktualizowany',
 
   'board.title': 'RANKING', 'period.day': 'DZIŚ', 'period.week': 'TYDZIEŃ', 'period.all': 'OGÓŁEM',
   'board.off': 'Ranking online jest wyłączony – włączysz go w OPCJACH.',
@@ -134,6 +135,7 @@ const en = {
   'net.off': 'The online leaderboard is off (OPTIONS)',
   'net.outdated': 'Update the game to play for the leaderboard',
   'net.offline': 'Unranked run – no connection at the start',
+  'net.server': 'Unranked run – the leaderboard server is being updated',
 
   'board.title': 'LEADERBOARD', 'period.day': 'TODAY', 'period.week': 'WEEK', 'period.all': 'ALL TIME',
   'board.off': 'The online leaderboard is off – turn it on in OPTIONS.',
@@ -235,6 +237,7 @@ const de = {
   'net.off': 'Die Online-Rangliste ist aus (OPTIONEN)',
   'net.outdated': 'Aktualisiere das Spiel, um in der Rangliste zu spielen',
   'net.offline': 'Lauf ohne Wertung – keine Verbindung beim Start',
+  'net.server': 'Lauf ohne Wertung – der Ranglisten-Server wird gerade aktualisiert',
 
   'board.title': 'RANGLISTE', 'period.day': 'HEUTE', 'period.week': 'WOCHE', 'period.all': 'GESAMT',
   'board.off': 'Die Online-Rangliste ist aus – du kannst sie in den OPTIONEN einschalten.',
@@ -336,6 +339,7 @@ const fr = {
   'net.off': 'Le classement en ligne est désactivé (OPTIONS)',
   'net.outdated': 'Mettez le jeu à jour pour jouer au classement',
   'net.offline': 'Partie hors classement – pas de connexion au départ',
+  'net.server': 'Partie hors classement – le serveur du classement est en cours de mise à jour',
 
   'board.title': 'CLASSEMENT', 'period.day': 'AUJOURD’HUI', 'period.week': 'SEMAINE', 'period.all': 'GÉNÉRAL',
   'board.off': 'Le classement en ligne est désactivé – activez-le dans les OPTIONS.',
@@ -437,6 +441,7 @@ const es = {
   'net.off': 'El ranking en línea está desactivado (OPCIONES)',
   'net.outdated': 'Actualiza el juego para jugar en el ranking',
   'net.offline': 'Partida fuera del ranking – sin conexión al empezar',
+  'net.server': 'Partida fuera del ranking – el servidor del ranking se está actualizando',
 
   'board.title': 'RANKING', 'period.day': 'HOY', 'period.week': 'SEMANA', 'period.all': 'TOTAL',
   'board.off': 'El ranking en línea está desactivado – actívalo en OPCIONES.',

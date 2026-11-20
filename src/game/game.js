@@ -239,7 +239,7 @@ export class Game {
     const ticket = this.ticket;
     this.ticket = null;
     if (!ticks || !ticket) {
-      this.net = { status: 'unranked', reason: !ticks ? 'tuned' : !online.enabled ? 'off' : online.outdated ? 'outdated' : 'offline' };
+      this.net = { status: 'unranked', reason: !ticks ? 'tuned' : !online.enabled ? 'off' : online.outdated ? 'outdated' : online.serverBehind ? 'server' : 'offline' };
       return;
     }
     this.net = { status: 'sending', runId: ticket.runId };

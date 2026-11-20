@@ -104,6 +104,21 @@ describe('konto i bilety', () => {
     expect(o.tickets).toBe(0);
   });
 
+  test('serwer jeszcze na starszej wersji: gra się nie blokuje i bierze bilety, gdy serwer się zaktualizuje', async () => {
+    const o = await ready();
+    while (o.takeTicket());
+    (o as any).simVersion = SIM_VERSION + 1;   // gra wdrożona przed serwerem
+    await o.refill();
+    expect(o.serverBehind).toBe(true);
+    expect(o.outdated).toBe(false);
+    expect(o.tickets).toBe(0);
+    (o as any).simVersion = SIM_VERSION;       // serwer dogonił grę
+    expect(o.takeTicket()).toBeNull();
+    await o.refill();
+    expect(o.serverBehind).toBe(false);
+    expect(o.tickets).toBe(TICKET_RESERVE);
+  });
+
   test('konto usunięte na serwerze: klient zakłada nowe', async () => {
     const o = await ready();
     await srv.db.prepare('DELETE FROM players').run();
