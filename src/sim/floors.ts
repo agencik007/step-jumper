@@ -1,6 +1,6 @@
 // Wieża jest czystą funkcją ziarna: piętro n wygląda zawsze tak samo, bez względu na to, kiedy i gdzie się o nie pyta.
 // Dzięki temu serwer nie musi przechowywać pięter, a zapis biegu to tylko ziarno i wejścia.
-import { FIELD, GAP, LEFT } from './constants';
+import { BLOCK, FIELD, GAP, LEFT, NARROW_BY, NARROW_EVERY, NARROW_MAX } from './constants';
 
 export interface Floor { n: number; x: number; w: number; y: number }
 
@@ -11,11 +11,16 @@ export function mix32(h: number): number {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+/** Stopień zwężenia piętra n: 0 dla pięter 0–99, potem +1 co NARROW_EVERY pięter, najwyżej NARROW_MAX. */
+export function narrowLevel(n: number): number {
+  return Math.min(NARROW_MAX, Math.floor(n / NARROW_EVERY));
+}
+
 /** Położenie i szerokość piętra spakowane w jedną liczbę (x·1024 + w) – bez alokacji, do użycia w pętli fizyki. */
 export function floorSpan(seed: number, n: number): number {
   if (n % 50 === 0) return LEFT * 1024 + FIELD;                 // co 50. piętro na całą szerokość
   const a = mix32((seed ^ Math.imul(n, 0x9e3779b1)) >>> 0);
-  const w = 32 * (4 + (a % 6));                                 // 128–288 px
+  const w = (BLOCK - NARROW_BY * narrowLevel(n)) * (4 + (a % 6));   // 4–9 klocków: 128–288 px, coraz węższe co 100 pięter
   const b = mix32((a ^ 0x68bc21eb) >>> 0);
   return (LEFT + (b % (FIELD - w + 1))) * 1024 + w;
 }

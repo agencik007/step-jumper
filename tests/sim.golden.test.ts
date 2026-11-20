@@ -22,7 +22,7 @@ function play(seed: number, pilot: Pilot, tune = LEGACY_TUNE) {
 }
 
 test('wersja symulacji, dla której zapisano złote biegi', () => {
-  expect(SIM_VERSION).toBe(3);
+  expect(SIM_VERSION).toBe(4);
 });
 
 test('układ pierwszych pięter wieży o ziarnie 2026', () => {
@@ -41,12 +41,12 @@ test('układ pierwszych pięter wieży o ziarnie 2026', () => {
 test('bieg na klawiszach, ziarno 503', () => {
   expect(play(503, momentumPilot(3521))).toMatchInlineSnapshot(`
     {
-      "bestCombo": 85,
-      "floor": 499,
-      "hash": "95d37e8e1f47ad10",
+      "bestCombo": 35,
+      "floor": 136,
+      "hash": "5cef261347a75a27",
       "over": true,
-      "score": 14782,
-      "ticks": 11552,
+      "score": 2985,
+      "ticks": 2818,
     }
   `);
 });

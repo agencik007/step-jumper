@@ -7,6 +7,7 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 - Sterowanie: klawiatura, gamepad, przyciski ekranowe albo **przechył telefonu + dotyk** (wymaga HTTPS).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
 - Pauza: klawisz **P** albo przycisk ⏸ w prawym górnym rogu (widoczny w trakcie biegu); z pauzy przycisk MENU wraca do wyboru postaci i mapy.
+- **Piętra coraz węższe**: piętro to 4–9 klocków; co 100 pięter klocek traci 2 px (piętra 0–99: 128–288 px, od 800.: 64–144 px), a gra mówi o tym komunikatem „WĘŻSZE PIĘTRA!”. Co 50. piętro zostaje na całą szerokość. Stałe: `BLOCK`, `NARROW_EVERY`, `NARROW_BY`, `NARROW_MAX` w `src/sim/constants.ts`.
 - Przedmioty w locie (część symulacji, więc serwer rankingu też je liczy):
   - **booster wyrzutu** – wisi między piętrami co 50–90 pięter (pierwszy nad piętrem 30–40). Złapany w locie zalicza bieżące combo i wyrzuca bohatera ok. 30 pięter w górę; wylądować trzeba samemu, a to lądowanie zaczyna combo od zera,
   - **spowolnienie** – od 400. piętra co 15 s pojawia się nad ekranem klepsydra; złapana zwalnia wieżę o połowę na 5 s. Nigdy nie pojawia się w pobliżu czekającego boostera ani w trakcie wyrzutu, więc oba przedmioty nie są naraz na ekranie.

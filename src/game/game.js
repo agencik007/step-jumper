@@ -1,7 +1,7 @@
 // Gra: maszyna stanów (tytuł / gra / pauza / koniec / ranking / opcje) i wszystko, co widać i słychać wokół symulacji.
 // Reguły rozgrywki są w src/sim – tutaj tylko podajemy im wejście i reagujemy na zdarzenia.
 import {
-  AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, InputRecorder, MAX_HURRIES, LEFT, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs, packInput, runReplay, score, stateHash, step,
+  AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs, narrowLevel, packInput, runReplay, score, stateHash, step,
   unpackAxis, unpackJump,
 } from '../sim';
 import { online } from '../net';
@@ -68,6 +68,7 @@ export class Game {
     this.fx = { angle: 0, squash: 0, runPhase: 0 };   // stan czysto wizualny bohatera
     this.shake = 0; this.parts = []; this.msgs = [];
     this.acc = 0; this.trailT = 0; this.jumpLock = true; this.newBest = false; this.overT = 0;
+    this.narrow = 0;                     // najwyższy stopień zwężenia pięter, o którym gracz już wie
   }
 
   get score() { return score(this.sim); }
@@ -255,6 +256,10 @@ export class Game {
         fx.squash = 0.9; fx.angle = 0;
         this.puff(h.x, h.y, 6, { color: this.dustColor(e.floor), sx: 110, sy: 20, up: 50, life: 0.35 });
         sfx.land();
+        if (narrowLevel(e.floor) > this.narrow) {      // nowa setka pięter: od teraz piętra są węższe
+          this.narrow = narrowLevel(e.floor);
+          this.say(t('msg.narrow'), t(this.narrow >= NARROW_MAX ? 'msg.narrowMax' : 'msg.narrowSub'), 'warn', 1.8);
+        }
         break;
       case 'bounce':
         sfx.bounce();
