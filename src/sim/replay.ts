@@ -105,6 +105,8 @@ export function stateHash(s: SimState): string {
     s.seed, s.tick, h.x, h.y, h.vx, h.vy, h.face, h.onFloor, h.from, h.spin ? 1 : 0,
     s.camY, s.maxFloor, s.bonus, s.bestCombo, c.floors, c.jumps, c.timer,
     s.scrolling ? 1 : 0, s.level, s.clock, s.hurries, s.genN, s.lowN, s.over ? 1 : 0,
+    s.boost.n, s.boost.x, s.boost.k, s.rising ? 1 : 0, s.riseTo, s.afterBoost ? 1 : 0,
+    s.slow.n, s.slow.x, s.slow.k, s.slow.clock, s.slow.t,
   ];
   const bytes = new Uint8Array(new Float64Array(nums.map((n) => n + 0)).buffer);   // „+ 0” ujednolica −0 i 0
   let a = 0x811c9dc5, b = 0x01000193;

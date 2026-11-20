@@ -7,6 +7,11 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 - Sterowanie: klawiatura, gamepad, przyciski ekranowe albo **przechył telefonu + dotyk** (wymaga HTTPS).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
 - Pauza: klawisz **P** albo przycisk ⏸ w prawym górnym rogu (widoczny w trakcie biegu); z pauzy przycisk MENU wraca do wyboru postaci i mapy.
+- Przedmioty w locie (część symulacji, więc serwer rankingu też je liczy):
+  - **booster wyrzutu** – wisi między piętrami co 50–90 pięter (pierwszy nad piętrem 30–40). Złapany w locie zalicza bieżące combo i wyrzuca bohatera ok. 30 pięter w górę; wylądować trzeba samemu, a to lądowanie zaczyna combo od zera,
+  - **spowolnienie** – od 400. piętra co 15 s pojawia się nad ekranem klepsydra; złapana zwalnia wieżę o połowę na 5 s. Nigdy nie pojawia się w pobliżu czekającego boostera ani w trakcie wyrzutu, więc oba przedmioty nie są naraz na ekranie.
+  Stałe: `src/sim/constants.ts` (sekcja „przedmioty”).
+- Nick: przed pierwszą grą w rankingu gra prosi o nick (bez sieci pozwala grać i pyta przy następnym uruchomieniu).
 - Muzyka (`src/game/music.js`): syntezowany sekwencer w a-moll. Tempo rośnie z tempem wieży (108 → ~194 BPM), z każdym poziomem dochodzą warstwy (hi-hat, werbel, arpeggio, szesnastki basu), a gdy bohater zjeżdża ku dołowi ekranu, dochodzi tykanie. Osobny przełącznik w OPCJACH.
 
 Plan wydania (Google Play, rankingi online, wycena): [`docs/PLAN.md`](docs/PLAN.md).
@@ -74,6 +79,6 @@ Vercel buduje projekt przez Vite (`vercel.json`), każdy push do `main` wdraża 
 
 ## PWA
 
-`public/manifest.webmanifest`, `public/sw.js` i `public/icons/` pozwalają zainstalować grę jako aplikację (Android: menu Chrome → „Zainstaluj aplikację”).
+`public/manifest.webmanifest`, `public/sw.js` i `public/icons/` pozwalają zainstalować grę jako aplikację. Na Androidzie gra sama proponuje instalację okienkiem na ekranie tytułowym (`src/game/install.js`): w Chrome przycisk ZAINSTALUJ otwiera systemowe okno (`beforeinstallprompt`), w przeglądarce bez tego zdarzenia pokazuje instrukcję z menu. „Nie teraz” odkłada pytanie na 3 dni.
 Po instalacji startuje na pełnym ekranie, w poziomie, i działa offline. Service worker bierze stronę najpierw z sieci,
 więc nowy deploy widać od razu.

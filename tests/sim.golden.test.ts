@@ -22,7 +22,7 @@ function play(seed: number, pilot: Pilot, tune = LEGACY_TUNE) {
 }
 
 test('wersja symulacji, dla której zapisano złote biegi', () => {
-  expect(SIM_VERSION).toBe(2);
+  expect(SIM_VERSION).toBe(3);
 });
 
 test('układ pierwszych pięter wieży o ziarnie 2026', () => {
@@ -41,12 +41,12 @@ test('układ pierwszych pięter wieży o ziarnie 2026', () => {
 test('bieg na klawiszach, ziarno 503', () => {
   expect(play(503, momentumPilot(3521))).toMatchInlineSnapshot(`
     {
-      "bestCombo": 68,
-      "floor": 177,
-      "hash": "eadc565eb2b9c8b4",
+      "bestCombo": 85,
+      "floor": 499,
+      "hash": "95d37e8e1f47ad10",
       "over": true,
-      "score": 10999,
-      "ticks": 5440,
+      "score": 14782,
+      "ticks": 11552,
     }
   `);
 });
@@ -56,7 +56,7 @@ test('bieg na klawiszach, ziarno 77', () => {
     {
       "bestCombo": 0,
       "floor": 7,
-      "hash": "9f9ccc28688119c6",
+      "hash": "30f501b932f734c1",
       "over": true,
       "score": 70,
       "ticks": 546,
@@ -69,7 +69,7 @@ test('bieg na przechyle, ziarno 9001', () => {
     {
       "bestCombo": 0,
       "floor": 11,
-      "hash": "d276687a0bbe0312",
+      "hash": "7ec062f9a70024cf",
       "over": true,
       "score": 110,
       "ticks": 1001,
@@ -83,7 +83,7 @@ test('bieg na klawiszach, ziarno 503, strojenie gry', () => {
     {
       "bestCombo": 0,
       "floor": 18,
-      "hash": "bf7e7e0b1d8666cb",
+      "hash": "252504169425b754",
       "over": true,
       "score": 180,
       "ticks": 716,
@@ -96,7 +96,7 @@ test('bieg na klawiszach, ziarno 77, strojenie gry', () => {
     {
       "bestCombo": 0,
       "floor": 4,
-      "hash": "d6c54e5575f0ffe1",
+      "hash": "a13d25b4180c468e",
       "over": true,
       "score": 40,
       "ticks": 366,
@@ -109,7 +109,7 @@ test('bieg na przechyle, ziarno 9001, strojenie gry', () => {
     {
       "bestCombo": 9,
       "floor": 12,
-      "hash": "eab8547726d8f627",
+      "hash": "5c27e0e4b0606352",
       "over": true,
       "score": 201,
       "ticks": 900,

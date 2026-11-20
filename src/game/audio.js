@@ -54,6 +54,10 @@ class Sfx {
     const n = clamp(3 + tier, 3, 7);
     for (let i = 0; i < n; i++) this.tone(scale[i], scale[i], 0.13, { type: 'triangle', vol: 0.55, at: i * 0.07 });
   }
+  boost()  { this.tone(180, 1400, 0.9, { type: 'sawtooth', vol: 0.3 }); this.noise(0.8, { vol: 0.35, freq: 1800 }); }
+  boostEnd() { this.tone(900, 600, 0.15, { type: 'triangle', vol: 0.4 }); }
+  slow()   { for (let i = 0; i < 3; i++) this.tone(880 - i * 220, 660 - i * 200, 0.22, { type: 'sine', vol: 0.6, at: i * 0.12 }); }
+  slowEnd() { this.tone(440, 880, 0.18, { type: 'triangle', vol: 0.45 }); }
   hurry()  { for (let i = 0; i < 4; i++) this.tone(1320, 1320, 0.1, { type: 'sine', vol: 0.7, at: i * 0.15 }); }
   over()   { this.tone(420, 70, 0.7, { type: 'sawtooth', vol: 0.35 }); }
 }
