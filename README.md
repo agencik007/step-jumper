@@ -5,6 +5,7 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 - Canvas 2D, Web Audio, Pointer Events, Gamepad API – bez silnika i bez plików graficznych czy dźwiękowych.
 - 5 postaci, 5 map (stylów graficznych).
 - Sterowanie: klawiatura, gamepad, przyciski ekranowe albo **przechył telefonu + dotyk** (wymaga HTTPS).
+- Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk podpowiada „Do ekranu początkowego”, a zainstalowana gra startuje bez pasków.
 
 Plan wydania (Google Play, rankingi online, wycena): [`docs/PLAN.md`](docs/PLAN.md).
 

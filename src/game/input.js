@@ -3,6 +3,7 @@ import { H, W } from '../sim';
 import { sfx } from './audio.js';
 import { canvas } from './gfx.js';
 import { t } from './i18n.js';
+import { toggleFullscreen } from './fullscreen.js';
 import { clamp, mod } from './util.js';
 
 let game = null;                       // ustawiane przez initInput – ten moduł nie importuje gry, żeby nie robić pętli zależności
@@ -139,6 +140,7 @@ export function initInput(theGame) {
     if (e.code === 'Space' || e.code === 'Enter') input.edge = true;
     else if (e.code === 'KeyP') game.togglePause();
     else if (e.code === 'KeyT' && game.state === 'title') toggleTilt();
+    else if (e.code === 'KeyF') toggleFullscreen();
     else if (e.code === 'Escape') { if (['over', 'pause', 'board', 'settings'].includes(game.state)) game.toTitle(); else game.pause(); }
     else if (e.code === 'KeyM') {
       sfx.muted = !sfx.muted;
