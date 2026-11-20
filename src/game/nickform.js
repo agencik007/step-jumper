@@ -7,26 +7,32 @@ const form = document.getElementById('nick');
 const field = document.getElementById('nickInput');
 const err = document.getElementById('nickErr');
 const save = document.getElementById('nickSave');
+const label = document.getElementById('nickLabel');
 
 
 let pending = null;
 
 export const nickOpen = () => !form.hidden;
 
-/** Otwiera formularz. onSave(nick) → { ok: true } albo { ok: false, error }; onClose() po zamknięciu. */
-export function openNick(current, onSave, onClose) {
+/**
+ * Otwiera formularz. onSave(nick) → { ok: true } albo { ok: false, error }; onClose(saved) po zamknięciu.
+ * required: nick jest potrzebny, zanim zacznie się gra – nagłówek o tym mówi.
+ */
+export function openNick(current, onSave, onClose, { required = false } = {}) {
   pending = { onSave, onClose };
   field.value = current ?? '';
   err.textContent = '';
+  label.dataset.i18n = required ? 'nick.required' : 'nick.label';
+  label.textContent = t(label.dataset.i18n);
   form.hidden = false;
   setTimeout(() => { field.focus(); field.select(); }, 0);
 }
 
-function close() {
+function close(saved = false) {
   form.hidden = true;
   field.blur();
   const p = pending; pending = null;
-  p?.onClose();
+  p?.onClose(saved);
 }
 
 form.addEventListener('submit', async (e) => {
@@ -35,8 +41,10 @@ form.addEventListener('submit', async (e) => {
   save.disabled = true; err.textContent = t('nick.saving');
   const r = await pending.onSave(field.value);
   save.disabled = false;
-  if (r.ok) close();
+  if (r.ok) close(true);
   else err.textContent = t(`nick.err.${KNOWN.includes(r.error) ? r.error : 'generic'}`);
 });
-document.getElementById('nickCancel').addEventListener('click', close);
+document.getElementById('nickCancel').addEventListener('click', () => close());
 form.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); close(); } });
+// dotknięcia formularza nie trafiają do gry (w trybie przechyłu każde dotknięcie to skok)
+form.addEventListener('pointerdown', (e) => e.stopPropagation());

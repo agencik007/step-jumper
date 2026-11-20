@@ -1,6 +1,6 @@
 // Rysowanie: świat, HUD i ekrany. Funkcje tylko czytają stan gry (g) – niczego w nim nie zmieniają.
 import {
-  COMBO_TIME, FIELD, H, HURRY_EVERY, LEFT, MAX_HURRIES, PLAT_H, RIGHT, W, WALL, floorAt,
+  COMBO_TIME, FIELD, GAP, H, HURRY_EVERY, ITEM_LIFT, ITEM_R, LEFT, MAX_HURRIES, PLAT_H, RIGHT, SLOW_TIME, W, WALL, floorAt,
 } from '../sim';
 import { sfx } from './audio.js';
 import { CHARS, drawHero } from './characters.js';
@@ -57,6 +57,7 @@ function drawWorld(g) {
   drawBackdrop(g);
   c.translate(0, -camY);
   for (let n = g.sim.lowN; n < g.sim.genN; n++) drawPlatform(g, floorAt(g.sim.seed, n));
+  drawItems(g);
   for (const p of g.parts) {
     c.globalAlpha = clamp(p.life / p.max, 0, 1);
     c.fillStyle = p.color;
@@ -225,6 +226,43 @@ function drawPlatform(g, p) {
   }
 }
 
+// ── przedmioty: booster wyrzutu i spowolnienie ──
+function drawItems(g) {
+  const s = g.sim, top = s.camY - 40, bottom = s.camY + H + 40;
+  const visible = (n) => { const y = -n * GAP - ITEM_LIFT; return y > top && y < bottom; };
+  if (!s.rising && visible(s.boost.n)) drawBooster(s.boost.x, -s.boost.n * GAP - ITEM_LIFT, g.t);
+  if (s.slow.n >= 0 && visible(s.slow.n)) drawSlowItem(s.slow.x, -s.slow.n * GAP - ITEM_LIFT, g.t);
+}
+
+/** Kula z poświatą – wspólna podstawa obu przedmiotów. Lekkie kołysanie jest tylko wizualne (łapie się w stałym miejscu). */
+function orb(x, y, t, inner, outer, glow) {
+  const c = ctx, r = ITEM_R, pulse = reduceMotion ? 1 : 1 + Math.sin(t * 6) * 0.08;
+  const halo = c.createRadialGradient(x, y, r * 0.4, x, y, r * 2.6 * pulse);
+  halo.addColorStop(0, glow); halo.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = halo; c.beginPath(); c.arc(x, y, r * 2.6 * pulse, 0, 7); c.fill();
+  const body = c.createRadialGradient(x - r * 0.35, y - r * 0.4, 1, x, y, r);
+  body.addColorStop(0, inner); body.addColorStop(1, outer);
+  c.fillStyle = body; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.stroke();
+}
+
+function drawBooster(x, y0, t) {
+  const c = ctx, y = y0 + (reduceMotion ? 0 : Math.sin(t * 3) * 3);
+  orb(x, y, t, '#fff3a0', '#ff6a2c', 'rgba(255,170,60,.55)');
+  // dwie strzałki w górę
+  c.strokeStyle = '#3a1300'; c.lineWidth = 2.6; c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const dy of [-3, 4]) { c.beginPath(); c.moveTo(x - 6, y + dy + 3); c.lineTo(x, y + dy - 3); c.lineTo(x + 6, y + dy + 3); c.stroke(); }
+}
+
+function drawSlowItem(x, y0, t) {
+  const c = ctx, y = y0 + (reduceMotion ? 0 : Math.sin(t * 2.4 + 1) * 3);
+  orb(x, y, t, '#e8f7ff', '#3b8fe0', 'rgba(110,190,255,.55)');
+  // klepsydra
+  c.fillStyle = '#0d2a52'; c.strokeStyle = '#0d2a52'; c.lineWidth = 2; c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(x - 5.5, y - 7); c.lineTo(x + 5.5, y - 7); c.lineTo(x, y); c.lineTo(x + 5.5, y + 7); c.lineTo(x - 5.5, y + 7); c.lineTo(x, y); c.closePath(); c.stroke();
+  c.beginPath(); c.moveTo(x - 3.5, y + 6); c.lineTo(x + 3.5, y + 6); c.lineTo(x, y + 2); c.closePath(); c.fill();
+}
+
 // ── ściany ──
 function drawWalls(g) {
   const c = ctx, camY = g.sim.camY;
@@ -300,6 +338,15 @@ function drawHud(g) {
   c.strokeStyle = ui.frame; c.lineWidth = 2.5; c.lineJoin = 'round'; c.stroke();
   text(String(g.sim.combo.floors), cx, 333, { size: 18, color: active ? '#fff' : ui.offText, stroke: active ? '#12173a' : ui.off, sw: 4 });
   if (active) text(t('hud.floors'), cx, 372, { size: 10, color: ui.note, sw: 3, maxW: 88 });
+
+  // spowolnienie wieży: ile jeszcze trwa
+  if (g.sim.slow.t > 0) {
+    const f = clamp(g.sim.slow.t / SLOW_TIME, 0, 1), by = 404;
+    drawSlowItem(cx, by, time);
+    c.fillStyle = ui.frame; rr(cx - 30, by + 20, 60, 9, 4.5); c.fill();
+    c.fillStyle = '#7ec8ff'; rr(cx - 28, by + 22, 56 * f, 5, 2.5); c.fill();
+    text(t('hud.slow'), cx, by + 42, { size: 10, color: ui.hint, sw: 3, maxW: 88 });
+  }
 
   // wynik
   const rx = RIGHT + WALL / 2;

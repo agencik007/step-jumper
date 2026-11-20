@@ -92,6 +92,15 @@ const pl = {
   'ios.chrome': 'Chrome na iPhonie: Udostępnij w pasku adresu → „Do ekranu początkowego”.',
   'ios.ok': 'Rozumiem',
   'msg.fsFail': 'PEŁNY EKRAN NIEDOSTĘPNY',
+  'hud.slow': 'WOLNIEJ',
+  'msg.boost': 'WYRZUT!', 'msg.boostSub': '30 pięter w górę – wyląduj na piętrze!',
+  'msg.slow': 'SPOWOLNIENIE!', 'msg.slowSub': 'wieża zwalnia na {s} s',
+  'nick.required': 'Zanim zaczniesz: wybierz nick do rankingu',
+  'and.title': 'Zainstaluj Step Jumpera',
+  'and.lead': 'Jako aplikacja gra startuje z ikony na ekranie głównym – na pełnym ekranie, w poziomie i bez internetu.',
+  'and.step1': 'Otwórz menu przeglądarki (⋮ albo ☰).',
+  'and.step2': 'Wybierz „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”.',
+  'and.later': 'Nie teraz', 'and.install': 'Zainstaluj',
 };
 
 const en = {
@@ -182,6 +191,15 @@ const en = {
   'ios.chrome': 'Chrome on iPhone: Share in the address bar → “Add to Home Screen”.',
   'ios.ok': 'Got it',
   'msg.fsFail': 'FULL SCREEN UNAVAILABLE',
+  'hud.slow': 'SLOWER',
+  'msg.boost': 'LAUNCH!', 'msg.boostSub': '30 floors up – land on a floor!',
+  'msg.slow': 'SLOW-DOWN!', 'msg.slowSub': 'the tower slows down for {s} s',
+  'nick.required': 'Before you start: pick a leaderboard nick',
+  'and.title': 'Install Step Jumper',
+  'and.lead': 'As an app the game starts from an icon on your home screen – full screen, landscape and offline.',
+  'and.step1': 'Open the browser menu (⋮ or ☰).',
+  'and.step2': 'Choose “Install app” or “Add to Home screen”.',
+  'and.later': 'Not now', 'and.install': 'Install',
 };
 
 const de = {
@@ -272,6 +290,15 @@ const de = {
   'ios.chrome': 'Chrome auf dem iPhone: Teilen in der Adressleiste → „Zum Home-Bildschirm“.',
   'ios.ok': 'Verstanden',
   'msg.fsFail': 'VOLLBILD NICHT VERFÜGBAR',
+  'hud.slow': 'LANGSAMER',
+  'msg.boost': 'ABSCHUSS!', 'msg.boostSub': '30 Etagen hoch – lande auf einer Etage!',
+  'msg.slow': 'ZEITLUPE!', 'msg.slowSub': 'der Turm wird {s} s lang langsamer',
+  'nick.required': 'Bevor es losgeht: Wähle einen Nick für die Rangliste',
+  'and.title': 'Step Jumper installieren',
+  'and.lead': 'Als App startet das Spiel über ein Symbol auf dem Startbildschirm – im Vollbild, quer und offline.',
+  'and.step1': 'Öffne das Browsermenü (⋮ oder ☰).',
+  'and.step2': 'Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.',
+  'and.later': 'Nicht jetzt', 'and.install': 'Installieren',
 };
 
 const fr = {
@@ -362,6 +389,15 @@ const fr = {
   'ios.chrome': 'Chrome sur iPhone : Partager dans la barre d’adresse → « Sur l’écran d’accueil ».',
   'ios.ok': 'Compris',
   'msg.fsFail': 'PLEIN ÉCRAN INDISPONIBLE',
+  'hud.slow': 'RALENTI',
+  'msg.boost': 'PROPULSION !', 'msg.boostSub': '30 étages plus haut – posez-vous sur un étage !',
+  'msg.slow': 'RALENTI !', 'msg.slowSub': 'la tour ralentit pendant {s} s',
+  'nick.required': 'Avant de commencer : choisissez un pseudo pour le classement',
+  'and.title': 'Installer Step Jumper',
+  'and.lead': 'En application, le jeu se lance depuis une icône sur l’écran d’accueil – en plein écran, en paysage et hors ligne.',
+  'and.step1': 'Ouvrez le menu du navigateur (⋮ ou ☰).',
+  'and.step2': 'Choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».',
+  'and.later': 'Plus tard', 'and.install': 'Installer',
 };
 
 const es = {
@@ -452,6 +488,15 @@ const es = {
   'ios.chrome': 'Chrome en iPhone: Compartir en la barra de direcciones → «Añadir a pantalla de inicio».',
   'ios.ok': 'Entendido',
   'msg.fsFail': 'PANTALLA COMPLETA NO DISPONIBLE',
+  'hud.slow': 'LENTO',
+  'msg.boost': '¡IMPULSO!', 'msg.boostSub': '30 pisos arriba – ¡aterriza en un piso!',
+  'msg.slow': '¡CÁMARA LENTA!', 'msg.slowSub': 'la torre va más despacio durante {s} s',
+  'nick.required': 'Antes de empezar: elige un nick para la clasificación',
+  'and.title': 'Instalar Step Jumper',
+  'and.lead': 'Como app, el juego se abre desde un icono en la pantalla de inicio: a pantalla completa, en horizontal y sin conexión.',
+  'and.step1': 'Abre el menú del navegador (⋮ o ☰).',
+  'and.step2': 'Elige «Instalar aplicación» o «Añadir a pantalla de inicio».',
+  'and.later': 'Ahora no', 'and.install': 'Instalar',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

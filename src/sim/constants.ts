@@ -1,6 +1,6 @@
 // Stałe rozgrywki. Każda zmiana tutaj zmienia przebieg biegów, więc wymaga podbicia SIM_VERSION –
 // serwer odtwarza zapis biegu tą samą wersją symulacji, którą grał gracz.
-export const SIM_VERSION = 2;   // 2: mocniejsze sterowanie i hamowanie w locie (DEFAULT_TUNE)
+export const SIM_VERSION = 3;   // 2: mocniejsze sterowanie i hamowanie w locie (DEFAULT_TUNE); 3: booster wyrzutu i spowolnienie wieży
 
 export const W = 640, H = 480;
 export const WALL = 96, LEFT = WALL, RIGHT = W - WALL, FIELD = RIGHT - LEFT;
@@ -42,3 +42,26 @@ export const DEFAULT_TUNE: Tune = { airAccel: 1064, airBrake: 600 };
 
 /** Ułamek dystansu do bohatera, który kamera nadrabia w jednym kroku: 1 − e^(−7·STEP). Wpisany jako stała, żeby nie zależeć od Math.exp. */
 export const CAM_LERP = 0.05666455012650784;
+
+// ── przedmioty do złapania w locie ──
+// Oba wiszą w powietrzu w połowie odstępu między piętrami n i n+1; łapie się je tylko w locie (nie stojąc na piętrze).
+export const ITEM_R = 13;            // promień przedmiotu (px)
+export const ITEM_LIFT = 32;         // środek przedmiotu wisi tyle px nad piętrem n (wolne miejsce między piętrami to 62 px)
+
+/** Booster wyrzutu: wyrzuca bohatera o BOOST_FLOORS pięter w górę; wylądować trzeba samemu. */
+export const BOOST_FIRST = 30;       // pierwszy booster wisi nad piętrem 30…30+BOOST_FIRST_SPREAD−1
+export const BOOST_FIRST_SPREAD = 11;
+export const BOOST_GAP = 50;         // kolejne co BOOST_GAP…BOOST_GAP+BOOST_GAP_SPREAD−1 pięter
+export const BOOST_GAP_SPREAD = 41;
+export const BOOST_FLOORS = 30;
+export const BOOST_SPEED = 1500;     // px/s – stała prędkość wznoszenia, grawitacja w tym czasie nie działa
+export const BOOST_EXIT = 760;       // px/s – prędkość w chwili wyłączenia; dalej zwykła grawitacja: szczyt 760²/(2·1900) = 152 px wyżej
+export const BOOST_COAST = 152;      // = BOOST_EXIT² / (2 · P.gravity), wpisane wprost (bez dzielenia w pętli)
+
+/** Spowolnienie: od SLOW_FROM piętra co SLOW_EVERY s pojawia się przedmiot, który na SLOW_TIME s zwalnia wieżę o połowę. */
+export const SLOW_FROM = 400;
+export const SLOW_EVERY = 15;
+export const SLOW_TIME = 5;
+export const SLOW_FACTOR = 0.5;
+/** Spowolnienie nie pojawia się bliżej niż tyle pięter od czekającego boostera (ekran mieści ~6 pięter). */
+export const ITEM_SEPARATION = 15;

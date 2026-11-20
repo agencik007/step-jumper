@@ -4,7 +4,8 @@ import { FIELD, GAP, LEFT } from './constants';
 
 export interface Floor { n: number; x: number; w: number; y: number }
 
-function mix32(h: number): number {
+/** Mieszanie bitów liczby 32-bitowej (finalizer MurmurHash3) – deterministyczna „losowość” wieży. */
+export function mix32(h: number): number {
   h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   return (h ^ (h >>> 16)) >>> 0;

@@ -1,7 +1,7 @@
 // Gra: maszyna stanów (tytuł / gra / pauza / koniec / ranking / opcje) i wszystko, co widać i słychać wokół symulacji.
 // Reguły rozgrywki są w src/sim – tutaj tylko podajemy im wejście i reagujemy na zdarzenia.
 import {
-  AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, InputRecorder, MAX_HURRIES, LEFT, RIGHT, SIM_VERSION, STEP, createState, encodeInputs, packInput, runReplay, score, stateHash, step,
+  AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, InputRecorder, MAX_HURRIES, LEFT, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs, packInput, runReplay, score, stateHash, step,
   unpackAxis, unpackJump,
 } from '../sim';
 import { online } from '../net';
@@ -12,7 +12,7 @@ import { haptics } from './haptics.js';
 import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
 import { input, isTouch, tilt, toggleTilt } from './input.js';
 import { PERIODS, SETTINGS, UIBOX, inBox, slotX } from './layout.js';
-import { openNick } from './nickform.js';
+import { nickOpen, openNick } from './nickform.js';
 import { render } from './render.js';
 import { clamp, loadJSON, mod, rand, saveJSON } from './util.js';
 
@@ -47,6 +47,7 @@ export class Game {
     this.net = null;                     // los wyniku ostatniego biegu: wysyłanie / miejsce w rankingu / kolejka / poza rankingiem
     this.board = { kind: 'day', data: {}, at: {}, loading: false };
     this.settings = { sel: 0, confirmT: 0, note: '' };
+    this.nickLater = false;              // bez sieci przy wyborze nicku: gramy, a o nick zapytamy przy następnym uruchomieniu
     this.reset();
     this.state = 'title';
   }
@@ -80,7 +81,12 @@ export class Game {
 
   get officialTune() { return this.tune.airAccel === DEFAULT_TUNE.airAccel && this.tune.airBrake === DEFAULT_TUNE.airBrake; }
 
+  /** Nick jest wymagany przed pierwszą grą w rankingu – inaczej wyniki wiszą jako „Gracz AB12”. */
+  get needsNick() { return online.ready && online.enabled && !online.nick && !this.nickLater; }
+
   start() {
+    if (nickOpen()) return;
+    if (this.state === 'title' && this.needsNick) { this.askNick(); return; }
     // wieża z biletu rankingu (ziarno od serwera); bez biletu – losowa wieża i bieg poza rankingiem
     this.ticket = this.officialTune ? online.takeTicket() : null;
     this.reset(this.ticket ? this.ticket.seed : newSeed()); this.state = 'play';
@@ -103,6 +109,18 @@ export class Game {
     const [top, me] = await Promise.all([online.leaderboard(kind, 10), online.around(kind)]);
     b.data[kind] = { top, me };
     if (b.kind === kind) b.loading = false;
+  }
+  /** Pierwsza gra: formularz nicku, a po zapisaniu od razu bieg. Anuluj = zostajemy na ekranie tytułowym. */
+  askNick() {
+    sfx.pick();
+    openNick('', async (nick) => {
+      const r = await online.setNick(nick);
+      if (!r.ok && r.error === 'offline') { this.nickLater = true; return { ok: true }; }   // nie blokujemy gry bez sieci
+      return r;
+    }, (saved) => {
+      this.board.at = {};
+      if (saved && this.state === 'title') this.start();
+    }, { required: true });
   }
   editNick() {
     if (!online.enabled) return;
@@ -250,6 +268,22 @@ export class Game {
         haptics.buzz(30);
         break;
       }
+      case 'boost':
+        this.say(t('msg.boost'), t('msg.boostSub'), 'gold', 1.8);
+        this.shake = 0.35; sfx.boost(); haptics.buzz(80);
+        this.puff(h.x, h.y - 20, 18, { color: '#ffb52e', sx: 160, sy: 120, up: 0, life: 0.5, size: 4, g: 200, star: true });
+        break;
+      case 'boostEnd':
+        sfx.boostEnd();
+        break;
+      case 'slow':
+        this.say(t('msg.slow'), t('msg.slowSub', { s: SLOW_TIME }), 'mint', 1.8);
+        sfx.slow(); haptics.buzz(50);
+        this.puff(h.x, h.y - 24, 14, { color: '#7ec8ff', sx: 120, sy: 120, up: 20, life: 0.6, size: 3.5, g: 60, star: true });
+        break;
+      case 'slowEnd':
+        sfx.slowEnd();
+        break;
       case 'hurry':
         this.say(t('msg.hurry'), '', 'warn', 1.5);
         this.msgs[this.msgs.length - 1].hurry = true;
@@ -281,7 +315,14 @@ export class Game {
     for (const e of this.events) this.onEvent(e);
 
     if (wasGrounded) fx.runPhase += Math.abs(h.vx) * dt * 0.085;
-    if (h.onFloor < 0 && h.spin) {
+    if (s.rising) {                                      // wyrzut: płomień spod nóg
+      this.trailT -= dt;
+      if (this.trailT <= 0) {
+        this.trailT = 0.012;
+        const col = ['#ffe066', '#ffb52e', '#ff5a3c'][Math.floor(Math.random() * 3)];
+        this.puff(h.x, h.y + 4, 1, { color: col, sx: 30, sy: 20, up: -260, life: 0.35, size: 5, g: 0 });
+      }
+    } else if (h.onFloor < 0 && h.spin) {
       fx.angle += dt * 15;
       this.trailT -= dt;
       if (this.trailT <= 0) {
@@ -345,6 +386,7 @@ export class Game {
       level: s.scrolling ? s.level : 0,
       progress: s.hurries < MAX_HURRIES ? s.clock / HURRY_EVERY : 1,
       danger: s.scrolling ? clamp((s.hero.y - s.camY - 320) / 180, 0, 1) : 0,
+      slow: s.slow.t > 0,
     };
   }
 }

@@ -69,41 +69,46 @@
   #pause .ico-play, body[data-state=pause] #pause .ico-pause { display: none; }
   body[data-state=pause] #pause .ico-play { display: block; }
 
-  /* instrukcja iOS: „Do ekranu początkowego” */
-  #ios[hidden] { display: none; }
-  #ios {
+  /* okienka instalacji: iOS „Do ekranu początkowego”, Android „Zainstaluj grę” */
+  .sheet[hidden] { display: none; }
+  .sheet {
     position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; padding: 16px;
     background: rgba(5,7,20,.6); touch-action: auto;
   }
-  #ios .card {
+  .sheet .card {
     width: min(440px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 18px 18px 14px; border-radius: 14px;
     background: rgba(12,16,44,.97); border: 1.5px solid rgba(159,216,255,.45); color: #fff;
     box-shadow: 0 20px 60px rgba(0,0,0,.6); font: 600 14px/1.45 system-ui, sans-serif;
   }
-  #ios h2 { margin: 0 0 6px; color: #ffd24a; font: 800 20px/1.2 system-ui, sans-serif; }
-  #ios .lead { margin: 0 0 10px; color: #9fb4ee; font-size: 13px; }
-  #ios ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 9px; }
-  #ios li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
-  #ios li::before {
+  .sheet h2 { margin: 0 0 6px; color: #ffd24a; font: 800 20px/1.2 system-ui, sans-serif; }
+  .sheet .lead { margin: 0 0 10px; color: #9fb4ee; font-size: 13px; }
+  .sheet ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 9px; }
+  .sheet li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+  .sheet li::before {
     content: counter(s); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
     background: #ffd24a; color: #12173a; font: 800 14px system-ui, sans-serif;
   }
-  #ios li svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px; fill: none; stroke: #7ec8ff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  #ios small { display: block; margin-top: 12px; color: #9fb4ee; font-size: 12px; }
-  #ios .row { display: flex; justify-content: flex-end; margin-top: 12px; }
-  #ios button { padding: 9px 18px; border-radius: 9px; border: 1.5px solid #12173a; background: #ffd24a; color: #12173a; font: 700 14px system-ui, sans-serif; }
-  #ios button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .sheet li svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px; fill: none; stroke: #7ec8ff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .sheet small { display: block; margin-top: 12px; color: #9fb4ee; font-size: 12px; }
+  .sheet .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+  .sheet button.alt { background: #1d2552; color: #fff; border-color: rgba(159,216,255,.45); }
+  /* Android bez beforeinstallprompt: instrukcja z menu zamiast przycisku ZAINSTALUJ */
+  #android .only-manual, #android.manual .only-auto { display: none; }
+  #android.manual .only-manual { display: block; }
+  #android.manual button.only-manual { display: inline-block; }
+  .sheet button { padding: 9px 18px; border-radius: 9px; border: 1.5px solid #12173a; background: #ffd24a; color: #12173a; font: 700 14px system-ui, sans-serif; }
+  .sheet button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   /* telefon w poziomie: niski ekran – ciaśniej, żeby całość weszła bez przewijania */
   @media (max-height: 520px) {
-    #ios .card { width: min(620px, 100%); padding: 12px 16px 10px; font-size: 12.5px; line-height: 1.35; }
-    #ios h2 { font-size: 17px; margin-bottom: 3px; }
-    #ios .lead { margin-bottom: 7px; font-size: 12px; }
-    #ios ol { gap: 5px; }
-    #ios li { grid-template-columns: 22px 1fr; gap: 8px; }
-    #ios li::before { width: 20px; height: 20px; font-size: 12px; }
-    #ios small { margin-top: 7px; font-size: 11px; }
-    #ios .row { margin-top: 6px; }
-    #ios button { padding: 6px 16px; }
+    .sheet .card { width: min(620px, 100%); padding: 12px 16px 10px; font-size: 12.5px; line-height: 1.35; }
+    .sheet h2 { font-size: 17px; margin-bottom: 3px; }
+    .sheet .lead { margin-bottom: 7px; font-size: 12px; }
+    .sheet ol { gap: 5px; }
+    .sheet li { grid-template-columns: 22px 1fr; gap: 8px; }
+    .sheet li::before { width: 20px; height: 20px; font-size: 12px; }
+    .sheet small { margin-top: 7px; font-size: 11px; }
+    .sheet .row { margin-top: 6px; }
+    .sheet button { padding: 6px 16px; }
   }
 
   /* okienko nicku (zwykły formularz nad canvasem) */
@@ -167,7 +172,7 @@
 </button>
 </div>
 
-<div id="ios" hidden role="dialog" aria-modal="true" aria-labelledby="iosTitle">
+<div id="ios" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="iosTitle">
   <div class="card">
     <h2 id="iosTitle" data-i18n="ios.title">Graj na pełnym ekranie</h2>
     <p class="lead" data-i18n="ios.lead"></p>
@@ -182,8 +187,24 @@
   </div>
 </div>
 
+<div id="android" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="andTitle">
+  <div class="card">
+    <h2 id="andTitle" data-i18n="and.title">Zainstaluj Step Jumpera</h2>
+    <p class="lead" data-i18n="and.lead"></p>
+    <ol class="only-manual">
+      <li><span data-i18n="and.step1"></span></li>
+      <li><span data-i18n="and.step2"></span></li>
+    </ol>
+    <div class="row">
+      <button type="button" id="andLater" class="alt only-auto" data-i18n="and.later">Nie teraz</button>
+      <button type="button" id="andInstall" class="only-auto" data-i18n="and.install">Zainstaluj</button>
+      <button type="button" id="andOk" class="only-manual" data-i18n="ios.ok">Rozumiem</button>
+    </div>
+  </div>
+</div>
+
 <form id="nick" hidden autocomplete="off">
-  <label for="nickInput" data-i18n="nick.label">Twój nick w rankingu</label>
+  <label for="nickInput" id="nickLabel" data-i18n="nick.label">Twój nick w rankingu</label>
   <input id="nickInput" maxlength="16" spellcheck="false" autocapitalize="off" enterkeyhint="done">
   <p id="nickErr" role="alert"></p>
   <div class="row"><button type="button" id="nickCancel" data-i18n="nick.cancel">Anuluj</button><button type="submit" id="nickSave" data-i18n="nick.save">Zapisz</button></div>

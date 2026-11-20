@@ -42,7 +42,7 @@ export class Music {
   reset() { this.step = 0; this.bpm = musicBpm(0); }
 
   /**
-   * Co klatkę: params = { level, progress, danger } gra muzykę, null ją wycisza.
+   * Co klatkę: params = { level, progress, danger, slow } gra muzykę, null ją wycisza (slow – spowolnienie wieży: wolniejsze tempo).
    * dt – czas klatki, żeby tempo dojeżdżało do docelowego płynnie, a nie skokami.
    */
   update(params, dt) {
@@ -65,7 +65,7 @@ export class Music {
     }
     this.level = params.level;
     this.danger = params.danger;
-    this.target = musicBpm(params.level, params.progress);
+    this.target = musicBpm(params.level, params.progress) * (params.slow ? 0.75 : 1);
     // przyspieszanie ~6 BPM/s – słychać, że gra się rozpędza; zwalnianie (nowy bieg) od razu
     this.bpm = this.target < this.bpm ? this.target : Math.min(this.target, this.bpm + 6 * dt);
     if (this.next < now) this.next = now + 0.02;      // karta wróciła z tła – nie nadrabiamy zaległych nut

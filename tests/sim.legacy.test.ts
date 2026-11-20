@@ -1,4 +1,5 @@
 // Test zgodności: nowy rdzeń symulacji musi krok po kroku dawać ten sam stan, co fizyka z pierwszej wersji gry.
+// Pierwsza wersja nie miała przedmiotów (booster wyrzutu, spowolnienie), więc porównanie kończy się w kroku, w którym bohater złapał przedmiot.
 import { describe, expect, test } from 'vitest';
 import { AXIS_MAX, LEGACY_TUNE, STEP, createState, floorAt, jumpCurve, score, speed, step } from '../src/sim';
 import type { SimEvent, SimState } from '../src/sim';
@@ -54,6 +55,7 @@ function runBoth(seed: number, pilot: Pilot, analog: boolean) {
     step(sim, axis, jump, events);
     for (const e of events) seen[e.type] = (seen[e.type] ?? 0) + 1;
     tick++;
+    if (events.some((e) => e.type === 'boost' || e.type === 'slow')) return { ticks: tick, seen, sim, item: true };
 
     const a = snapshotSim(sim), b = snapshotLegacy(legacy);
     if (JSON.stringify(a) !== JSON.stringify(b)) {
@@ -61,7 +63,7 @@ function runBoth(seed: number, pilot: Pilot, analog: boolean) {
     }
   }
   expect(sim.tick).toBe(tick);
-  return { ticks: tick, seen, sim };
+  return { ticks: tick, seen, sim, item: false };
 }
 
 describe('zgodność z fizyką pierwszej wersji gry', () => {
@@ -101,7 +103,8 @@ describe('zgodność z fizyką pierwszej wersji gry', () => {
   });
 
   test('po końcu gry kolejne kroki niczego nie zmieniają', () => {
-    const { sim } = runBoth(3, randomPilot(99), false);
+    const { sim, item } = runBoth(3, randomPilot(99), false);
+    expect(item).toBe(false);
     expect(sim.over).toBe(true);
     const before = JSON.stringify(sim);
     step(sim, AXIS_MAX, true);

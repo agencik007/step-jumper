@@ -106,6 +106,8 @@ export class Online {
     this.loaded = true;
   }
 
+  /** Pamięć urządzenia wczytana (do tego czasu nie wiadomo, czy gracz ma konto i nick). */
+  get ready(): boolean { return this.loaded; }
   get tickets(): number { return this.list.length; }
   get pending(): number { return this.queue.length; }
   get nick(): string | null { return this.account?.nick ?? null; }
