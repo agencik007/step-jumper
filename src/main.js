@@ -3,10 +3,12 @@ import { online } from './net';
 import { initFullscreen } from './game/fullscreen.js';
 import { Game } from './game/game.js';
 import { initInput, pollGamepad, tilt, tiltDegrees } from './game/input.js';
+import { initInstall } from './game/install.js';
 
 const game = new Game();
 initInput(game);
 initFullscreen(game);
+initInstall(game);
 
 // ranking online: wczytaj konto, uzupełnij zapas biletów i dośli biegi, które czekały na sieć
 online.init().then(() => { online.refill(); online.flush(); });

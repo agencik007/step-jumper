@@ -1,8 +1,10 @@
 // Dźwięk: Web Audio, w całości syntezowany – gra nie ma żadnych plików audio.
+import { Music } from './music.js';
 import { clamp } from './util.js';
 
 class Sfx {
   ctx = null; out = null; muted = false;
+  music = new Music(); musicOn = true;   // muzyka biegu (src/game/music.js) – osobny przełącznik w OPCJACH
   unlock() {
     if (!this.ctx) {
       try {
@@ -11,6 +13,7 @@ class Sfx {
         this.out = this.ctx.createGain();
         this.out.gain.value = 0.2;
         this.out.connect(this.ctx.destination);
+        this.music.attach(this.ctx, this.out);
       } catch { this.ctx = null; }
     }
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
@@ -39,6 +42,9 @@ class Sfx {
     src.connect(f).connect(g).connect(this.out);
     src.start();
   }
+  /** Co klatkę z pętli gry: params biegu albo null (cisza – menu, pauza, koniec gry, dźwięk wyłączony). */
+  song(params, dt) { this.music.update(this.muted || !this.musicOn ? null : params, dt); }
+
   jump(p)  { this.tone(240 + p * 240, 500 + p * 800, 0.14 + p * 0.12, { vol: 0.3 }); }
   land()   { this.noise(0.07, { vol: 0.4, freq: 700 }); }
   bounce() { this.tone(190, 85, 0.1, { type: 'triangle', vol: 0.7 }); }
