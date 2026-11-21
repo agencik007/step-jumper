@@ -5,6 +5,29 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.15.0', date: '2026-11-21',
+    pl: [
+      'Nowa strona OPCJE → DŹWIĘK: osobne suwaki głośności efektów i muzyki (od 0 do 100%).',
+      'Ostrzeżenie przy dole ekranu: gdy bohater zjeżdża ku przegranej, dół planszy pulsuje na czerwono, a strzałki pokazują zagrożenie – widać to, co słychać w tykaniu muzyki.',
+    ],
+    en: [
+      'New OPTIONS → SOUND page: separate volume sliders for effects and music (from 0 to 100%).',
+      'Warning at the bottom of the screen: when the hero slides towards losing, the bottom of the field pulses red and arrows show the danger – you can see what the ticking in the music tells you.',
+    ],
+    de: [
+      'Neue Seite OPTIONEN → TON: getrennte Lautstärkeregler für Effekte und Musik (von 0 bis 100%).',
+      'Warnung am unteren Rand: Rutscht deine Figur Richtung Niederlage, pulsiert der untere Rand rot und Pfeile zeigen die Gefahr – du siehst, was das Ticken in der Musik sagt.',
+    ],
+    fr: [
+      'Nouvelle page OPTIONS → SON : volumes séparés pour les effets et la musique (de 0 à 100 %).',
+      'Alerte en bas de l’écran : quand le héros glisse vers la défaite, le bas du plateau pulse en rouge et des flèches signalent le danger – vous voyez ce que dit le tic-tac de la musique.',
+    ],
+    es: [
+      'Nueva página OPCIONES → SONIDO: volumen de efectos y de música por separado (de 0 a 100%).',
+      'Aviso en la parte inferior: cuando el héroe se desliza hacia la derrota, el fondo del tablero late en rojo y unas flechas muestran el peligro; ves lo que te dice el tictac de la música.',
+    ],
+  },
+  {
     v: '0.14.0', date: '2026-11-21',
     pl: [
       'Nowa strona OPCJE → DOSTĘPNOŚĆ: rozmiar tekstu (mały, średni, duży), wysoki kontrast i wyłączanie efektów map.',

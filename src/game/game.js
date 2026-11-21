@@ -5,7 +5,7 @@ import {
   narrowLevel, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
 } from '../sim';
 import { online } from '../net';
-import { sfx } from './audio.js';
+import { VOL_STEPS, sfx } from './audio.js';
 import { access, fontSize, loadAccess } from './access.js';
 import { CHARS } from './characters.js';
 import { FONT, MEDALS, NEON, PENCILS, STYLES, applyStyle, ctx, cycle, style, themeOf } from './gfx.js';
@@ -55,7 +55,10 @@ export class Game {
     loadAccess(prefs.access);
     setControl(prefs.control ?? (prefs.tilt ? 'tilt' : 'buttons'));   // starsze zapisy znały tylko „przechył tak/nie”
     sfx.muted = !prefs.sound;
-    sfx.musicOn = prefs.music !== false;
+    // głośność efektów i muzyki 0…10; dawny przełącznik „muzyka wył.” to głośność 0
+    const vol = (v, def) => (Number.isInteger(v) ? clamp(v, 0, VOL_STEPS) : def);
+    sfx.fxVol = vol(prefs.fxVol, VOL_STEPS);
+    sfx.musicVol = vol(prefs.musicVol, prefs.music === false ? 0 : VOL_STEPS);
     // wibracje: dawniej tak / nie, teraz siła 0…3
     haptics.level = prefs.vibrate === true ? 2 : prefs.vibrate === false ? 0 : clamp(Math.round(Number(prefs.vibrate)) || 0, 0, HAPTIC_LEVELS.length - 1);
     this.setLefty(!!prefs.lefty);
@@ -90,7 +93,7 @@ export class Game {
   }
   savePrefs() {
     saveJSON(PREFS, {
-      char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, tiltZero: tilt.zero, sound: !sfx.muted, music: sfx.musicOn,
+      char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, tiltZero: tilt.zero, sound: !sfx.muted, fxVol: sfx.fxVol, musicVol: sfx.musicVol,
       vibrate: haptics.level, lefty: this.lefty, lang: lang(), jumpMode: opts.jump, stickDead: opts.stickDead, padDead: opts.padDead,
       pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access },
     });
@@ -368,7 +371,7 @@ export class Game {
     if (st.capture) { this.cancelCapture(); return; }
     if (st.page === 'keys' || st.page === 'pad') { sfx.pick(); this.showPage('controls', st.page); return; }
     if (st.page === 'controls' && st.from !== 'ctrl') { sfx.pick(); this.showPage('main', 'controls'); return; }
-    if (st.page === 'access') { sfx.pick(); this.showPage('main', 'access'); return; }
+    if (st.page === 'access' || st.page === 'sound') { sfx.pick(); this.showPage('main', st.page); return; }
     this.toTitle();
   }
   pickControl(mode) {

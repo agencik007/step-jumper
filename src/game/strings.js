@@ -241,6 +241,16 @@ const pl = {
   'acc.resetConfirm': 'Na pewno? Dotknij jeszcze raz',
   'acc.resetWarn': 'Przywróci średni tekst, zwykły kontrast, efekty map, ruch jak w systemie i wyłączy asystę.',
   'acc.resetDone': 'Przywrócono domyślne ustawienia dostępności.',
+  // dźwięk (OPCJE → DŹWIĘK)
+  'snd.title': 'DŹWIĘK',
+  'snd.mute.tip': 'Wycisza całą grę – to samo robi klawisz M.',
+  'snd.fx': 'Głośność efektów',
+  'snd.fx.tip': 'Skoki, lądowania, combo i inne odgłosy. 0% – bez efektów.',
+  'snd.music': 'Głośność muzyki',
+  'snd.music.tip': 'Muzyka w trakcie biegu. 0% – bez muzyki.',
+  'snd.offMuted': 'Dźwięk jest wyłączony – włącz go wierszem wyżej albo klawiszem M.',
+  'snd.warn': 'Ostrzeżenie przy dole ekranu',
+  'snd.warn.tip': 'Pulsujący czerwony pasek i strzałki, gdy bohater zjeżdża ku przegranej – to samo, co tykanie w muzyce.',
 };
 
 const en = {
@@ -480,6 +490,16 @@ const en = {
   'acc.resetConfirm': 'Sure? Tap again',
   'acc.resetWarn': 'Restores medium text, normal contrast, map effects, system motion setting and turns the assist off.',
   'acc.resetDone': 'Default accessibility settings restored.',
+  // dźwięk (OPCJE → DŹWIĘK)
+  'snd.title': 'SOUND',
+  'snd.mute.tip': 'Mutes the whole game – the M key does the same.',
+  'snd.fx': 'Effects volume',
+  'snd.fx.tip': 'Jumps, landings, combos and other sounds. 0% – no effects.',
+  'snd.music': 'Music volume',
+  'snd.music.tip': 'Music during a run. 0% – no music.',
+  'snd.offMuted': 'Sound is off – turn it on in the row above or with the M key.',
+  'snd.warn': 'Warning at the bottom of the screen',
+  'snd.warn.tip': 'A pulsing red bar and arrows when the hero slides towards losing – the same as the ticking in the music.',
 };
 
 const de = {
@@ -719,6 +739,16 @@ const de = {
   'acc.resetConfirm': 'Sicher? Noch einmal tippen',
   'acc.resetWarn': 'Setzt mittlere Schrift, normalen Kontrast, Karteneffekte und Bewegung wie im System zurück, Sehhilfe aus.',
   'acc.resetDone': 'Standardeinstellungen der Barrierefreiheit wiederhergestellt.',
+  // dźwięk (OPCJE → DŹWIĘK)
+  'snd.title': 'TON',
+  'snd.mute.tip': 'Schaltet das ganze Spiel stumm – genau wie die Taste M.',
+  'snd.fx': 'Lautstärke der Effekte',
+  'snd.fx.tip': 'Sprünge, Landungen, Combos und andere Geräusche. 0% – keine Effekte.',
+  'snd.music': 'Lautstärke der Musik',
+  'snd.music.tip': 'Musik während eines Laufs. 0% – keine Musik.',
+  'snd.offMuted': 'Der Ton ist aus – schalte ihn in der Zeile darüber oder mit der Taste M ein.',
+  'snd.warn': 'Warnung am unteren Rand',
+  'snd.warn.tip': 'Ein pulsierender roter Balken und Pfeile, wenn die Figur Richtung Niederlage rutscht – wie das Ticken in der Musik.',
 };
 
 const fr = {
@@ -958,6 +988,16 @@ const fr = {
   'acc.resetConfirm': 'Sûr ? Touchez encore',
   'acc.resetWarn': 'Rétablit le texte moyen, le contraste normal, les effets des cartes, les animations du système et coupe l’aide.',
   'acc.resetDone': 'Réglages d’accessibilité par défaut rétablis.',
+  // dźwięk (OPCJE → DŹWIĘK)
+  'snd.title': 'SON',
+  'snd.mute.tip': 'Coupe tout le son du jeu – comme la touche M.',
+  'snd.fx': 'Volume des effets',
+  'snd.fx.tip': 'Sauts, atterrissages, combos et autres bruitages. 0 % – sans effets.',
+  'snd.music': 'Volume de la musique',
+  'snd.music.tip': 'Musique pendant la partie. 0 % – sans musique.',
+  'snd.offMuted': 'Le son est coupé – activez-le sur la ligne du dessus ou avec la touche M.',
+  'snd.warn': 'Alerte en bas de l’écran',
+  'snd.warn.tip': 'Une barre rouge qui pulse et des flèches quand le héros glisse vers la défaite – comme le tic-tac de la musique.',
 };
 
 const es = {
@@ -1197,6 +1237,16 @@ const es = {
   'acc.resetConfirm': '¿Seguro? Toca otra vez',
   'acc.resetWarn': 'Restaura texto mediano, contraste normal, efectos de mapas, movimiento del sistema y desactiva la ayuda.',
   'acc.resetDone': 'Ajustes de accesibilidad predeterminados restaurados.',
+  // dźwięk (OPCJE → DŹWIĘK)
+  'snd.title': 'SONIDO',
+  'snd.mute.tip': 'Silencia todo el juego, igual que la tecla M.',
+  'snd.fx': 'Volumen de efectos',
+  'snd.fx.tip': 'Saltos, aterrizajes, combos y otros sonidos. 0% – sin efectos.',
+  'snd.music': 'Volumen de la música',
+  'snd.music.tip': 'Música durante la partida. 0% – sin música.',
+  'snd.offMuted': 'El sonido está desactivado: actívalo en la fila de arriba o con la tecla M.',
+  'snd.warn': 'Aviso en la parte inferior',
+  'snd.warn.tip': 'Una barra roja que late y flechas cuando el héroe se desliza hacia la derrota, igual que el tictac de la música.',
 };
 
 export const STRINGS = { pl, en, de, fr, es };
