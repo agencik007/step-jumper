@@ -19,22 +19,37 @@ export const UIBOX = {
   podWatch: (i) => ({ x: [320, 210, 430][i] - 48, y: 346, w: 96, h: 24 }),
   recapBoard: { x: 160, y: 418, w: 150, h: 32 }, recapNext: { x: 330, y: 418, w: 150, h: 32 },
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
-  // opcje
-  row: (i) => ({ x: 140, y: 58 + i * 32, w: 360, h: 28 }),
-  // opcje → sterowanie: pięć trybów, suwak czułości przechyłu, „Wróć”
-  ctrlRow: (i) => ({ x: 120, y: 60 + i * 46, w: 400, h: 42 }),
-  sens: { x: 120, y: 294, w: 400, h: 56 }, sensBar: { x: 210, y: 334, w: 220 },
-  ctrlBack: { x: 250, y: 360, w: 140, h: 30 },
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
-export const SETTINGS = ['lang', 'controls', 'hand', 'sound', 'music', 'vibrate', 'online', 'delete', 'back'];
-/** Strona „Sterowanie”: tryby w kolejności z input.js (CONTROLS), potem czułość i powrót. */
-export const CTRL_PAGE = ['buttons', 'halves', 'swipe', 'joystick', 'tilt', 'sens', 'back'];
-export const SENS_STEPS = 8;
-/** Pozycja dotknięcia na suwaku czułości → wartość 0…8 (null = poza suwakiem). */
-export function sensValueAt(x) {
-  const b = UIBOX.sensBar;
-  if (x < b.x - 24 || x > b.x + b.w + 24) return null;
-  return Math.max(0, Math.min(SENS_STEPS, Math.round((x - b.x) / b.w * SENS_STEPS)));
+
+// ───────────────────────── opcje: przewijana lista ─────────────────────────
+// Każda strona opcji to lista wierszy (src/game/options.js); co się nie mieści, przewija się palcem, kółkiem myszy,
+// a przy wyborze strzałkami / padem lista sama jedzie za zaznaczeniem. „Wróć” stoi zawsze pod listą.
+export const LIST = { x: 110, y: 50, w: 420, h: 330 };
+export const LIST_BACK = { x: 240, y: 388, w: 160, h: 28 };
+export const ROW_H = { head: 22, info: 24, mode: 42, slider: 48, row: 30, bind: 30 };
+const ROW_GAP = 4;
+/** Ustawia y (względem początku listy) i h każdego wiersza; zwraca wysokość całej listy. */
+export function listLayout(items) {
+  let y = 0;
+  for (const it of items) {
+    if (it.type === 'back') continue;
+    it.y = y; it.h = ROW_H[it.type]; y += it.h + ROW_GAP;
+  }
+  return Math.max(0, y - ROW_GAP);
 }
+/** Prostokąt wiersza na ekranie przy danym przewinięciu. */
+export const rowBox = (it, scroll) => ({ x: LIST.x, y: LIST.y + it.y - scroll, w: LIST.w, h: it.h });
+export const SLIDER_STEPS = 8;
+/** Pasek suwaka w wierszu (wide: z podpisami „mało / dużo” po bokach). */
+export const sliderBar = (r, wide) => (wide ? { x: r.x + 96, y: r.y + 34, w: r.w - 192 } : { x: r.x + 24, y: r.y + 34, w: r.w - 48 });
+/** Pozycja dotknięcia na suwaku → wartość 0…8 (null = poza suwakiem). */
+export function sliderValueAt(bar, x) {
+  if (x < bar.x - 24 || x > bar.x + bar.w + 24) return null;
+  return Math.max(0, Math.min(SLIDER_STEPS, Math.round((x - bar.x) / bar.w * SLIDER_STEPS)));
+}
+/** Pole j z n w wierszu przypisania (klawisz albo przycisk pada). */
+export const bindCell = (r, j, n) => ({ x: r.x + r.w - 8 - (n - j) * 76, y: r.y + 3, w: 70, h: r.h - 6 });
+/** Strzałki ◀ ▶ wartości w zwykłym wierszu: dotknięcie lewej zmniejsza, reszty wiersza – zwiększa. */
+export const ARROW_W = 176;
 export const inBox = (x, y, b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;

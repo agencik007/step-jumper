@@ -4,15 +4,32 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 
 - Canvas 2D, Web Audio, Pointer Events, Gamepad API – bez silnika i bez plików graficznych czy dźwiękowych.
 - 5 postaci, 5 map (stylów graficznych).
-- Sterowanie: klawiatura i gamepad działają zawsze, a na telefonie do wyboru jest 5 trybów (OPCJE → STEROWANIE
+- Sterowanie: klawiatura i gamepad działają zawsze, a na telefonie do wyboru jest 6 trybów (OPCJE → STEROWANIE
   albo dotknięcie „STEROWANIE: …” na ekranie tytułowym; `src/game/input.js`):
   - **przyciski ekranowe** ◀ ▶ + ▲ (układ prawo- / leworęczny w opcjach),
   - **połówki ekranu + przycisk skoku** – przytrzymana połowa ekranu = bieg w tę stronę, ▲ w obu dolnych rogach,
   - **połówki ekranu + machnięcie w górę** – jak wyżej, a skok to przesunięcie palca w górę (przytrzymanie = skok przy każdym lądowaniu),
   - **gałka (joystick)** – pływająca gałka pod jednym kciukiem daje płynną prędkość, dotknięcie drugiej połowy ekranu = skok,
-  - **przechył telefonu + dotyk** (wymaga HTTPS) z suwakiem czułości (9 stopni).
+  - **przechył telefonu + dotyk** (wymaga HTTPS) z suwakiem czułości (9 stopni) i kalibracją pozycji zerowej (np. do gry na leżąco),
+  - **jeden przycisk** – bohater biegnie sam i zawraca przy ścianach, cały ekran (każdy klawisz / przycisk skoku) = skok;
+    strzałka albo gałka przejmuje bieg i ustawia kierunek.
 
   Każdy tryb podaje symulacji tylko oś −1…1 i skok, więc zapis biegu, powtórki i weryfikacja rankingu są dla wszystkich takie same.
+- Strona OPCJE → STEROWANIE to przewijana lista (palec, kółko myszy, strzałki / PageUp / PageDown, pad; `src/game/options.js`):
+  - **skok**: przytrzymanie (trzymany = skok przy każdym lądowaniu), przełącznik (wciśnięcie włącza i wyłącza ciągłe skakanie,
+    na ekranie plakietka „▲ AUTO”) albo automat (bohater skacze sam, gracz tylko kieruje),
+  - **przyciski ekranowe**: rozmiar (60–140%), widoczność (20–100%) i **własny układ** – edytor, w którym każdy przycisk i gałkę
+    przeciąga się w dowolne miejsce (`src/game/padlayout.js`; pozycje jako ułamek okna, przy zmianie ręki układ odbija się w poziomie),
+  - martwa strefa gałki ekranowej i gałki pada,
+  - **przypisanie klawiszy** (3 na akcję) i **przycisków pada** (2 na akcję) dla biegu, skoku i pauzy; menu zawsze działa
+    strzałkami, Enter, Spacją i Esc,
+  - przywrócenie domyślnego sterowania.
+- **Gamepad** (`src/game/gamepad.js`): pełna obsługa bez myszy i klawiatury – w menu krzyżak / gałka, A (dolny) wybierz, B (prawy) wróć,
+  Y – ranking / menu, X – opcje, Start – start i pauza, LB / RB – zakładki i tempo powtórki. Gra rozpoznaje pady Xbox, PlayStation
+  i Nintendo i rysuje ich przyciski (A B X Y, ✕ ○ □ △, B A Y X); pady bez układu „standard” mają krzyżak z osi / „hata”
+  i numery przycisków do przypisania. Gałka pada daje płynną prędkość. Formularz nicku na padzie: B = graj bez nicku
+  (gra zapyta przy następnym uruchomieniu).
+- Wibracje w 4 stopniach (wył. / słabe / średnie / mocne) – telefon i pad (`vibrationActuator`).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
 - Pauza: klawisz **P** albo przycisk ⏸ w prawym górnym rogu (widoczny w trakcie biegu); z pauzy przycisk MENU wraca do wyboru postaci i mapy.
 - **Piętra coraz węższe**: piętro to 4–9 klocków; co 100 pięter klocek traci 2 px (piętra 0–99: 128–288 px, od 800.: 64–144 px), a gra mówi o tym komunikatem „WĘŻSZE PIĘTRA!”. Co 50. piętro zostaje na całą szerokość. Stałe: `BLOCK`, `NARROW_EVERY`, `NARROW_BY`, `NARROW_MAX` w `src/sim/constants.ts`.
@@ -67,7 +84,7 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
   i mapie – start / pauza (Spacja, P), stop (S), tempo 1× / 2× / 4× (← →), wyjście (Esc), na końcu ekran „KONIEC POWTÓRKI”.
 - **Podsumowanie tygodnia**: po zamknięciu tygodnia, przy pierwszym uruchomieniu gra raz pokazuje podium najlepszej trójki
   (z powtórkami) i miejsce gracza.
-- W grze: RANKING (R) i OPCJE (O) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
+- W grze: RANKING (R) i OPCJE (O) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, sterowanie, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
   i usunięcie swoich danych z serwera.
 
 ## Języki

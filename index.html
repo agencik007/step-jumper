@@ -30,14 +30,18 @@
     box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 2px #2c3769;
   }
   svg.fx { position: absolute; width: 0; height: 0; }
-  .pad { position: fixed; bottom: max(18px, env(safe-area-inset-bottom)); display: none; gap: 14px; }
+  /* rozmiar (--pad-scale) i widoczność (--pad-alpha) przycisków ekranowych ustawia src/game/padlayout.js */
+  :root { --pad-scale: 1; --pad-alpha: 1; }
+  .pad { position: fixed; bottom: max(18px, env(safe-area-inset-bottom)); display: none; gap: calc(14px * var(--pad-scale)); }
   .pad button {
-    width: 76px; height: 76px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12);
-    color: #fff; font: 700 30px/1 system-ui, sans-serif; touch-action: none;
+    width: calc(76px * var(--pad-scale)); height: calc(76px * var(--pad-scale)); border-radius: 50%; padding: 0;
+    border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12); opacity: var(--pad-alpha);
+    color: #fff; font: 700 calc(30px * var(--pad-scale))/1 system-ui, sans-serif; touch-action: none;
     -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   }
-  .pad button.on { background: rgba(255,255,255,.32); }
+  .pad button.on { background: rgba(255,255,255,.32); opacity: min(1, calc(var(--pad-alpha) + .3)); }
+  /* własny układ: środek przycisku tam, gdzie go przeciągnięto (left/top z JS) */
+  .pad button.placed { position: fixed; transform: translate(-50%, -50%); }
   #padL { left: max(18px, env(safe-area-inset-left)); }
   #padR { right: max(18px, env(safe-area-inset-right)); }
   /* układ leworęczny: skok pod lewym kciukiem, ◀ ▶ pod prawym */
@@ -62,18 +66,45 @@
   #stick {
     --kx: 0px; --ky: 0px;
     position: fixed; display: none; z-index: 4; pointer-events: none;
-    width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
-    left: calc(max(18px, env(safe-area-inset-left)) + 60px); top: calc(100% - max(18px, env(safe-area-inset-bottom)) - 60px);
-    border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); opacity: .45;
+    width: calc(112px * var(--pad-scale)); height: calc(112px * var(--pad-scale)); margin: calc(-56px * var(--pad-scale)) 0 0 calc(-56px * var(--pad-scale)); border-radius: 50%;
+    left: calc(max(18px, env(safe-area-inset-left)) + 60px * var(--pad-scale)); top: calc(100% - max(18px, env(safe-area-inset-bottom)) - 60px * var(--pad-scale));
+    border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); opacity: calc(.45 * var(--pad-alpha));
     -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   }
-  body.lefty #stick { left: calc(100% - max(18px, env(safe-area-inset-right)) - 60px); }
-  #stick.on { opacity: 1; }
+  body.lefty #stick { left: calc(100% - max(18px, env(safe-area-inset-right)) - 60px * var(--pad-scale)); }
+  #stick.on { opacity: calc(.4 + .6 * var(--pad-alpha)); }
   #stick::after {
-    content: ""; position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%;
+    content: ""; position: absolute; left: 50%; top: 50%; width: calc(50px * var(--pad-scale)); height: calc(50px * var(--pad-scale));
+    margin: calc(-25px * var(--pad-scale)) 0 0 calc(-25px * var(--pad-scale)); border-radius: 50%;
     background: rgba(255,255,255,.35); border: 2px solid rgba(255,255,255,.6);
     transform: translate(var(--kx), var(--ky));
   }
+
+  /* edytor układu przycisków: przyciski trybu widać zawsze (także na komputerze), nad przyciemnionym tłem */
+  #padEditBg { position: fixed; inset: 0; z-index: 8; display: none; background: rgba(5,7,20,.6); touch-action: none; }
+  body.pad-edit #padEditBg { display: block; }
+  body.pad-edit .pad, body.pad-edit #stick { z-index: 9; }
+  body.pad-edit.ctrl-buttons #padL, body.pad-edit.ctrl-buttons #padR,
+  body.pad-edit.ctrl-halves #padR, body.pad-edit.ctrl-halves #padJ,
+  body.pad-edit.ctrl-joystick #padR { display: flex !important; }
+  body.pad-edit.ctrl-joystick #stick { display: block !important; pointer-events: auto; opacity: max(.6, var(--pad-alpha)); }
+  body.pad-edit .pad button, body.pad-edit #stick { cursor: grab; outline: 2px dashed #ffe066; outline-offset: 4px; }
+  body.pad-edit .dragging { cursor: grabbing; outline-style: solid; }
+  #padEdit[hidden] { display: none; }
+  #padEdit {
+    position: fixed; z-index: 10; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+    width: min(480px, calc(100vw - 130px)); padding: 9px 14px 10px; border-radius: 14px;
+    background: rgba(12,16,44,.95); border: 1.5px solid rgba(159,216,255,.45); color: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5); font: 600 13px/1.35 system-ui, sans-serif; touch-action: manipulation;
+  }
+  #padEdit p { margin: 0 0 6px; color: #9fb4ee; font-size: 12.5px; }
+  #padEdit .ranges { display: flex; gap: 14px; flex-wrap: wrap; }
+  #padEdit label { flex: 1 1 150px; display: flex; align-items: center; gap: 8px; color: #ffe066; font-weight: 700; }
+  #padEdit input[type=range] { flex: 1; min-width: 80px; accent-color: #ffd24a; }
+  #padEdit .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  #padEdit button { padding: 7px 14px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45); background: #1d2552; color: #fff; font: 700 13px system-ui, sans-serif; }
+  #padEdit button#peDone { background: #ffd24a; color: #12173a; border-color: #12173a; }
+  #padEdit button:focus-visible, #padEdit input:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
   /* prawy górny róg okna: pauza (tylko w biegu) i pełny ekran – poza płótnem na większości ekranów */
   #corner {
@@ -160,6 +191,7 @@
   #nick input:focus { outline: 2px solid #ffe066; outline-offset: 1px; }
   #nick p { min-height: 1.4em; margin: 8px 0; color: #ff9a7f; font-size: 13px; }
   #nick small { display: block; margin-top: 10px; color: #9fb4ee; font-size: 12px; }
+  #nick small[hidden] { display: none; }
   #nick .row { display: flex; gap: 10px; justify-content: flex-end; }
   #nick button { padding: 9px 16px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45); background: #1d2552; color: #fff; font: 700 14px system-ui, sans-serif; }
   #nick button[type=submit] { background: #ffd24a; color: #12173a; border-color: #12173a; }
@@ -196,6 +228,17 @@
   <button data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
 </div>
 <div id="stick" aria-hidden="true"></div>
+
+<!-- edytor układu przycisków ekranowych (OPCJE → STEROWANIE → Układ przycisków) -->
+<div id="padEditBg"></div>
+<div id="padEdit" hidden role="dialog" aria-labelledby="peLead">
+  <p id="peLead" data-i18n="edit.lead">Przeciągnij przyciski tam, gdzie ci wygodnie.</p>
+  <div class="ranges">
+    <label><span data-i18n="edit.size">Rozmiar</span><input type="range" id="peSize" min="0" max="8" step="1"></label>
+    <label><span data-i18n="edit.alpha">Widoczność</span><input type="range" id="peAlpha" min="0" max="8" step="1"></label>
+  </div>
+  <div class="row"><button type="button" id="peReset" data-i18n="edit.reset">Domyślny układ</button><button type="button" id="peDone" data-i18n="edit.done">Gotowe</button></div>
+</div>
 
 <div id="corner">
 <button id="pause" type="button" aria-label="Pauza (P)" title="Pauza (P)" data-i18n-aria="aria.pause">
@@ -245,6 +288,7 @@
   <p id="nickErr" role="alert"></p>
   <div class="row"><button type="button" id="nickCancel" data-i18n="nick.cancel">Anuluj</button><button type="submit" id="nickSave" data-i18n="nick.save">Zapisz</button></div>
   <small data-i18n="nick.rules">3–16 znaków: litery, cyfry, _ - i pojedyncze spacje.</small>
+  <small id="nickPad" hidden data-i18n="nick.pad">Na padzie: B – graj bez nicku (zapytamy przy następnym uruchomieniu).</small>
 </form>
 
 <script type="module" src="/src/main.js"></script>
