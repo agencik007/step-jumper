@@ -3,6 +3,7 @@
 // iPhone nie pozwala na pełny ekran zwykłej strony – tam przycisk otwiera instrukcję „Do ekranu początkowego” (install.js),
 // bo zainstalowana gra startuje bez pasków przeglądarki (manifest: display „fullscreen”).
 import { sfx } from './audio.js';
+import { focusGame } from './gfx.js';
 import { t } from './i18n.js';
 import { isTouch } from './input.js';
 import { isIOS, showInstall, standalone } from './install.js';
@@ -64,10 +65,10 @@ export function initFullscreen(theGame) {
   for (const ev of ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']) document.addEventListener(ev, update);
   matchMedia('(display-mode: standalone)').addEventListener?.('change', update);
   if (btn) {
-    // przycisk nie łapie fokusu, żeby SPACJA dalej skakała zamiast przełączać pełny ekran;
+    // po kliknięciu fokus wraca na grę, żeby SPACJA dalej skakała zamiast przełączać pełny ekran;
     // pointerdown nie leci dalej, żeby w trybie przechyłu dotknięcie przycisku nie było skokiem
     btn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); });
-    btn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); btn.blur(); });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); focusGame(); });
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
   }
   update();

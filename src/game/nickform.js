@@ -1,5 +1,6 @@
 // Okienko wpisywania nicku. To zwykły formularz HTML nad grą, bo na canvasie nie da się wygodnie pisać
 // (klawiatura ekranowa telefonu, wklejanie, polskie znaki).
+import { focusGame } from './gfx.js';
 import { t } from './i18n.js';
 
 const KNOWN = ['nick_length', 'nick_chars', 'nick_blocked', 'nick_taken', 'offline'];
@@ -32,6 +33,7 @@ export function openNick(current, onSave, onClose, { required = false, pad = fal
 function close(saved = false) {
   form.hidden = true;
   field.blur();
+  focusGame();                                         // klawiatura i czytnik ekranu wracają do gry
   const p = pending; pending = null;
   p?.onClose(saved);
 }

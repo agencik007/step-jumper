@@ -6,6 +6,8 @@ import { hash, reduceMotion } from './util.js';
 export const stage = document.getElementById('stage');
 export const canvas = document.getElementById('game');
 export const mainCtx = canvas.getContext('2d');
+/** Fokus z powrotem na grze (płótno) – po zamknięciu okienka albo naciśnięciu przycisku w rogu klawiaturą. */
+export const focusGame = () => { try { canvas.focus({ preventScroll: true }); } catch { /* starsze przeglądarki */ } };
 export let ctx = mainCtx;                              // bieżący cel rysowania (ekran albo bufor niskiej rozdzielczości)
 export function setCtx(c) { ctx = c; }
 

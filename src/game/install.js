@@ -8,6 +8,7 @@
 // wtedy przycisk ZAINSTALUJ otwiera systemowe okno instalacji. Przeglądarka bez tego zdarzenia (np. Firefox)
 // dostaje krótką instrukcję z menu przeglądarki. Odłożone („Nie teraz”) wraca po kilku dniach.
 import { sfx } from './audio.js';
+import { focusGame } from './gfx.js';
 import { nickOpen } from './nickform.js';
 import { loadJSON, saveJSON } from './util.js';
 
@@ -37,6 +38,7 @@ export function showInstall() {
 export function hideInstall() {
   if (box && !box.hidden) { box.hidden = true; sfx.pick(); }
   if (abox && !abox.hidden) { abox.hidden = true; snooze(); sfx.pick(); }
+  focusGame();
 }
 
 // ───────────────────────── Android ─────────────────────────

@@ -1,6 +1,7 @@
 // Przyciski ekranowe: rozmiar, widoczność i własny układ ustawiany przeciąganiem (OPCJE → STEROWANIE → Układ przycisków).
 // Układ to środek każdego elementu jako ułamek szerokości i wysokości okna – działa na każdym ekranie.
 // Element bez zapisanej pozycji stoi tam, gdzie stawia go CSS (układ prawo- albo leworęczny).
+import { focusGame } from './gfx.js';
 import { clamp } from './util.js';
 
 export const PAD_STEPS = 8;
@@ -87,7 +88,7 @@ export function closePadEditor() {
   editing = null;
   document.body.classList.remove('pad-edit');
   if (box) box.hidden = true;
-  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  focusGame();
   onClose?.();
 }
 
