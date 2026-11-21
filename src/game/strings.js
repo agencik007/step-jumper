@@ -10,6 +10,8 @@ const pl = {
 
   'title.opts': 'OPCJE', 'title.rank': 'RANKING', 'title.char': 'POSTAĆ', 'title.map': 'MAPA',
   'title.play': 'GRAJ', 'title.playKey': 'GRAJ  ·  SPACJA',
+  'title.news': 'NOWOŚCI', 'update.new': 'NOWA WERSJA', 'update.btn': 'PRZEŁADUJ',
+  'news.foot': 'Twoja wersja gry: {v}', 'news.keys': '↑ ↓ / PageUp PageDown przewijanie   ·   ESC wróć', 'hint.scroll': 'przewiń',
   'title.ctrlTiltWant': 'STEROWANIE: PRZECHYŁ  ·  dotknij, aby włączyć',
   'title.ctrl': 'STEROWANIE: {mode}  ·  zmień',
   'title.tip': 'Im szybciej biegniesz, tym wyżej skaczesz. Odbijaj się od ścian!',
@@ -226,6 +228,8 @@ const en = {
 
   'title.opts': 'OPTIONS', 'title.rank': 'RANKING', 'title.char': 'CHARACTER', 'title.map': 'MAP',
   'title.play': 'PLAY', 'title.playKey': 'PLAY  ·  SPACE',
+  'title.news': 'WHAT’S NEW', 'update.new': 'NEW VERSION', 'update.btn': 'RELOAD',
+  'news.foot': 'Your game version: {v}', 'news.keys': '↑ ↓ / PageUp PageDown scroll   ·   ESC back', 'hint.scroll': 'scroll',
   'title.ctrlTiltWant': 'CONTROLS: TILT  ·  tap to enable',
   'title.ctrl': 'CONTROLS: {mode}  ·  change',
   'title.tip': 'The faster you run, the higher you jump. Bounce off the walls!',
@@ -442,6 +446,8 @@ const de = {
 
   'title.opts': 'OPTIONEN', 'title.rank': 'RANGLISTE', 'title.char': 'FIGUR', 'title.map': 'KARTE',
   'title.play': 'SPIELEN', 'title.playKey': 'SPIELEN  ·  LEERTASTE',
+  'title.news': 'NEUIGKEITEN', 'update.new': 'NEUE VERSION', 'update.btn': 'NEU LADEN',
+  'news.foot': 'Deine Spielversion: {v}', 'news.keys': '↑ ↓ / Bild↑ Bild↓ blättern   ·   ESC zurück', 'hint.scroll': 'blättern',
   'title.ctrlTiltWant': 'STEUERUNG: NEIGEN  ·  zum Aktivieren tippen',
   'title.ctrl': 'STEUERUNG: {mode}  ·  ändern',
   'title.tip': 'Je schneller du läufst, desto höher springst du. Prall von den Wänden ab!',
@@ -658,6 +664,8 @@ const fr = {
 
   'title.opts': 'OPTIONS', 'title.rank': 'CLASSEMENT', 'title.char': 'PERSONNAGE', 'title.map': 'CARTE',
   'title.play': 'JOUER', 'title.playKey': 'JOUER  ·  ESPACE',
+  'title.news': 'NOUVEAUTÉS', 'update.new': 'NOUVELLE VERSION', 'update.btn': 'RECHARGER',
+  'news.foot': 'Votre version du jeu : {v}', 'news.keys': '↑ ↓ / PageUp PageDown défiler   ·   ÉCHAP retour', 'hint.scroll': 'défiler',
   'title.ctrlTiltWant': 'COMMANDES : INCLINAISON  ·  touchez pour activer',
   'title.ctrl': 'COMMANDES : {mode}  ·  changer',
   'title.tip': 'Plus vous courez vite, plus vous sautez haut. Rebondissez sur les murs !',
@@ -874,6 +882,8 @@ const es = {
 
   'title.opts': 'OPCIONES', 'title.rank': 'RANKING', 'title.char': 'PERSONAJE', 'title.map': 'MAPA',
   'title.play': 'JUGAR', 'title.playKey': 'JUGAR  ·  ESPACIO',
+  'title.news': 'NOVEDADES', 'update.new': 'NUEVA VERSIÓN', 'update.btn': 'RECARGAR',
+  'news.foot': 'Tu versión del juego: {v}', 'news.keys': '↑ ↓ / RePág AvPág desplazar   ·   ESC volver', 'hint.scroll': 'desplazar',
   'title.ctrlTiltWant': 'CONTROL: INCLINAR  ·  toca para activar',
   'title.ctrl': 'CONTROL: {mode}  ·  cambiar',
   'title.tip': 'Cuanto más rápido corres, más alto saltas. ¡Rebota en las paredes!',

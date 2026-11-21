@@ -84,7 +84,7 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
   i mapie – start / pauza (Spacja, P), stop (S), tempo 1× / 2× / 4× (← →), wyjście (Esc), na końcu ekran „KONIEC POWTÓRKI”.
 - **Podsumowanie tygodnia**: po zamknięciu tygodnia, przy pierwszym uruchomieniu gra raz pokazuje podium najlepszej trójki
   (z powtórkami) i miejsce gracza.
-- W grze: RANKING (R) i OPCJE (O) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, sterowanie, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
+- W grze: RANKING (R), OPCJE (O) i NOWOŚCI (N) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, sterowanie, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
   i usunięcie swoich danych z serwera.
 
 ## Języki
@@ -109,6 +109,17 @@ W trybie deweloperskim gra po każdym biegu odtwarza jego zapis i zgłasza w kon
 - fizyka: obiekt `P` i stałe w `src/sim/constants.ts` (pamiętaj o `SIM_VERSION`),
 - czułość przechyłu: stała `TILT` w `src/game/input.js` (`dead`, `full`, `smooth`).
 
+## Wersje, NOWOŚCI i aktualizacja
+
+- Wersja gry (`0.MINOR.PATCH`) jest w `package.json`; każdy scalony PR z widoczną dla gracza zmianą ją podbija.
+  Zasady: [`CLAUDE.md`](CLAUDE.md).
+- **NOWOŚCI** (przycisk na ekranie tytułowym, klawisz N, LB na padzie): najważniejsze zmiany każdej wersji w języku gry.
+  Treść: `src/game/changelog.js`; `tests/changelog.test.ts` pilnuje, żeby najnowszy wpis miał wersję z `package.json`
+  i był we wszystkich językach. Numer wersji jest w lewym dolnym rogu ekranu tytułowego.
+- **PRZEŁADUJ**: build zapisuje `version.json` z identyfikatorem builda (`vite.config.js`). Gra sprawdza go przy starcie,
+  po powrocie do karty i co 5 minut (`src/game/update.js`); gdy na serwerze jest nowszy build, na ekranie tytułowym
+  pojawia się przycisk PRZEŁADUJ (klawisz U, RB na padzie). W trakcie biegu gra nic nie pokazuje.
+
 ## Deploy
 
 Vercel buduje projekt przez Vite (`vercel.json`), każdy push do `main` wdraża produkcję.
@@ -117,4 +128,4 @@ Vercel buduje projekt przez Vite (`vercel.json`), każdy push do `main` wdraża 
 
 `public/manifest.webmanifest`, `public/sw.js` i `public/icons/` pozwalają zainstalować grę jako aplikację. Na Androidzie gra sama proponuje instalację okienkiem na ekranie tytułowym (`src/game/install.js`): w Chrome przycisk ZAINSTALUJ otwiera systemowe okno (`beforeinstallprompt`), w przeglądarce bez tego zdarzenia pokazuje instrukcję z menu. „Nie teraz” odkłada pytanie na 3 dni.
 Po instalacji startuje na pełnym ekranie, w poziomie, i działa offline. Service worker bierze stronę najpierw z sieci,
-więc nowy deploy widać od razu.
+więc nowy deploy widać po przeładowaniu – a gra, która była już otwarta, sama proponuje PRZEŁADUJ.

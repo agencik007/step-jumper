@@ -11,7 +11,8 @@ import {
 import { BTN, glyphOf } from './gamepad.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
-import { ARROW_W, LIST, LIST_BACK, PERIODS, SLIDER_STEPS, UIBOX, bindCell, rowBox, sliderBar, slotX } from './layout.js';
+import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, NOTE_LINE, PERIODS, SLIDER_STEPS, UIBOX, bindCell, rowBox, sliderBar, slotX } from './layout.js';
+import { VERSION, update } from './update.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
@@ -576,6 +577,9 @@ function drawTitle(g) {
   const hm = g.hint;
   button(UIBOX.opts, hm === 'keys' ? `${t('title.opts')} · O` : t('title.opts'), { size: 11, glyph: hm === 'pad' ? BTN.X : null });
   button(UIBOX.rank, hm === 'keys' ? `${t('title.rank')} · R` : t('title.rank'), { size: 11, glyph: hm === 'pad' ? BTN.Y : null });
+  button(UIBOX.news, hm === 'keys' ? `${t('title.news')} · N` : t('title.news'), { size: 11, glyph: hm === 'pad' ? BTN.LB : null });
+  text(`v${VERSION}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
+  if (update.available) drawUpdateButton(time, hm);
   c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(1 + Math.sin(time * 2) * 0.02, 1 + Math.sin(time * 2) * 0.02);
   text('STEP JUMPER', 0, 4, { size: 54, maxW: 430, color: ui.frame, sw: 14, stroke: ui.frame });
   const grad = c.createLinearGradient(0, -30, 0, 30);
@@ -640,6 +644,20 @@ function drawTitle(g) {
     text(t('title.combo'), W / 2, 437, hint);
   }
   if (g.best.score > 0) text(t('title.best', { score: g.best.score, floor: g.best.floor, combo: g.best.combo }), W / 2, 460, { size: 12, color: ui.mint, sw: 3, maxW: 436 });
+}
+
+/** PRZEŁADUJ: pulsujący złoty przycisk pod RANKINGIEM, a pod nim wersja czekająca na serwerze. */
+function drawUpdateButton(time, hm) {
+  const c = ctx, b = UIBOX.update, glow = 0.5 + 0.5 * Math.sin(time * 4);
+  c.save();
+  c.shadowColor = ui.gold; c.shadowBlur = 6 + glow * 10;
+  c.fillStyle = ui.btn; rr(b.x, b.y, b.w, b.h, 9); c.fill();
+  c.restore();
+  c.strokeStyle = ui.frame; c.lineWidth = 2; rr(b.x, b.y, b.w, b.h, 9); c.stroke();
+  const gw = hm === 'pad' ? padGlyph(BTN.RB, b.x + 5, b.y + b.h / 2, 15) + 3 : 0, cx = b.x + b.w / 2 + gw / 2, maxW = b.w - 10 - gw;
+  text(t('update.new'), cx, b.y + 11, { size: 9, color: ui.btnText, sw: 0, maxW });
+  text(hm === 'keys' ? `${t('update.btn')} · U` : t('update.btn'), cx, b.y + 26, { size: 12, color: ui.btnText, sw: 0, maxW });
+  text(`v${update.available}`, b.x + b.w / 2, b.y + b.h + 10, { size: 10, color: ui.gold, sw: 3, weight: 700 });
 }
 
 const TITLE_PAD = [['dpad', 'hint.pick'], [BTN.A, 'hint.play'], [BTN.Y, 'hint.rank'], [BTN.X, 'hint.opts']];
@@ -758,8 +776,8 @@ function drawBoard(g) {
   if (g.hint === 'pad') padHints([['dpad', 'hint.pick'], [BTN.A, b.sel >= 0 ? 'hint.watch' : 'hint.back'], [BTN.B, 'hint.back']], 468, { size: 10 });
 }
 
-const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', keys: 'bind.keysTitle', pad: 'bind.padTitle' };
-const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', keys: 'bind.keysHint', pad: 'bind.keysHint' };
+const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news' };
+const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', keys: 'bind.keysHint', pad: 'bind.keysHint', news: 'news.keys' };
 
 /** Opcje: przewijana lista wierszy (options.js), „Wróć” pod nią, na dole objaśnienie i podpowiedzi. */
 function drawSettings(g) {
@@ -793,7 +811,9 @@ function drawSettings(g) {
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 470 };
   if (st.page === 'main') text(t('set.privacy'), W / 2, 450, hint);
   else if (st.page === 'controls') text(t('ctrl.always'), W / 2, 450, hint);
-  if (hm === 'pad') {
+  else if (st.page === 'news') text(t('news.foot', { v: VERSION }), W / 2, 450, hint);
+  if (hm === 'pad' && st.page === 'news') padHints([['dpad', 'hint.scroll'], [BTN.B, 'hint.back']], 468, { size: 10 });
+  else if (hm === 'pad') {
     const bind = st.page === 'keys' || st.page === 'pad';
     padHints([['dpad', 'hint.pick'], [BTN.A, bind ? 'hint.assign' : 'hint.ok'], ...(bind ? [[BTN.X, 'hint.clear']] : []), [BTN.B, 'hint.back']], 468, { size: 10 });
   } else if (hm === 'keys') text(t(KEY_HINTS[st.page]), W / 2, 468, { ...hint, color: ui.hint });
@@ -803,8 +823,14 @@ function drawSettings(g) {
 function drawItem(g, it, r, isSel) {
   const c = ctx, st = g.settings, cy = r.y + r.h / 2 + 1;
   if (it.type === 'head') {
-    text(it.label().toUpperCase(), r.x + 6, r.y + r.h / 2 + 3, { size: 11, color: ui.label, sw: 0, align: 'left', weight: 800, maxW: r.w - 12 });
+    text(it.label().toUpperCase(), r.x + 6, r.y + r.h / 2 + 3, { size: it.gold ? 13 : 11, color: it.gold ? ui.gold : ui.label, sw: 0, align: 'left', weight: 800, maxW: r.w - 12 });
     c.fillStyle = ui.line; c.fillRect(r.x + 4, r.y + r.h - 1, r.w - 8, 1);
+    return;
+  }
+  if (it.type === 'note') {                              // punkt listy zmian: kropka i połamane linijki
+    text('•', r.x + 14, r.y + NOTE_LINE / 2 + 1, { size: 14, color: ui.gold, sw: 0 });
+    it.lines.forEach((line, i) => text(line, r.x + 26, r.y + NOTE_LINE * (i + 0.5) + 1,
+      { size: NOTE_FONT.size, weight: NOTE_FONT.weight, color: ui.text, sw: 0, align: 'left' }));
     return;
   }
   if (it.type === 'info') { text(it.label(), r.x + r.w / 2, cy, { size: 11, color: ui.hint, sw: 0, weight: 700, maxW: r.w - 10 }); return; }

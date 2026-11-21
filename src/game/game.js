@@ -7,18 +7,19 @@ import {
 import { online } from '../net';
 import { sfx } from './audio.js';
 import { CHARS } from './characters.js';
-import { MEDALS, NEON, PENCILS, STYLES, applyStyle, cycle, style, themeOf } from './gfx.js';
+import { FONT, MEDALS, NEON, PENCILS, STYLES, applyStyle, ctx, cycle, style, themeOf } from './gfx.js';
 import { KIND_NAMES, gpad } from './gamepad.js';
 import { HAPTIC_LEVELS, haptics } from './haptics.js';
 import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
 import {
   CONTROLS, DEAD_STEPS, JUMP_MODES, SENS_MAX, TILT_ZERO_MAX, binds, ctrl, hintMode, input, isTouch, loadBinds, opts, setBind, setControl, tilt, touchAxis,
 } from './input.js';
-import { ARROW_W, LIST, LIST_BACK, PERIODS, UIBOX, bindCell, inBox, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
+import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, inBox, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
-import { buildPages, selectable } from './options.js';
+import { buildNews, buildPages, selectable } from './options.js';
 import { loadPads, mirrorPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
+import { reloadForUpdate, update } from './update.js';
 import { clamp, loadJSON, mod, rand, saveJSON } from './util.js';
 
 const STORE = 'stepjumper.best.v1', PREFS = 'stepjumper.prefs.v1', WEEK = 'stepjumper.week.v1';
@@ -315,6 +316,21 @@ export class Game {
     this.revealSel(true);
   }
   openPage(page) { sfx.pick(); this.showPage(page); }
+  /** NOWOŚCI: lista zmian w każdej wersji (changelog.js) jako strona opcji tylko do przewijania. */
+  openNews() {
+    const font = `${NOTE_FONT.weight} ${NOTE_FONT.size}px ${FONT}`;
+    this.pages.news = buildNews(this, (s) => { ctx.font = font; return ctx.measureText(s).width; });
+    sfx.pick();
+    this.state = 'settings';
+    this.settings.from = 'title';
+    this.showPage('news');
+  }
+  /** PRZEŁADUJ na ekranie tytułowym: wczytuje nową wersję gry. */
+  reloadGame() {
+    if (!update.available) return;
+    sfx.pick();
+    reloadForUpdate();
+  }
   /** Wiersze otwartej strony opcji i te z nich, które da się wybrać. */
   get settingsItems() { return this.pages[this.settings.page]; }
   get settingsSel() { return selectable(this.settingsItems); }
@@ -325,6 +341,7 @@ export class Game {
   settingsMove(d, jump = false) {
     const st = this.settings, n = this.settingsSel.length;
     st.capture = null;
+    if (st.page === 'news') { this.settingsScroll(st.scrollTo + d * (jump ? LIST.h / 5 : 40)); return; }   // tu nie ma czego wybierać – tylko przewijanie
     const sel = jump ? clamp(st.sel + d, 0, n - 1) : mod(st.sel + d, n);
     if (sel === st.sel) return;
     st.sel = sel; st.slot = 0;
@@ -475,6 +492,8 @@ export class Game {
       if (inBox(x, y, UIBOX.play)) this.start();
       else if (inBox(x, y, UIBOX.rank)) this.openBoard();
       else if (inBox(x, y, UIBOX.opts)) this.openSettings();
+      else if (inBox(x, y, UIBOX.news)) this.openNews();
+      else if (update.available && inBox(x, y, UIBOX.update)) this.reloadGame();
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
       for (let i = 0; i < PERIODS.length; i++) if (inBox(x, y, UIBOX.tab(i))) return this.boardTab(i, true);
