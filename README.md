@@ -52,7 +52,7 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
 - Ranking otwiera się na zakładce TYDZIEŃ; jest też ZESZŁY TYDZIEŃ (zamknięte wyniki).
 - **Nagrody dla najlepszej trójki tygodnia** (`src/game/game.js` → „efekty nagrody”): miejsca 1–3 zamkniętego tygodnia
   noszą przez cały następny tydzień koronę (złotą, srebrną, brązową) nad głową, sypią pyłem z iskrami w kolorze korony,
-  gdy ocierają się o ściany, po combo słychać syntezowane „WOW!”, a lądowanie z combo puszcza falę uderzeniową.
+  gdy ocierają się o ściany.
   Nagrody są czysto wizualne – symulacja i weryfikacja biegów się nie zmieniają. W trybie DEV `?crown=1|2|3` w adresie
   zakłada koronę bez rankingu.
 - **Powtórki**: wiersze 1–3 w rankingu (dotknięcie albo klawisze 1–3) odtwarzają bieg tego gracza na jego wieży, postaci

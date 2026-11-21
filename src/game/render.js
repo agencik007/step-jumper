@@ -60,7 +60,6 @@ function drawWorld(g) {
   c.translate(0, -camY);
   for (let n = g.sim.lowN; n < g.sim.genN; n++) drawPlatform(g, floorAt(g.sim.seed, n));
   drawItems(g);
-  drawWaves(g);
   for (const p of g.parts) {
     c.globalAlpha = clamp(p.life / p.max, 0, 1);
     if (p.spark) {                                     // iskra: krótka smuga wzdłuż prędkości
@@ -121,29 +120,6 @@ export function drawCrown(x, y, tier, time, k = 1, tiltA = 0) {
     c.globalAlpha = 1;
   }
   c.restore();
-}
-
-/** Fale uderzeniowe pod stopami (spłaszczone pierścienie rozchodzące się po piętrze). */
-function drawWaves(g) {
-  const c = ctx;
-  for (const w of g.waves) {
-    const k = w.t / w.dur, e = 1 - (1 - k) * (1 - k) * (1 - k);
-    c.save();
-    for (const [lag, width, col] of [[0, w.big ? 7 : 5, w.color], [0.18, 2.5, w.hi]]) {
-      const kk = clamp((k - lag) / (1 - lag), 0, 1), ee = 1 - (1 - kk) * (1 - kk) * (1 - kk);
-      if (kk <= 0) continue;
-      c.globalAlpha = (1 - kk) * 0.95;
-      c.strokeStyle = col; c.lineWidth = width * (1 - kk * 0.7);
-      c.beginPath(); c.ellipse(w.x, w.y + 2, w.r * ee, w.r * ee * 0.26, 0, 0, 7); c.stroke();
-    }
-    if (w.big && k < 0.35) {                                         // błysk w miejscu lądowania
-      c.globalAlpha = (1 - k / 0.35) * 0.7;
-      const fl = c.createRadialGradient(w.x, w.y - 10, 2, w.x, w.y - 10, 60 * e + 20);
-      fl.addColorStop(0, '#ffffff'); fl.addColorStop(0.4, w.hi); fl.addColorStop(1, `${w.hi}00`);
-      c.fillStyle = fl; c.fillRect(w.x - 90, w.y - 100, 180, 140);
-    }
-    c.restore();
-  }
 }
 
 // ── tło ──
