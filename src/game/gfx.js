@@ -1,5 +1,6 @@
 // Płótno, tekstury, mapy (style graficzne) i pomocnicy rysowania.
 import { H, W } from '../sim';
+import { access, fontSize } from './access.js';
 import { hash, reduceMotion } from './util.js';
 
 export const stage = document.getElementById('stage');
@@ -138,7 +139,13 @@ export const STYLES = [
 export let style = STYLES[0], ui = style.ui, FONT = BASE_FONT;
 export function applyStyle(idx) {
   style = STYLES[idx]; ui = style.ui; FONT = style.font || BASE_FONT;
-  canvas.style.filter = style.filter || '';
+  setMapFilter(true);
+}
+let shownFilter = null;
+/** Filtr koloru mapy na płótnie (Stare kino, Retro LCD); bez niego, gdy efekty map są wyłączone albo on = false. */
+export function setMapFilter(on) {
+  const f = on && access.fx ? style.filter || '' : '';
+  if (f !== shownFilter) { canvas.style.filter = f; shownFilter = f; }
 }
 
 function filmPost(g) {
@@ -149,7 +156,9 @@ function filmPost(g) {
   c.restore();
   if (!reduceMotion) {
     c.fillStyle = `rgba(255,255,255,${0.015 + hash(f, 3) * 0.05})`; c.fillRect(0, 0, W, H);
-    if (hash(f, 4) > 0.95) { c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(0, 0, W, H); }
+    // przyciemnienie taśmy: najwyżej raz na sekundę (bezpieczny limit migania to 3 błyski na sekundę)
+    const sec = Math.floor(g.t);
+    if (f % 16 === Math.floor(hash(sec, 5) * 16) && hash(sec, 4) > 0.4) { c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(0, 0, W, H); }
   }
   c.strokeStyle = 'rgba(255,255,255,.4)'; c.lineWidth = 1;
   for (let i = 0; i < 2; i++) {                        // pionowe rysy
@@ -184,8 +193,9 @@ function sketchPost() {
 }
 
 // ───────────────────────── rysowanie – pomocnicze ─────────────────────────
+/** Napis; rozmiar rośnie albo maleje z ustawieniem OPCJE → DOSTĘPNOŚĆ → Rozmiar tekstu (access.js). */
 export function text(str, x, y, { size = 16, color = ui.text, align = 'center', stroke = ui.stroke, sw = 4, weight = 800, maxW } = {}) {
-  ctx.font = `${weight} ${size}px ${FONT}`;
+  ctx.font = `${weight} ${fontSize(size)}px ${FONT}`;
   ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
   if (sw > 0) { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.strokeText(str, x, y, maxW); }
   ctx.fillStyle = color; ctx.fillText(str, x, y, maxW);

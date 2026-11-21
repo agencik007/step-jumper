@@ -6,6 +6,7 @@ import {
 } from '../sim';
 import { online } from '../net';
 import { sfx } from './audio.js';
+import { access, fontSize, loadAccess } from './access.js';
 import { CHARS } from './characters.js';
 import { FONT, MEDALS, NEON, PENCILS, STYLES, applyStyle, ctx, cycle, style, themeOf } from './gfx.js';
 import { KIND_NAMES, gpad } from './gamepad.js';
@@ -20,7 +21,7 @@ import { buildNews, buildPages, selectable } from './options.js';
 import { loadPads, mirrorPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
 import { reloadForUpdate, update } from './update.js';
-import { clamp, loadJSON, mod, rand, saveJSON } from './util.js';
+import { clamp, loadJSON, mod, rand, reduceMotion, saveJSON } from './util.js';
 
 const STORE = 'stepjumper.best.v1', PREFS = 'stepjumper.prefs.v1', WEEK = 'stepjumper.week.v1';
 
@@ -51,6 +52,7 @@ export class Game {
     opts.padDead = clamp(Math.round(Number(prefs.padDead)) || 0, 0, DEAD_STEPS);
     loadBinds(prefs.keys, prefs.padKeys, prefs.keyNames);
     loadPads(prefs.pads);
+    loadAccess(prefs.access);
     setControl(prefs.control ?? (prefs.tilt ? 'tilt' : 'buttons'));   // starsze zapisy znały tylko „przechył tak/nie”
     sfx.muted = !prefs.sound;
     sfx.musicOn = prefs.music !== false;
@@ -90,7 +92,7 @@ export class Game {
     saveJSON(PREFS, {
       char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, tiltZero: tilt.zero, sound: !sfx.muted, music: sfx.musicOn,
       vibrate: haptics.level, lefty: this.lefty, lang: lang(), jumpMode: opts.jump, stickDead: opts.stickDead, padDead: opts.padDead,
-      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names,
+      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access },
     });
   }
   /** Układ przycisków ekranowych: leworęczny = skok pod lewym kciukiem, ◀ ▶ pod prawym. Własny układ odbija się wtedy w poziomie. */
@@ -318,7 +320,7 @@ export class Game {
   openPage(page) { sfx.pick(); this.showPage(page); }
   /** NOWOŚCI: lista zmian w każdej wersji (changelog.js) jako strona opcji tylko do przewijania. */
   openNews() {
-    const font = `${NOTE_FONT.weight} ${NOTE_FONT.size}px ${FONT}`;
+    const font = `${NOTE_FONT.weight} ${fontSize(NOTE_FONT.size)}px ${FONT}`;   // łamanie linijek przy obecnym rozmiarze tekstu
     this.pages.news = buildNews(this, (s) => { ctx.font = font; return ctx.measureText(s).width; });
     sfx.pick();
     this.state = 'settings';
@@ -366,6 +368,7 @@ export class Game {
     if (st.capture) { this.cancelCapture(); return; }
     if (st.page === 'keys' || st.page === 'pad') { sfx.pick(); this.showPage('controls', st.page); return; }
     if (st.page === 'controls' && st.from !== 'ctrl') { sfx.pick(); this.showPage('main', 'controls'); return; }
+    if (st.page === 'access') { sfx.pick(); this.showPage('main', 'access'); return; }
     this.toTitle();
   }
   pickControl(mode) {
@@ -721,7 +724,7 @@ export class Game {
         const col = ['#ffe066', '#ffb52e', '#ff5a3c'][Math.floor(Math.random() * 3)];
         this.puff(h.x, h.y + 4, 1, { color: col, sx: 30, sy: 20, up: -260, life: 0.35, size: 5, g: 0 });
       }
-    } else if (h.onFloor < 0 && h.spin) {
+    } else if (h.onFloor < 0 && h.spin && !reduceMotion) {   // gwiazdki za obracającym się bohaterem – bez nich przy ograniczeniu ruchu
       fx.angle += dt * 15;
       this.trailT -= dt;
       if (this.trailT <= 0) {

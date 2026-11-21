@@ -10,6 +10,7 @@
 //   note   – punkt listy zmian (strona NOWOŚCI): lines – tekst już połamany na linijki,
 //   back   – „Wróć” pod listą.
 // off() → klucz tekstu, gdy wiersz nie dotyczy obecnego trybu (jest przygaszony, ale da się go ustawić na zapas).
+import { ACCESS_DEFAULT, MOTION_MODES, TEXT_SIZES, access, applyAccess, systemReducesMotion } from './access.js';
 import { sfx } from './audio.js';
 import { HAPTIC_LEVELS, haptics } from './haptics.js';
 import { LANG_NAMES, lang, t } from './i18n.js';
@@ -39,6 +40,7 @@ export function buildPages(g) {
     { k: 'lang', type: 'row', arrows: true, label: () => (lang() === 'en' ? t('set.lang') : `${t('set.lang')} / Language`), value: () => LANG_NAMES[lang()],
       act: () => g.cycleLang(1), side: (d) => g.cycleLang(d) },
     { k: 'controls', type: 'row', gold: true, label: () => t('set.controls'), value: () => `${t(`ctrl.${ctrl.mode}`)}  ›`, act: () => g.openPage('controls') },
+    { k: 'access', type: 'row', gold: true, label: () => t('set.access'), value: () => '›', act: () => g.openPage('access') },
     { k: 'hand', type: 'row', arrows: true, label: () => t('set.hand'), value: () => t(g.lefty ? 'set.handLeft' : 'set.handRight'),
       act: () => { g.setLefty(!g.lefty, true); save(); } },
     { k: 'sound', type: 'row', label: () => t('set.sound'), value: () => onOff(!sfx.muted), act: () => { sfx.muted = !sfx.muted; save(); } },
@@ -111,7 +113,25 @@ export function buildPages(g) {
     back,
   ];
 
-  const pages = { main, controls, keys: bindPage('key'), pad: bindPage('pad') };
+  // dostępność: każda zmiana działa od razu (applyAccess) i zapisuje się w prefs; tip – objaśnienie pod listą
+  const setAcc = (k, v) => { access[k] = v; applyAccess(); save(); };
+  const accRow = (k, extra) => ({ k, type: 'row', label: () => t(`acc.${k}`), tip: `acc.${k}.tip`, ...extra });
+  const toggle = (k) => accRow(k, { value: () => onOff(access[k]), act: () => setAcc(k, !access[k]) });
+  const accessPage = [
+    accRow('text', { arrows: true, value: () => t(`acc.text.${TEXT_SIZES[access.text]}`),
+      act: () => setAcc('text', mod(access.text + 1, TEXT_SIZES.length)), side: (d) => setAcc('text', clamp(access.text + d, 0, TEXT_SIZES.length - 1)) }),
+    toggle('contrast'),
+    toggle('fx'),
+    accRow('motion', { arrows: true,
+      value: () => (access.motion === 'auto' ? t('acc.motion.auto', { state: onOff(systemReducesMotion()) }) : onOff(access.motion === 'on')),
+      act: () => setAcc('motion', cycleIn(MOTION_MODES, access.motion, 1)), side: (d) => setAcc('motion', cycleIn(MOTION_MODES, access.motion, d)) }),
+    toggle('assist'),
+    { k: 'accReset', type: 'row', warn: true, ck: 'acc', label: () => t(g.confirming('acc') ? 'acc.resetConfirm' : 'acc.reset'),
+      act: confirm('acc', () => { Object.assign(access, ACCESS_DEFAULT); applyAccess(); g.settings.note = 'acc.resetDone'; save(); }) },
+    back,
+  ];
+
+  const pages = { main, controls, access: accessPage, keys: bindPage('key'), pad: bindPage('pad') };
   for (const items of Object.values(pages)) items.contentH = listLayout(items);
   return pages;
 }

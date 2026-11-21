@@ -1,4 +1,6 @@
 // Układ ekranów – wspólny dla rysowania i obsługi dotyku.
+import { textK } from './access.js';
+
 export const slotX = (i) => 168 + i * 76;
 export const UIBOX = {
   chars: { y: 124, h: 74 }, maps: { y: 262, h: 40 }, play: { x: 200, y: 346, w: 240, h: 38 },
@@ -30,15 +32,17 @@ export const PERIODS = ['day', 'week', 'lastweek', 'all'];
 export const LIST = { x: 110, y: 50, w: 420, h: 330 };
 export const LIST_BACK = { x: 240, y: 388, w: 160, h: 28 };
 export const ROW_H = { head: 22, info: 24, mode: 42, slider: 48, row: 30, bind: 30 };
-export const NOTE_LINE = 17;
-export const NOTE_FONT = { size: 13, weight: 600 };   // czcionka punktów listy zmian (łamanie linijek i rysowanie)          // wysokość linijki punktu na liście zmian (wiersz 'note' ma tyle linijek, ile lines)
+export const NOTE_LINE = 17;                          // wysokość linijki punktu na liście zmian (przy średnim tekście)
+export const NOTE_FONT = { size: 13, weight: 600 };   // czcionka punktów listy zmian (łamanie linijek i rysowanie)
+/** Linijka punktu listy zmian przy obecnym rozmiarze tekstu (wiersz 'note' ma tyle linijek, ile lines). */
+export const noteLine = () => Math.round(NOTE_LINE * textK());
 const ROW_GAP = 4;
 /** Ustawia y (względem początku listy) i h każdego wiersza; zwraca wysokość całej listy. */
 export function listLayout(items) {
   let y = 0;
   for (const it of items) {
     if (it.type === 'back') continue;
-    it.y = y; it.h = it.type === 'note' ? it.lines.length * NOTE_LINE + 2 : ROW_H[it.type]; y += it.h + ROW_GAP;
+    it.y = y; it.h = it.type === 'note' ? it.lines.length * noteLine() + 2 : ROW_H[it.type]; y += it.h + ROW_GAP;
   }
   return Math.max(0, y - ROW_GAP);
 }

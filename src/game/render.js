@@ -1,23 +1,35 @@
 // Rysowanie: świat, HUD i ekrany. Funkcje tylko czytają stan gry (g) – niczego w nim nie zmieniają.
 import {
-  BLOCK, COMBO_TIME, FIELD, GAP, H, HURRY_EVERY, ITEM_LIFT, ITEM_R, LEFT, MAX_HURRIES, NARROW_BY, PLAT_H, RIGHT, SLOW_TIME, W, WALL, floorAt, narrowLevel,
+  BLOCK, COMBO_TIME, FIELD, FOOT, GAP, H, HURRY_EVERY, ITEM_LIFT, ITEM_R, LEFT, MAX_HURRIES, NARROW_BY, PLAT_H, RIGHT, SLOW_TIME, W, WALL, floorAt, narrowLevel,
 } from '../sim';
+import { access, fontSize } from './access.js';
 import { sfx } from './audio.js';
 import { CHARS, drawHero } from './characters.js';
 import {
   FONT, MEDALS, NEON, PEN, PENCILS, STYLES, brickPattern, burst, canvas, ctx, cycle, ditherPattern, hatchPattern, lowCanvas, lowCtx, mainCtx,
-  rr, setCtx, stonePattern, style, text, themeOf, ui, wobblyRect,
+  rr, setCtx, setMapFilter, stonePattern, style, text, themeOf, ui, wobblyRect,
 } from './gfx.js';
 import { BTN, glyphOf } from './gamepad.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
-import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, NOTE_LINE, PERIODS, SLIDER_STEPS, UIBOX, bindCell, rowBox, sliderBar, slotX } from './layout.js';
+import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, noteLine, rowBox, sliderBar, slotX } from './layout.js';
 import { VERSION, update } from './update.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
   const mw = canvas.width, mh = canvas.height;
-  if (style.pixel) {                                  // świat w niskiej rozdzielczości, powiększany bez wygładzania
+  // NOWOŚCI: sam tekst na jednolitym tle – bez mapy, filtrów i efektów pod spodem
+  const plain = g.state === 'settings' && g.settings.page === 'news';
+  setMapFilter(!plain);
+  if (plain) {
+    setCtx(mainCtx);
+    ctx.setTransform(mw / W, 0, 0, mh / H, 0, 0);
+    ctx.fillStyle = `rgb(${ui.dim})`; ctx.fillRect(0, 0, W, H);
+    drawSettings(g);
+    drawMessages(g);
+    return;
+  }
+  if (style.pixel && access.fx) {                                  // świat w niskiej rozdzielczości, powiększany bez wygładzania
     const lw = W / style.pixel, lh = H / style.pixel;
     if (lowCanvas.width !== lw) { lowCanvas.width = lw; lowCanvas.height = lh; }
     setCtx(lowCtx);
@@ -47,7 +59,7 @@ export function render(g) {
   else if (g.state === 'replay') drawReplay(g);
   else if (g.state === 'recap') drawRecap(g);
   drawMessages(g);
-  style.post?.(g);
+  if (access.fx) style.post?.(g);                     // ziarno, rysy, linie – wyłączane w OPCJE → DOSTĘPNOŚĆ
 }
 
 function drawWorld(g) {
@@ -79,6 +91,7 @@ function drawWorld(g) {
     glow.addColorStop(0, 'rgba(255,255,255,.22)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
     c.fillStyle = glow; c.fillRect(h.x - 46, h.y - 72, 92, 92);
   }
+  if (access.assist) drawAssist(g, h);
   drawHero(h, g.fx, g.t, g.heroIdx);
   if (g.tier && ['play', 'pause', 'over', 'replay'].includes(g.state)) drawCrown(h.x, h.y - 70 + (reduceMotion ? 0 : Math.sin(g.t * 3) * 2), g.tier, g.t, 1, -h.vx / 4000);
   c.restore();
@@ -88,6 +101,31 @@ function drawWorld(g) {
   danger.addColorStop(0, `rgba(${ui.dim},0)`); danger.addColorStop(1, `rgba(${ui.dim},.78)`);
   c.fillStyle = danger; c.fillRect(LEFT, H - 70, FIELD, 70);
   c.restore();
+}
+
+/**
+ * Asysta wzroku: poświata wokół bohatera i – gdy spada – znacznik na piętrze pod nim (rzut w pionie,
+ * czyli tam, gdzie wyląduje, jeśli nie skręci). Liczone z układu pięter, bez wpływu na symulację.
+ */
+function drawAssist(g, h) {
+  const c = ctx, paper = style.world === 'sketch';
+  const glow = c.createRadialGradient(h.x, h.y - 28, 6, h.x, h.y - 28, 50);
+  glow.addColorStop(0, paper ? 'rgba(31,42,68,.28)' : 'rgba(255,255,255,.34)'); glow.addColorStop(1, paper ? 'rgba(31,42,68,0)' : 'rgba(255,255,255,0)');
+  c.fillStyle = glow; c.fillRect(h.x - 52, h.y - 80, 104, 104);
+  if (h.onFloor >= 0 || h.vy < 0 || g.sim.rising) return;
+  const s = g.sim;
+  for (let n = Math.floor(-h.y / GAP + 1e-6); n >= Math.max(s.lowN, 0); n--) {
+    const p = floorAt(s.seed, n);
+    if (h.x + FOOT < p.x || h.x - FOOT > p.x + p.w) continue;
+    const y = p.y - 3;
+    c.save();
+    c.fillStyle = paper ? 'rgba(194,65,12,.85)' : 'rgba(255,224,102,.95)';
+    c.strokeStyle = paper ? PEN : '#12173a'; c.lineWidth = 2;
+    c.beginPath(); c.ellipse(h.x, y, 18, 5, 0, 0, 7); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(h.x, y - 7); c.lineTo(h.x - 8, y - 18); c.lineTo(h.x + 8, y - 18); c.closePath(); c.fill(); c.stroke();   // strzałka w dół
+    c.restore();
+    return;
+  }
 }
 
 // ── nagrody najlepszej trójki ──
@@ -205,6 +243,16 @@ function drawWindow(x, y, k) {
 
 // ── platformy ──
 function drawPlatform(g, p) {
+  drawPlatformBody(g, p);
+  if (access.contrast) {                                 // wysoki kontrast: gruba ciemna i jasna obwódka piętra
+    const c = ctx, paper = style.world === 'sketch';
+    c.lineJoin = 'round';
+    rr(p.x - 3, p.y - 4, p.w + 6, PLAT_H + 5, 6);
+    c.strokeStyle = paper ? '#fffdf6' : '#000000'; c.lineWidth = 5; c.stroke();
+    c.strokeStyle = paper ? '#000000' : '#ffffff'; c.lineWidth = 2.2; c.stroke();
+  }
+}
+function drawPlatformBody(g, p) {
   const c = ctx, y = p.y, cx = p.x + p.w / 2;
   const signed = p.n > 0 && p.n % 10 === 0;              // tabliczka z numerem co 10 pięter
 
@@ -423,10 +471,10 @@ function drawHud(g) {
 function drawMessages(g) {
   const c = ctx;
   g.msgs.forEach((m, i) => {
-    const a = clamp((m.dur - m.t) / 0.3, 0, 1), s = easeOutBack(clamp(m.t / 0.25, 0, 1));
+    const a = clamp((m.dur - m.t) / 0.3, 0, 1), s = reduceMotion ? 1 : easeOutBack(clamp(m.t / 0.25, 0, 1));
     c.save();
-    c.globalAlpha = a;
-    c.translate(W / 2, 128 + i * 62 - m.t * 10); c.rotate(-0.05); c.scale(s, s);
+    c.globalAlpha = reduceMotion ? a * clamp(m.t / 0.15, 0, 1) : a;   // bez ruchu: napis tylko się pojawia i znika
+    c.translate(W / 2, 128 + i * 62 - (reduceMotion ? 0 : m.t * 10)); c.rotate(-0.05); c.scale(s, s);
     const size = Math.min(40, 400 / Math.max(6, m.title.length) * 1.25);
     text(m.title, 0, 0, { size, color: ui[m.color] || ui.gold, sw: 7, maxW: 420 });
     if (m.sub) text(m.sub, 0, 30, { size: 14, sw: 4 });
@@ -434,10 +482,11 @@ function drawMessages(g) {
   });
 }
 
-function dim(a) { ctx.fillStyle = `rgba(${ui.dim},${a})`; ctx.fillRect(0, 0, W, H); }
+/** Przyciemnienie pod menu; przy wysokim kontraście prawie nieprzezroczyste. */
+function dim(a) { ctx.fillStyle = `rgba(${ui.dim},${access.contrast ? Math.max(a, 0.93) : a})`; ctx.fillRect(0, 0, W, H); }
 function panel(x, y, w, h) {
   ctx.fillStyle = ui.panel; rr(x, y, w, h, 14); ctx.fill();
-  ctx.strokeStyle = ui.line; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = access.contrast ? ui.text : ui.line; ctx.lineWidth = access.contrast ? 2 : 1.5; ctx.stroke();
 }
 
 // miniatura mapy na ekranie wyboru
@@ -544,7 +593,7 @@ function padGlyph(i, x, y, s = 16, draw = true) {
 /** Wiersz podpowiedzi dla pada: [[przycisk albo lista przycisków, klucz tekstu], …], wyśrodkowany na y. */
 function padHints(items, y, { size = 11, color = ui.hint } = {}) {
   const c = ctx, s = 16, gap = 5, sep = 16;
-  c.font = `700 ${size}px ${FONT}`;
+  c.font = `700 ${fontSize(size)}px ${FONT}`;
   const parts = items.map(([b, k]) => {
     const bs = Array.isArray(b) ? b : [b], label = t(k);
     return { bs, label, gw: bs.reduce((a, x) => a + padGlyph(x, 0, 0, s, false) + 3, -3), tw: c.measureText(label).width };
@@ -580,7 +629,8 @@ function drawTitle(g) {
   button(UIBOX.news, hm === 'keys' ? `${t('title.news')} · N` : t('title.news'), { size: 11, glyph: hm === 'pad' ? BTN.LB : null });
   text(`v${VERSION}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
   if (update.available) drawUpdateButton(time, hm);
-  c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(1 + Math.sin(time * 2) * 0.02, 1 + Math.sin(time * 2) * 0.02);
+  const wob = reduceMotion ? 1 : 1 + Math.sin(time * 2) * 0.02;
+  c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(wob, wob);
   text('STEP JUMPER', 0, 4, { size: 54, maxW: 430, color: ui.frame, sw: 14, stroke: ui.frame });
   const grad = c.createLinearGradient(0, -30, 0, 30);
   grad.addColorStop(0, ui.title[0]); grad.addColorStop(0.5, ui.title[1]); grad.addColorStop(1, ui.title[2]);
@@ -596,7 +646,7 @@ function drawTitle(g) {
     rr(x - 32, UIBOX.chars.y, 64, UIBOX.chars.h, 10);
     c.fillStyle = on ? ui.sel : 'rgba(128,128,160,.10)'; c.fill();
     if (on) { c.strokeStyle = ui.gold; c.lineWidth = 2.5; c.stroke(); }
-    const hop = on ? Math.abs(Math.sin(time * 4)) * 4 : 0;
+    const hop = on && !reduceMotion ? Math.abs(Math.sin(time * 4)) * 4 : 0;
     drawHero({ x: x - 2, y: UIBOX.chars.y + 68 - hop, vx: on ? 260 : 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: on ? time * 22 : 0 }, time + i * 0.7, i);
     if (on && g.crown) drawCrown(x - 1, UIBOX.chars.y + 9 - hop * 0.6, g.crown, time, 0.62);   // nagroda: korona nad wybraną postacią
   });
@@ -616,7 +666,7 @@ function drawTitle(g) {
   text(`${t(`style.${style.id}.name`)} – ${t(`style.${style.id}.desc`)}`, W / 2, 319, { size: 13, sw: 0, maxW: 370 });
 
   // start
-  const b = UIBOX.play, pulse = 1 + Math.sin(time * 5) * 0.025;
+  const b = UIBOX.play, pulse = reduceMotion ? 1 : 1 + Math.sin(time * 5) * 0.025;
   c.save(); c.translate(b.x + b.w / 2, b.y + b.h / 2); c.scale(pulse, pulse);
   c.fillStyle = ui.btn; rr(-b.w / 2, -b.h / 2, b.w, b.h, 12); c.fill();
   c.strokeStyle = ui.frame; c.lineWidth = 2.5; c.stroke();
@@ -648,7 +698,7 @@ function drawTitle(g) {
 
 /** PRZEŁADUJ: pulsujący złoty przycisk pod RANKINGIEM, a pod nim wersja czekająca na serwerze. */
 function drawUpdateButton(time, hm) {
-  const c = ctx, b = UIBOX.update, glow = 0.5 + 0.5 * Math.sin(time * 4);
+  const c = ctx, b = UIBOX.update, glow = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(time * 4);
   c.save();
   c.shadowColor = ui.gold; c.shadowBlur = 6 + glow * 10;
   c.fillStyle = ui.btn; rr(b.x, b.y, b.w, b.h, 9); c.fill();
@@ -693,7 +743,7 @@ function drawOver(g) {
   if (net) text(net[0], W / 2, 328, { size: 13, color: net[1], sw: 3, maxW: 440 });
   if (g.overT > 0.6) {
     if (g.hint === 'pad') padHints([[BTN.A, 'hint.again'], [BTN.Y, 'hint.menu']], 354, { size: 14, color: ui.text });
-    else if (Math.sin(g.t * 5) > -0.3) text(t('over.again'), W / 2, 352, { size: 18, sw: 5, maxW: 430 });
+    else if (reduceMotion || Math.sin(g.t * 5) > -0.3) text(t('over.again'), W / 2, 352, { size: 18, sw: 5, maxW: 430 });
     const b = UIBOX.menu;
     c.fillStyle = ui.panel; rr(b.x, b.y, b.w, b.h, 10); c.fill(); c.strokeStyle = ui.line; c.lineWidth = 1.5; c.stroke();
     text(t('over.menu'), W / 2, b.y + b.h / 2 + 1, { size: 12, color: ui.hint, sw: 0, maxW: b.w - 20 });
@@ -743,7 +793,8 @@ function drawBoard(g) {
         bg.addColorStop(0, `${medal.mid}66`); bg.addColorStop(0.6, `${medal.mid}22`); bg.addColorStop(1, `${medal.mid}08`);
         c.fillStyle = bg; rr(box.x, box.y, box.w, box.h, 6); c.fill();
         c.strokeStyle = `${medal.mid}aa`; c.lineWidth = mine ? 2 : 1; c.stroke();
-        drawCrown(L.x + 27, y + 5, e.rank, g.t + e.rank * 0.4, 0.72);
+        drawCrown(L.x + 22, y + 5, e.rank, g.t + e.rank * 0.4, 0.62);
+        text(String(e.rank), L.x + 44, y, { size: 13, color: ui.text, sw: 3, align: 'right' });   // numer obok korony – nie tylko kolor
       } else if (mine) { c.fillStyle = ui.sel; rr(box.x, box.y, box.w, box.h, 6); c.fill(); }
       if (b.sel === i && g.hint !== 'touch') { c.strokeStyle = ui.gold; c.lineWidth = 2.5; rr(box.x - 1, box.y - 1, box.w + 2, box.h + 2, 7); c.stroke(); }
       const row = { size: 13, sw: 0 };
@@ -776,8 +827,8 @@ function drawBoard(g) {
   if (g.hint === 'pad') padHints([['dpad', 'hint.pick'], [BTN.A, b.sel >= 0 ? 'hint.watch' : 'hint.back'], [BTN.B, 'hint.back']], 468, { size: 10 });
 }
 
-const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news' };
-const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', keys: 'bind.keysHint', pad: 'bind.keysHint', news: 'news.keys' };
+const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news' };
+const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', access: 'set.keys', keys: 'bind.keysHint', pad: 'bind.keysHint', news: 'news.keys' };
 
 /** Opcje: przewijana lista wierszy (options.js), „Wróć” pod nią, na dole objaśnienie i podpowiedzi. */
 function drawSettings(g) {
@@ -804,9 +855,9 @@ function drawSettings(g) {
   const back = items.find((it) => it.type === 'back');
   button(LIST_BACK, back.label(), { on: sel === back, size: 12, glyph: hm === 'pad' ? BTN.B : null });
 
-  const confirming = g.confirming('delete') || g.confirming('reset') || g.confirming('bind.key') || g.confirming('bind.pad');
+  const confirming = g.confirming('delete') || g.confirming('reset') || g.confirming('acc') || g.confirming('bind.key') || g.confirming('bind.pad');
   const note = st.note ? t(st.note) : g.confirming('delete') ? t('set.deleteWarn') : g.confirming('reset') ? t('ctrl.resetWarn')
-    : cur?.off?.() ? t(cur.off()) : '';
+    : g.confirming('acc') ? t('acc.resetWarn') : cur?.off?.() ? t(cur.off()) : cur?.tip ? t(cur.tip) : '';
   if (note) text(note, W / 2, 432, { size: 12, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 470 });
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 470 };
   if (st.page === 'main') text(t('set.privacy'), W / 2, 450, hint);
@@ -828,8 +879,9 @@ function drawItem(g, it, r, isSel) {
     return;
   }
   if (it.type === 'note') {                              // punkt listy zmian: kropka i połamane linijki
-    text('•', r.x + 14, r.y + NOTE_LINE / 2 + 1, { size: 14, color: ui.gold, sw: 0 });
-    it.lines.forEach((line, i) => text(line, r.x + 26, r.y + NOTE_LINE * (i + 0.5) + 1,
+    const lh = noteLine();
+    text('•', r.x + 14, r.y + lh / 2 + 1, { size: 14, color: ui.gold, sw: 0 });
+    it.lines.forEach((line, i) => text(line, r.x + 26, r.y + lh * (i + 0.5) + 1,
       { size: NOTE_FONT.size, weight: NOTE_FONT.weight, color: ui.text, sw: 0, align: 'left' }));
     return;
   }
@@ -839,6 +891,7 @@ function drawItem(g, it, r, isSel) {
   const off = it.off?.(), warnOn = it.ck && g.confirming(it.ck);
   panel(r.x, r.y, r.w, r.h);
   if (isSel || warnOn) { c.strokeStyle = it.warn ? ui.warn : ui.gold; c.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); c.stroke(); }
+  if (isSel) selMark(r);
   c.save();
   if (off) c.globalAlpha = 0.45;
   if (it.type === 'row') {
@@ -881,7 +934,7 @@ function drawItem(g, it, r, isSel) {
       c.fillStyle = waiting ? ui.sel : 'rgba(0,0,0,.16)'; rr(b.x, b.y, b.w, b.h, 7); c.fill();
       c.strokeStyle = picked ? ui.gold : ui.line; c.lineWidth = picked ? 2 : 1; c.stroke();
       const mx = b.x + b.w / 2, my = b.y + b.h / 2;
-      if (waiting) text(Math.sin(g.t * 8) > 0 ? '…' : '', mx, my, { size: 14, color: ui.gold, sw: 0 });
+      if (waiting) text(reduceMotion || Math.sin(g.t * 8) > 0 ? '…' : '', mx, my, { size: 14, color: ui.gold, sw: 0 });
       else if (v == null) text('—', mx, my + 0.5, { size: 12, color: ui.label, sw: 0 });
       else if (it.kind === 'key') text(keyLabel(v), mx, my + 0.5, { size: 12, color: ui.text, sw: 0, maxW: b.w - 8 });
       else { const w = padGlyph(v, 0, 0, 17, false); padGlyph(v, mx - w / 2, my, 17); }
@@ -890,11 +943,19 @@ function drawItem(g, it, r, isSel) {
   c.restore();
 }
 
+/** Znacznik wybranego wiersza (trójkąt przy lewej krawędzi) – zaznaczenie widać nie tylko po kolorze ramki. */
+function selMark(r) {
+  const c = ctx, y = r.y + r.h / 2;
+  c.beginPath(); c.moveTo(r.x - 5, y - 6); c.lineTo(r.x + 3, y); c.lineTo(r.x - 5, y + 6); c.closePath();
+  c.fillStyle = ui.gold; c.fill(); c.strokeStyle = ui.frame; c.lineWidth = 1.5; c.stroke();
+}
+
 /** Tryb sterowania: ikonka, nazwa, opis i przełącznik radiowy. */
 function drawModeRow(it, r, isSel) {
   const c = ctx, m = it.k, on = m === ctrl.mode;
   c.fillStyle = on ? ui.sel : ui.panel; rr(r.x, r.y, r.w, r.h, 12); c.fill();
-  c.strokeStyle = on || isSel ? ui.gold : ui.line; c.lineWidth = on || isSel ? 2.5 : 1.5; c.stroke();
+  c.strokeStyle = on || isSel ? ui.gold : access.contrast ? ui.text : ui.line; c.lineWidth = on || isSel ? 2.5 : access.contrast ? 2 : 1.5; c.stroke();
+  if (isSel) selMark(r);
   ctrlIcon(m, r.x + 24, r.y + r.h / 2, on);
   text(it.label(), r.x + 48, r.y + 14, { size: 14, color: on ? ui.gold : ui.text, sw: 0, align: 'left', weight: 800, maxW: r.w - 90 });
   text(it.desc(), r.x + 48, r.y + 30, { size: 10, color: ui.hint, sw: 0, align: 'left', weight: 700, maxW: r.w - 90 });
