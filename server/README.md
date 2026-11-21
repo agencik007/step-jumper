@@ -43,13 +43,20 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | `POST /v1/runs` `{simVersion}` | bilet: ziarno wieży; maks. 180/h, nadmiar ponad 5 niewykorzystanych przepada | `201 {runId, seed, simVersion, chunkTicks}` · `409 update_required` · `403 banned` · `429 too_many_runs` |
 | `PUT /v1/runs/:id/chunks/:seq` (binarnie, `encodeInputs`) | porcja zapisu: dokładnie `chunkTicks` kroków, krótsza tylko ostatnia (kończąca grę) | `{nextSeq, ticks, over}` · powtórka: `{nextSeq, duplicate: true}` · `409 seq` · `413` · `422 rejected` |
 | `POST /v1/runs/:id/finish` `{score, char, style?, control?, appVersion?}` | zatwierdzenie | `{status: "verified", score, floor, combo, ticks, improved, ranks}` · `422 rejected` |
-| `GET /v1/leaderboards/:okres?limit=50` | `all` / `week` / `day`, cache 30 s | `{period, entries: [{rank, nick, tag, score, floor, combo, char, country}]}` (bez nicku gra pokazuje „Gracz {tag}”) |
+| `GET /v1/leaderboards/:okres?limit=50` | `all` / `week` / `day` / `lastweek` (zamknięty poprzedni tydzień), cache 30 s | `{period, entries: [{rank, nick, tag, score, floor, combo, char, country, replay?}]}` (bez nicku gra pokazuje „Gracz {tag}”; `replay` – identyfikator powtórki, tylko miejsca 1–3) |
 | `GET /v1/leaderboards/:okres/me` | moje miejsce ± 5 sąsiadów | `{period, rank, entries: [... , me]}` |
+| `GET /v1/replays/:id` | powtórka biegu z rankingu, cache 1 dzień | `{runId, seed, simVersion, ticks, score, floor, combo, char, style, nick, tag, finishedAt, chunks: [base64 encodeInputs]}` · `404` |
 
 Powody odrzucenia biegu (`reason`): `corrupt`, `empty_chunk`, `chunk_too_long`, `short_chunk`, `inputs_after_end`,
 `not_over`, `score_mismatch`, `too_fast` (bieg krótszy w czasie rzeczywistym niż liczba kroków / 120), `sim_version`, `too_long`.
 
 Tydzień i dzień liczone są w UTC (tydzień ISO, od poniedziałku). Remis rozstrzyga wcześniejszy wynik.
+
+Najlepsza trójka zamkniętego tygodnia (`lastweek`) dostaje w grze korony na cały następny tydzień – gra sprawdza swoje
+miejsce przez `GET /v1/leaderboards/lastweek/me`.
+
+Powtórki: przyjęte porcje zapisu trafiają do tabeli `run_chunks`. Zostają tylko dla biegów, które są czyimś najlepszym
+wynikiem w którymś okresie (`bests`); zatwierdzenie biegu od razu usuwa porcje biegów gracza, które rekordem nie są.
 
 ## Koszt procesora
 
@@ -62,4 +69,5 @@ porcja 6000 kroków kosztowała 4–15 ms CPU (lokalnie w Node ok. 1 ms – serw
 
 Schemat: `migrations/`. Serwer nie zapisuje adresu IP (służy tylko jako klucz limitu) ani tokenu (tylko jego skrót
 SHA-256). Cron raz na dobę (`src/cleanup.ts`) usuwa bilety starsze niż 7 dni, przerwane wysyłki starsze niż dzień,
-biegi starsze niż 90 dni oraz rankingi tygodniowe i dzienne starsze niż poprzedni okres.
+biegi starsze niż 90 dni (poza biegami, które są czyimś rekordem – potrzebne do powtórek), rankingi tygodniowe i dzienne
+starsze niż poprzedni okres oraz powtórki, które nie są już niczyim rekordem.

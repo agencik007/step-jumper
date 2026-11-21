@@ -32,3 +32,15 @@ export function periodKeys(ms: number): Record<PeriodKind, string> {
 export function isPeriodKind(s: string): s is PeriodKind {
   return s === 'all' || s === 'week' || s === 'day';
 }
+
+/** Rankingi, które da się obejrzeć: okresy, do których trafiają wyniki, oraz zamknięty już poprzedni tydzień. */
+export type BoardKind = PeriodKind | 'lastweek';
+
+export function isBoardKind(s: string): s is BoardKind {
+  return isPeriodKind(s) || s === 'lastweek';
+}
+
+/** Klucz okresu rankingu; 'lastweek' to tydzień ISO sprzed 7 dni. */
+export function boardKey(kind: BoardKind, ms: number): string {
+  return kind === 'lastweek' ? weekKey(ms - 7 * DAY) : periodKey(kind, ms);
+}

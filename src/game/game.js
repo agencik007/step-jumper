@@ -1,13 +1,13 @@
 // Gra: maszyna stanów (tytuł / gra / pauza / koniec / ranking / opcje) i wszystko, co widać i słychać wokół symulacji.
 // Reguły rozgrywki są w src/sim – tutaj tylko podajemy im wejście i reagujemy na zdarzenia.
 import {
-  AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs, narrowLevel, packInput, runReplay, score, stateHash, step,
-  unpackAxis, unpackJump,
+  AXIS_MAX, COMBO_TIME, DEFAULT_TUNE, H, HURRY_EVERY, HW, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs,
+  narrowLevel, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
 } from '../sim';
 import { online } from '../net';
 import { sfx } from './audio.js';
 import { CHARS } from './characters.js';
-import { NEON, PENCILS, STYLES, applyStyle, cycle, style, themeOf } from './gfx.js';
+import { MEDALS, NEON, PENCILS, STYLES, applyStyle, cycle, style, themeOf } from './gfx.js';
 import { haptics } from './haptics.js';
 import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
 import { input, isTouch, tilt, toggleTilt } from './input.js';
@@ -16,7 +16,11 @@ import { nickOpen, openNick } from './nickform.js';
 import { render } from './render.js';
 import { clamp, loadJSON, mod, rand, saveJSON } from './util.js';
 
-const STORE = 'stepjumper.best.v1', PREFS = 'stepjumper.prefs.v1';
+const STORE = 'stepjumper.best.v1', PREFS = 'stepjumper.prefs.v1', WEEK = 'stepjumper.week.v1';
+
+/** Tryb DEV: ?crown=1|2|3 w adresie zakłada koronę bez rankingu – do oglądania efektów nagrody. */
+const DEV_CROWN = import.meta.env.DEV ? clamp(Number(new URLSearchParams(location.search).get('crown')) | 0, 0, 3) || null : null;
+const REPLAY_SPEEDS = [1, 2, 4];
 
 // progi combo (w piętrach) – napisy w strings.js pod kluczami tier.<próg>
 const TIERS = [200, 140, 100, 70, 50, 35, 25, 15, 7, 4];
@@ -46,7 +50,11 @@ export class Game {
     this.online = online;
     this.ticket = null;                  // bilet rankingu trwającego biegu (null = bieg poza rankingiem)
     this.net = null;                     // los wyniku ostatniego biegu: wysyłanie / miejsce w rankingu / kolejka / poza rankingiem
-    this.board = { kind: 'day', data: {}, at: {}, loading: false };
+    this.board = { kind: 'week', data: {}, at: {}, loading: false };
+    this.replay = null;                  // oglądana powtórka z rankingu (stan 'replay') albo jej wczytywanie
+    this.recap = null;                   // wyniki zamkniętego tygodnia (stan 'recap')
+    this.recapPending = false;           // podsumowanie czeka, aż gracz wróci na ekran tytułowy
+    this.tier = null;                    // korona (1–3) bohatera w trwającym biegu albo w powtórce
     this.settings = { sel: 0, confirmT: 0, note: '' };
     this.nickLater = false;              // bez sieci przy wyborze nicku: gramy, a o nick zapytamy przy następnym uruchomieniu
     this.reset();
@@ -64,17 +72,22 @@ export class Game {
   setLefty(on) { this.lefty = on; if (typeof document !== 'undefined') document.body.classList.toggle('lefty', on); }
   cycleLang(d) { setLang(LANGS[mod(LANGS.indexOf(lang()) + d, LANGS.length)]); this.savePrefs(); sfx.pick(); }
 
-  reset(seed = newSeed()) {
-    this.sim = createState(seed, this.tune);
+  reset(seed = newSeed(), tune = this.tune) {
+    this.sim = createState(seed, tune);
     this.rec.reset();
     this.retuned = false;                // suwak ruszony w trakcie biegu – takiego biegu nie da się odtworzyć z zapisu
     this.fx = { angle: 0, squash: 0, runPhase: 0 };   // stan czysto wizualny bohatera
-    this.shake = 0; this.parts = []; this.msgs = [];
-    this.acc = 0; this.trailT = 0; this.jumpLock = true; this.newBest = false; this.overT = 0;
+    this.shake = 0; this.parts = []; this.msgs = []; this.waves = [];
+    this.acc = 0; this.trailT = 0; this.rubT = 0; this.jumpLock = true; this.newBest = false; this.overT = 0;
     this.narrow = 0;                     // najwyższy stopień zwężenia pięter, o którym gracz już wie
   }
 
   get score() { return score(this.sim); }
+
+  /** Moja korona na ten tydzień (miejsce 1–3 w zeszłym tygodniu) albo null. */
+  get crown() { return DEV_CROWN ?? online.crown; }
+  /** Postać na planszy: w powtórce ta, którą grał oglądany gracz. */
+  get heroIdx() { return this.state === 'replay' && this.replay?.data ? this.replay.charIdx : this.charIdx; }
 
   /** Suwaki fizyki lotu (tylko DEV) zmieniły wartość: nowe strojenie działa od razu, także w trwającym biegu. */
   retune(tune) {
@@ -94,10 +107,15 @@ export class Game {
     // wieża z biletu rankingu (ziarno od serwera); bez biletu – losowa wieża i bieg poza rankingiem
     this.ticket = this.officialTune ? online.takeTicket() : null;
     this.reset(this.ticket ? this.ticket.seed : newSeed()); this.state = 'play';
+    this.tier = this.crown;
+    if (this.tier) this.say(t(`crown.${this.tier}`), t('crown.sub', { rank: this.tier }), 'gold', 2);
     sfx.music.reset();
     if (tilt.active) navigator.wakeLock?.request('screen').catch(() => {});   // ekran nie gaśnie w trakcie gry
   }
-  toTitle() { this.reset(); this.state = 'title'; }
+  toTitle() {
+    this.reset(); this.state = 'title';
+    if (this.recapPending) this.openRecap();
+  }
 
   // ── ranking ──
   openBoard() { sfx.pick(); this.state = 'board'; this.loadBoard(); }
@@ -113,6 +131,101 @@ export class Game {
     const [top, me] = await Promise.all([online.leaderboard(kind, 10), online.around(kind)]);
     b.data[kind] = { top, me };
     if (b.kind === kind) b.loading = false;
+  }
+  /** Wiersz rankingu z miejscem 1–3 (dotknięcie, klawisz 1–3): powtórka biegu. */
+  boardReplay(rank) {
+    const e = this.board.data[this.board.kind]?.top?.entries.find((x) => x.rank === rank);
+    if (e?.replay) this.openReplay(e, 'board');
+  }
+
+  // ── podsumowanie zamkniętego tygodnia ──
+  /**
+   * Przy starcie gry: wyniki zeszłego tygodnia (przy okazji odświeża koronę). Raz na tydzień, gdy gracz ma już konto,
+   * pokazuje podsumowanie: podium, moje miejsce i powtórki najlepszej trójki.
+   */
+  async loadLastWeek() {
+    const lw = await online.lastWeek(10);
+    if (!lw) return;
+    this.board.data.lastweek = lw; this.board.at.lastweek = this.t;
+    const seen = loadJSON(WEEK, { seen: null }).seen;
+    if (!online.hasAccount || !lw.top.entries.length || seen === lw.top.period) return;
+    this.recap = lw;
+    if (this.state === 'title' && !nickOpen()) this.openRecap(); else this.recapPending = true;
+  }
+  openRecap() {
+    this.recapPending = false;
+    if (!this.recap) return;
+    saveJSON(WEEK, { seen: this.recap.top.period });
+    this.state = 'recap';
+    sfx.wow(1, true);
+  }
+  closeRecap() { sfx.pick(); this.toTitle(); }
+  /** Z podsumowania do pełnego rankingu zeszłego tygodnia. */
+  recapBoard() { this.board.kind = 'lastweek'; this.openBoard(); }
+  recapReplay(rank) {
+    const e = this.recap?.top.entries.find((x) => x.rank === rank);
+    if (e?.replay) this.openReplay(e, 'recap');
+  }
+
+  // ── powtórki biegów z rankingu ──
+  async openReplay(entry, from) {
+    if (this.replay) return;                               // już się wczytuje
+    sfx.pick();
+    const loading = { loading: true, from, entry };
+    this.replay = loading;
+    const r = await online.replay(entry.replay);
+    if (this.replay !== loading) return;
+    if (!r || r.simVersion !== SIM_VERSION) {
+      this.replay = null;
+      this.say(t(r ? 'replay.old' : 'replay.fail'), t(r ? 'replay.oldSub' : 'replay.failSub'), 'warn', 2.4);
+      return;
+    }
+    const ci = CHARS.findIndex((c) => c.id === r.char), si = STYLES.findIndex((st) => st.id === r.style);
+    this.replay = { data: r, from, rank: entry.rank, name: r.nick ?? t('board.player', { tag: r.tag }), charIdx: Math.max(0, ci), i: 0, playing: true, speed: 0, ended: false };
+    if (si >= 0) applyStyle(si);                           // mapa, na której grał oglądany gracz
+    this.state = 'replay';
+    this.replayRestart(true);
+  }
+  /** Od początku biegu; play = od razu odtwarzaj (inaczej stoi – „stop”). */
+  replayRestart(play) {
+    const r = this.replay;
+    this.reset(r.data.seed, DEFAULT_TUNE);                // serwer liczy każdy bieg z domyślnym strojeniem
+    this.tier = r.rank <= 3 ? r.rank : null;
+    r.i = 0; r.ended = false; r.playing = play;
+    sfx.music.reset();
+  }
+  replayToggle() {
+    const r = this.replay;
+    if (!r?.data) return;
+    sfx.pick();
+    if (r.ended) this.replayRestart(true); else r.playing = !r.playing;
+  }
+  replayStop() { if (this.replay?.data) { sfx.pick(); this.replayRestart(false); } }
+  replaySpeed(d) {
+    const r = this.replay;
+    if (!r?.data) return;
+    r.speed = clamp(r.speed + d, 0, REPLAY_SPEEDS.length - 1); sfx.pick();
+  }
+  get replaySpeedX() { return REPLAY_SPEEDS[this.replay?.speed ?? 0]; }
+  exitReplay() {
+    const r = this.replay;
+    this.replay = null;
+    if (!r) return;
+    sfx.pick();
+    applyStyle(this.styleIdx);
+    this.reset(); this.tier = null;
+    this.state = r.from;
+  }
+  replayTick() {
+    const r = this.replay, ticks = r.data.ticks;
+    if (r.i >= ticks.length || this.sim.over) { this.replayEnd(); return; }
+    this.advance(ticks[r.i++]);
+  }
+  replayEnd() {
+    const r = this.replay;
+    if (r.ended) return;
+    r.ended = true; r.playing = false; this.msgs = [];
+    sfx.over();
   }
   /** Pierwsza gra: formularz nicku, a po zapisaniu od razu bieg. Anuluj = zostajemy na ekranie tytułowym. */
   askNick() {
@@ -168,9 +281,13 @@ export class Game {
       case 'back': this.toTitle(); break;
     }
   }
-  pause() { if (this.state === 'play') this.state = 'pause'; }
-  togglePause() {
+  pause() {
     if (this.state === 'play') this.state = 'pause';
+    else if (this.state === 'replay' && this.replay) this.replay.playing = false;
+  }
+  togglePause() {
+    if (this.state === 'replay') this.replayToggle();
+    else if (this.state === 'play') this.state = 'pause';
     else if (this.state === 'pause') { this.state = 'play'; this.jumpLock = true; }
   }
 
@@ -188,8 +305,29 @@ export class Game {
       else if ((isTouch || tilt.active) && inBox(x, y, UIBOX.ctrl)) toggleTilt();
     } else if (this.state === 'board') {
       for (let i = 0; i < PERIODS.length; i++) if (inBox(x, y, UIBOX.tab(i))) return this.boardTab(i, true);
+      for (let i = 0; i < 3; i++) if (inBox(x, y, UIBOX.boardRow(i))) return this.boardReplay(i + 1);
       if (inBox(x, y, UIBOX.nick)) this.editNick();
       else if (inBox(x, y, UIBOX.back)) { sfx.pick(); this.toTitle(); }
+    } else if (this.state === 'recap') {
+      for (let i = 0; i < 3; i++) {
+        const b = UIBOX.podWatch(i), top = UIBOX.podBase - UIBOX.podH[i] - 80;   // przycisk albo sama postać na podium
+        if (inBox(x, y, b) || inBox(x, y, { x: b.x, y: top, w: b.w, h: b.y - top })) return this.recapReplay(i + 1);
+      }
+      if (inBox(x, y, UIBOX.recapBoard)) this.recapBoard();
+      else if (inBox(x, y, UIBOX.recapNext)) this.closeRecap();
+    } else if (this.state === 'replay') {
+      const r = this.replay;
+      if (!r?.data) return;
+      if (r.ended) {
+        if (inBox(x, y, UIBOX.rAgain)) this.replayToggle();
+        else if (inBox(x, y, UIBOX.rBack)) this.exitReplay();
+        return;
+      }
+      if (inBox(x, y, UIBOX.rPlay)) this.replayToggle();
+      else if (inBox(x, y, UIBOX.rStop)) this.replayStop();
+      else if (inBox(x, y, UIBOX.rSpeed)) this.replaySpeed(r.speed >= REPLAY_SPEEDS.length - 1 ? -r.speed : 1);
+      else if (inBox(x, y, UIBOX.rExit)) this.exitReplay();
+      else if (y > 40 && y < 420 && x > LEFT && x < RIGHT) this.replayToggle();   // dotknięcie planszy: start / pauza
     } else if (this.state === 'settings') {
       for (let i = 0; i < SETTINGS.length; i++) if (inBox(x, y, UIBOX.row(i))) return this.activate(i);
     } else if (this.state === 'pause') {
@@ -264,6 +402,8 @@ export class Game {
         fx.squash = 0.9; fx.angle = 0;
         this.puff(h.x, h.y, 6, { color: this.dustColor(e.floor), sx: 110, sy: 20, up: 50, life: 0.35 });
         sfx.land();
+        // nagroda: lądowanie, które przedłuża combo (licznik combo właśnie odnowiony), puszcza falę uderzeniową
+        if (this.tier && this.sim.combo.jumps > 0 && this.sim.combo.timer > COMBO_TIME - 2 * STEP) this.shockwave(this.sim.combo.floors, false);
         if (narrowLevel(e.floor) > this.narrow) {      // nowa setka pięter: od teraz piętra są węższe
           this.narrow = narrowLevel(e.floor);
           this.say(t('msg.narrow'), t(this.narrow >= NARROW_MAX ? 'msg.narrowMax' : 'msg.narrowSub'), 'warn', 1.8);
@@ -272,18 +412,23 @@ export class Game {
       case 'bounce':
         sfx.bounce();
         this.puff(e.left ? LEFT : RIGHT, h.y - 24, 7, { color: this.dustColor(Math.max(0, h.from)), sx: 60, sy: 140, up: 0, life: 0.35, size: 2.5 });
+        if (this.tier) this.wallDust(e.left, 14, 10);
         break;
       case 'combo': {
         const ti = TIERS.findIndex((min) => e.floors >= min);
         const label = ti >= 0 ? t(`tier.${TIERS[ti]}`) : t('msg.combo');
         this.say(label, t('msg.comboSub', { floors: e.floors, points: e.points }), 'gold', 1.8);
         sfx.combo(TIERS.length - 1 - ti);
-        haptics.buzz(30);
+        if (this.tier) {                                   // nagroda: „WOW!”, a combo zakończone lądowaniem – duża fala
+          sfx.wow(this.tier, e.floors >= 25);
+          if (h.onFloor >= 0) this.shockwave(e.floors, true);
+        }
+        this.buzz(30);
         break;
       }
       case 'boost':
         this.say(t('msg.boost'), t('msg.boostSub'), 'gold', 1.8);
-        this.shake = 0.35; sfx.boost(); haptics.buzz(80);
+        this.shake = 0.35; sfx.boost(); this.buzz(80);
         this.puff(h.x, h.y - 20, 18, { color: '#ffb52e', sx: 160, sy: 120, up: 0, life: 0.5, size: 4, g: 200, star: true });
         break;
       case 'boostEnd':
@@ -291,7 +436,7 @@ export class Game {
         break;
       case 'slow':
         this.say(t('msg.slow'), t('msg.slowSub', { s: SLOW_TIME }), 'mint', 1.8);
-        sfx.slow(); haptics.buzz(50);
+        sfx.slow(); this.buzz(50);
         this.puff(h.x, h.y - 24, 14, { color: '#7ec8ff', sx: 120, sy: 120, up: 20, life: 0.6, size: 3.5, g: 60, star: true });
         break;
       case 'slowEnd':
@@ -300,18 +445,55 @@ export class Game {
       case 'hurry':
         this.say(t('msg.hurry'), '', 'warn', 1.5);
         this.msgs[this.msgs.length - 1].hurry = true;
-        this.shake = 0.6; sfx.hurry(); haptics.buzz(60);
+        this.shake = 0.6; sfx.hurry(); this.buzz(60);
         break;
       case 'over':
-        this.gameOver();
+        if (this.state === 'replay') this.replayEnd(); else this.gameOver();
         break;
     }
+  }
+  /** Wibracje tylko we własnej grze – nie w oglądanej powtórce. */
+  buzz(ms) { if (this.state === 'play') haptics.buzz(ms); }
+
+  // ── efekty nagrody najlepszej trójki ──
+  /** Złoty (srebrny, brązowy) pył z iskrami tam, gdzie bohater ociera się o ścianę. n – drobinki pyłu, k – iskry. */
+  wallDust(left, n, k) {
+    const m = MEDALS[this.tier], h = this.sim.hero, x = left ? LEFT : RIGHT, out = left ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      this.parts.push({
+        x: x + out * rand(0, 4), y: h.y - rand(6, 50), vx: out * rand(10, 70), vy: rand(-50, 30) + h.vy * 0.15,
+        life: rand(0.55, 1.05), max: 1.05, size: rand(1.8, 3.6), color: m.dust[Math.floor(Math.random() * m.dust.length)], g: 50, star: Math.random() < 0.35, rot: rand(0, 7),
+      });
+    }
+    for (let i = 0; i < k; i++) {
+      const sp = rand(160, 380), a = rand(-1.1, 1.1);
+      this.parts.push({
+        x, y: h.y - rand(10, 46), vx: out * Math.cos(a) * sp, vy: Math.sin(a) * sp - h.vy * 0.25,
+        life: rand(0.2, 0.38), max: 0.38, size: rand(1.6, 2.6), color: Math.random() < 0.5 ? m.spark : m.mid, g: 700, spark: true, rot: 0,
+      });
+    }
+  }
+  /** Fala uderzeniowa pod stopami bohatera; floors – długość combo, big – combo właśnie zaliczone. */
+  shockwave(floors, big) {
+    const h = this.sim.hero, m = MEDALS[this.tier];
+    const r = clamp(46 + floors * (big ? 4 : 2.5), 46, big ? 220 : 150);
+    this.waves.push({ x: h.x, y: h.y, t: 0, dur: big ? 0.7 : 0.5, r, color: m.mid, hi: m.hi, big });
+    this.shake = Math.max(this.shake, big ? 0.35 : 0.18);
+    this.puff(h.x, h.y, big ? 16 : 8, { color: m.dust[0], sx: r * 1.6, sy: 30, up: 60, life: 0.45, size: 2.6, g: 200, star: true });
+  }
+  /** Co krok: czy bohater ociera się o ścianę (stoi przy niej i się porusza). */
+  rubWalls(dt) {
+    const h = this.sim.hero, left = h.x - HW <= LEFT + 0.01, right = h.x + HW >= RIGHT - 0.01;
+    this.rubT -= dt;
+    if ((!left && !right) || this.rubT > 0) return;
+    const sp = Math.hypot(h.vx, h.vy);
+    if (sp < 40) return;
+    this.rubT = clamp(0.06 - sp / 25_000, 0.016, 0.06);
+    this.wallDust(left, sp > 400 ? 5 : 3, Math.random() < 0.4 ? 1 : 2);
   }
 
   // ── jeden krok fizyki + efekty, które idą z nim w parze ──
   tick() {
-    const s = this.sim, h = s.hero, fx = this.fx, dt = STEP;
-
     // wejście: po starcie i po pauzie skok działa dopiero po puszczeniu przycisku
     if (this.jumpLock && !input.jump) this.jumpLock = false;
     const wantJump = input.jump && !this.jumpLock;
@@ -321,7 +503,12 @@ export class Game {
     // symulacja dostaje dokładnie to, co trafia do zapisu biegu
     const packed = packInput(axis * AXIS_MAX, wantJump);
     this.rec.push(packed);
+    this.advance(packed);
+  }
 
+  /** Krok symulacji z podanym wejściem (z gracza albo z zapisu powtórki) i efekty, które idą z nim w parze. */
+  advance(packed) {
+    const s = this.sim, h = s.hero, fx = this.fx, dt = STEP;
     const wasGrounded = h.onFloor >= 0;
     this.events.length = 0;
     step(s, unpackAxis(packed), unpackJump(packed), this.events);
@@ -345,11 +532,17 @@ export class Game {
       }
     }
     fx.squash += (0 - fx.squash) * Math.min(1, 12 * dt);
+    if (this.tier) this.rubWalls(dt);
 
     for (let i = this.parts.length - 1; i >= 0; i--) {
       const p = this.parts[i];
       p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; p.rot += dt * 6;
       if (p.life <= 0) this.parts.splice(i, 1);
+    }
+    for (let i = this.waves.length - 1; i >= 0; i--) {
+      const w = this.waves[i];
+      w.t += dt;
+      if (w.t >= w.dur) this.waves.splice(i, 1);
     }
   }
 
@@ -362,7 +555,15 @@ export class Game {
     else if (this.state === 'over') { this.overT += dt; if (edge && this.overT > 0.6) this.start(); }
     else if (this.state === 'board') { if (edge) this.toTitle(); }
     else if (this.state === 'settings') { if (edge) this.activate(this.settings.sel); }
-    else {
+    else if (this.state === 'recap') { if (edge) this.closeRecap(); }
+    else if (this.state === 'replay') {
+      const r = this.replay;
+      if (edge) this.replayToggle();
+      if (r?.playing) {
+        this.acc += dt * this.replaySpeedX;
+        while (this.acc >= STEP && r.playing) { this.replayTick(); this.acc -= STEP; }
+      }
+    } else {
       this.acc += dt;
       while (this.acc >= STEP && this.state === 'play') { this.tick(); this.acc -= STEP; }
     }
@@ -377,7 +578,8 @@ export class Game {
         if (s.y > H + 4) { s.y = -4; s.x = rand(LEFT, RIGHT); }
       }
     }
-    sfx.song(this.state === 'play' ? this.musicParams() : null, dt);
+    const live = this.state === 'play' || (this.state === 'replay' && this.replay?.playing);
+    sfx.song(live ? this.musicParams() : null, dt);
     if (document.body.dataset.state !== this.state) this.showState();
     render(this);
   }
