@@ -43,9 +43,37 @@
   /* układ leworęczny: skok pod lewym kciukiem, ◀ ▶ pod prawym */
   body.lefty #padL { left: auto; right: max(18px, env(safe-area-inset-right)); }
   body.lefty #padR { right: auto; left: max(18px, env(safe-area-inset-left)); }
-  @media (pointer: coarse) { .pad { display: flex; } }
+  /* drugi ▲ (tryb „połówki ekranu”) zawsze po przeciwnej stronie niż pierwszy */
+  #padJ { left: max(18px, env(safe-area-inset-left)); }
+  body.lefty #padJ { left: auto; right: max(18px, env(safe-area-inset-right)); }
+  /* które przyciski widać, zależy od trybu sterowania (klasa ctrl-… na <body>, patrz src/game/input.js);
+     przechył i „machnięcie” nie mają żadnych – cały ekran to bieg i skok */
+  @media (pointer: coarse) {
+    body.ctrl-buttons #padL, body.ctrl-buttons #padR,
+    body.ctrl-halves #padR, body.ctrl-halves #padJ,
+    body.ctrl-joystick #padR { display: flex; }
+    body.ctrl-joystick[data-state=play] #stick, body.ctrl-joystick[data-state=pause] #stick { display: block; }   /* gałka tylko w biegu – w menu dotyka się płótna */
+  }
   body.tilt .pad { display: none; }
-  body[data-state=replay] .pad, body[data-state=recap] .pad { display: none; }   /* powtórka i podsumowanie tygodnia mają własne przyciski */   /* w trybie przechyłu przyciski znikają – cały ekran to „skok” */
+  body[data-state=replay] .pad, body[data-state=recap] .pad,
+  body[data-state=replay] #stick, body[data-state=recap] #stick { display: none !important; }   /* powtórka i podsumowanie tygodnia mają własne przyciski */
+
+  /* gałka: w spoczynku blady zarys w dolnym rogu, pod palcem – tam, gdzie dotknął (left/top z JS) */
+  #stick {
+    --kx: 0px; --ky: 0px;
+    position: fixed; display: none; z-index: 4; pointer-events: none;
+    width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
+    left: calc(max(18px, env(safe-area-inset-left)) + 60px); top: calc(100% - max(18px, env(safe-area-inset-bottom)) - 60px);
+    border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); opacity: .45;
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  }
+  body.lefty #stick { left: calc(100% - max(18px, env(safe-area-inset-right)) - 60px); }
+  #stick.on { opacity: 1; }
+  #stick::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%;
+    background: rgba(255,255,255,.35); border: 2px solid rgba(255,255,255,.6);
+    transform: translate(var(--kx), var(--ky));
+  }
 
   /* prawy górny róg okna: pauza (tylko w biegu) i pełny ekran – poza płótnem na większości ekranów */
   #corner {
@@ -164,6 +192,10 @@
 <div class="pad" id="padR">
   <button data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
 </div>
+<div class="pad" id="padJ">
+  <button data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
+</div>
+<div id="stick" aria-hidden="true"></div>
 
 <div id="corner">
 <button id="pause" type="button" aria-label="Pauza (P)" title="Pauza (P)" data-i18n-aria="aria.pause">

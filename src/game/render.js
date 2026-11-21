@@ -10,8 +10,8 @@ import {
 } from './gfx.js';
 import { haptics } from './haptics.js';
 import { LANG_NAMES, lang, t } from './i18n.js';
-import { isTouch, tilt } from './input.js';
-import { PERIODS, SETTINGS, UIBOX, slotX } from './layout.js';
+import { CONTROLS, ctrl, isTouch, tilt } from './input.js';
+import { CTRL_PAGE, PERIODS, SENS_STEPS, SETTINGS, UIBOX, slotX } from './layout.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
@@ -534,13 +534,13 @@ function drawTitle(g) {
   c.restore();
 
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 436 };
-  if (isTouch || tilt.active) {                          // urządzenia dotykowe: przełącznik sterowania
-    const k = UIBOX.ctrl;
+  if (isTouch || ctrl.mode !== 'buttons') {               // urządzenia dotykowe: tryb sterowania (dotknięcie = wybór w opcjach)
+    const k = UIBOX.ctrl, waiting = ctrl.mode === 'tilt' && !tilt.active;
     c.fillStyle = ui.panel; rr(k.x, k.y, k.w, k.h, 13); c.fill();
-    c.strokeStyle = tilt.active ? ui.gold : ui.line; c.lineWidth = tilt.active ? 2.5 : 1.5; c.stroke();
-    text(t(tilt.active ? 'title.ctrlTilt' : tilt.want ? 'title.ctrlTiltWant' : 'title.ctrlButtons'), W / 2, k.y + k.h / 2 + 1,
-      { size: 12, color: tilt.active ? ui.gold : ui.hint, sw: 0, maxW: k.w - 24 });
-    text(t(tilt.active ? 'title.tiltHelp' : 'title.buttonsHelp'), W / 2, 429, { ...hint, color: ui.hint });
+    c.strokeStyle = ui.gold; c.lineWidth = 2; c.stroke();
+    text(waiting ? t('title.ctrlTiltWant') : t('title.ctrl', { mode: t(`ctrl.${ctrl.mode}`) }), W / 2, k.y + k.h / 2 + 1,
+      { size: 12, color: ui.gold, sw: 0, maxW: k.w - 24 });
+    text(t(`ctrl.${ctrl.mode}.desc`), W / 2, 429, { ...hint, color: ui.hint });
     text(t('title.tip'), W / 2, 444, hint);
   } else {
     text(t('title.keys'), W / 2, 402, { ...hint, color: ui.hint });
@@ -660,12 +660,14 @@ function drawBoard(g) {
 }
 
 function drawSettings(g) {
+  if (g.settings.page === 'controls') { drawControls(g); return; }
   const o = g.online, st = g.settings, confirming = g.t < st.confirmT;
   dim(0.66);
   text(t('set.title'), W / 2, 44, { size: 30, color: ui.gold, sw: 6, maxW: 420 });
   const onOff = (v) => t(v ? 'set.on' : 'set.off');
   const rows = {
     lang: [lang() === 'en' ? t('set.lang') : `${t('set.lang')} / Language`, `◀  ${LANG_NAMES[lang()]}  ▶`],
+    controls: [t('set.controls'), `${t(`ctrl.${ctrl.mode}`)}  ›`],
     sound: [t('set.sound'), onOff(!sfx.muted)],
     music: [t('set.music'), onOff(sfx.musicOn)],
     vibrate: [t('set.vibrate'), haptics.available ? onOff(haptics.on) : t('set.na')],
@@ -679,14 +681,95 @@ function drawSettings(g) {
     panel(r.x, r.y, r.w, r.h);
     if (sel || (k === 'delete' && confirming)) { ctx.strokeStyle = k === 'delete' ? ui.warn : ui.gold; ctx.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); ctx.stroke(); }
     const col = k === 'delete' ? ui.warn : ui.text;
-    text(label, value ? r.x + 20 : r.x + r.w / 2, r.y + r.h / 2 + 1, { size: 14, color: col, sw: 0, align: value ? 'left' : 'center', weight: 700, maxW: value ? r.w - 170 : r.w - 40 });
-    if (value) text(value, r.x + r.w - 20, r.y + r.h / 2 + 1, { size: 14, color: value === t('set.on') || k === 'lang' || k === 'hand' ? ui.gold : ui.label, sw: 0, align: 'right', maxW: 140 });
+    text(label, value ? r.x + 20 : r.x + r.w / 2, r.y + r.h / 2 + 1, { size: 14, color: col, sw: 0, align: value ? 'left' : 'center', weight: 700, maxW: value ? r.w - 200 : r.w - 40 });
+    if (value) text(value, r.x + r.w - 20, r.y + r.h / 2 + 1, { size: 14, color: value === t('set.on') || k === 'lang' || k === 'hand' || k === 'controls' ? ui.gold : ui.label, sw: 0, align: 'right', maxW: 170 });
   });
   const note = st.note ? t(st.note) : confirming ? t('set.deleteWarn') : '';
-  if (note) text(note, W / 2, 350, { size: 13, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 440 });
+  if (note) text(note, W / 2, 366, { size: 13, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 440 });
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 440 };
   text(t('set.privacy'), W / 2, 410, hint);
   if (!isTouch) text(t('set.keys'), W / 2, 430, { ...hint, color: ui.hint });
+}
+
+/** Opcje → sterowanie: lista trybów (jak przełączniki radiowe), suwak czułości przechyłu i „Wróć”. */
+function drawControls(g) {
+  const c = ctx, st = g.settings, sel = isTouch ? -1 : st.sel;
+  dim(0.66);
+  text(t('ctrl.title'), W / 2, 32, { size: 26, color: ui.gold, sw: 6, maxW: 420 });
+  CONTROLS.forEach((m, i) => {
+    const r = UIBOX.ctrlRow(i), on = m === ctrl.mode;
+    c.fillStyle = on ? ui.sel : ui.panel; rr(r.x, r.y, r.w, r.h, 12); c.fill();
+    c.strokeStyle = on || i === sel ? ui.gold : ui.line; c.lineWidth = on || i === sel ? 2.5 : 1.5; c.stroke();
+    ctrlIcon(m, r.x + 24, r.y + r.h / 2, on);
+    text(t(`ctrl.${m}.name`), r.x + 48, r.y + 14, { size: 14, color: on ? ui.gold : ui.text, sw: 0, align: 'left', weight: 800, maxW: r.w - 90 });
+    text(t(`ctrl.${m}.desc`), r.x + 48, r.y + 30, { size: 10, color: ui.hint, sw: 0, align: 'left', weight: 700, maxW: r.w - 90 });
+    // przełącznik radiowy
+    const cx = r.x + r.w - 22, cy = r.y + r.h / 2;
+    c.beginPath(); c.arc(cx, cy, 9, 0, 7);
+    if (on) {
+      c.fillStyle = ui.gold; c.fill();
+      c.strokeStyle = ui.frame; c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round';
+      c.beginPath(); c.moveTo(cx - 4.5, cy + 0.5); c.lineTo(cx - 1.2, cy + 3.8); c.lineTo(cx + 4.5, cy - 3.5); c.stroke();
+    } else { c.strokeStyle = ui.line; c.lineWidth = 2; c.stroke(); }
+  });
+
+  // czułość przechyłu – przyciemniona, gdy wybrany jest inny tryb
+  const r = UIBOX.sens, b = UIBOX.sensBar, tiltOn = ctrl.mode === 'tilt', isSel = CTRL_PAGE[sel] === 'sens';
+  panel(r.x, r.y, r.w, r.h);
+  if (isSel) { c.strokeStyle = ui.gold; c.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); c.stroke(); }
+  c.save();
+  if (!tiltOn) c.globalAlpha = 0.45;
+  text(t('ctrl.sens'), r.x + 18, r.y + 15, { size: 13, color: ui.text, sw: 0, align: 'left', weight: 800, maxW: 200 });
+  if (!tiltOn) text(t('ctrl.sensOnly'), r.x + r.w - 18, r.y + 15, { size: 10, color: ui.label, sw: 0, align: 'right', weight: 700, maxW: 160 });
+  else if (tilt.active) {                                // podgląd: jak gra „czyta” telefon przy tej czułości
+    const mx = r.x + r.w - 78, my = r.y + 15;
+    c.fillStyle = ui.meterBg; rr(mx - 60, my - 4, 120, 8, 4); c.fill();
+    c.fillStyle = ui.line; c.fillRect(mx - 0.75, my - 5, 1.5, 10);
+    c.fillStyle = ui.gold; c.beginPath(); c.arc(mx + tilt.axis * 54, my, 5, 0, 7); c.fill();
+  }
+  text(t('ctrl.sensLow'), b.x - 14, b.y, { size: 10, color: ui.label, sw: 0, align: 'right', weight: 700, maxW: 70 });
+  text(t('ctrl.sensHigh'), b.x + b.w + 14, b.y, { size: 10, color: ui.label, sw: 0, align: 'left', weight: 700, maxW: 70 });
+  const kx = b.x + b.w * tilt.sens / SENS_STEPS;
+  c.fillStyle = ui.meterBg; rr(b.x, b.y - 3, b.w, 6, 3); c.fill();
+  c.fillStyle = ui.gold; rr(b.x, b.y - 3, kx - b.x, 6, 3); c.fill();
+  for (let i = 0; i <= SENS_STEPS; i++) { c.fillStyle = ui.line; c.fillRect(b.x + b.w * i / SENS_STEPS - 0.5, b.y + 6, 1, 3); }
+  c.beginPath(); c.arc(kx, b.y, 8, 0, 7); c.fillStyle = ui.text; c.fill();
+  c.strokeStyle = ui.frame; c.lineWidth = 2; c.stroke();
+  c.restore();
+
+  button(UIBOX.ctrlBack, t(isTouch ? 'set.back' : 'set.backKey'), { on: CTRL_PAGE[sel] === 'back', size: 12 });
+  const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 440 };
+  text(t('ctrl.always'), W / 2, 412, hint);
+  if (!isTouch) text(t('ctrl.keys'), W / 2, 432, { ...hint, color: ui.hint });
+}
+
+/** Mała ikonka trybu sterowania (rysowana – gra nie ma plików graficznych). */
+function ctrlIcon(m, x, y, on) {
+  const c = ctx, col = on ? ui.gold : ui.hint;
+  c.save();
+  c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 1.8; c.lineCap = 'round'; c.lineJoin = 'round';
+  const tri = (tx, ty, dx, dy, s) => {                   // trójkąt-strzałka w kierunku (dx, dy)
+    c.beginPath(); c.moveTo(tx + dx * s, ty + dy * s);
+    c.lineTo(tx - dx * s * 0.6 - dy * s * 0.8, ty - dy * s * 0.6 + dx * s * 0.8);
+    c.lineTo(tx - dx * s * 0.6 + dy * s * 0.8, ty - dy * s * 0.6 - dx * s * 0.8); c.closePath(); c.fill();
+  };
+  if (m === 'buttons') { tri(x - 7, y + 3, -1, 0, 5); tri(x + 1, y + 3, 1, 0, 5); tri(x + 9, y - 6, 0, -1, 4); }
+  else if (m === 'halves' || m === 'swipe') {
+    rr(x - 9, y - 11, 18, 22, 3); c.stroke();
+    c.beginPath(); c.moveTo(x, y - 11); c.lineTo(x, y + 11); c.stroke();
+    if (m === 'halves') { tri(x - 4.5, y + 4, -1, 0, 3); tri(x + 4.5, y + 4, 1, 0, 3); tri(x + 4.5, y - 5, 0, -1, 3); }
+    else { c.beginPath(); c.moveTo(x + 4.5, y + 7); c.lineTo(x + 4.5, y - 5); c.stroke(); tri(x + 4.5, y - 6, 0, -1, 3); tri(x - 4.5, y + 2, -1, 0, 3); }
+  } else if (m === 'joystick') {
+    c.beginPath(); c.arc(x, y, 10, 0, 7); c.stroke();
+    c.beginPath(); c.arc(x + 3, y - 1, 5, 0, 7); c.fill();
+  } else if (m === 'tilt') {
+    c.translate(x, y); c.rotate(-0.45);
+    rr(-6, -10, 12, 20, 3); c.stroke();
+    c.fillRect(-2, 6, 4, 1.6);
+    c.rotate(0.45);
+    c.beginPath(); c.arc(0, 0, 13, -0.5, 0.35); c.stroke();
+  }
+  c.restore();
 }
 
 // ───────────────────────── powtórka ─────────────────────────
