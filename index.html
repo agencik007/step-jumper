@@ -44,7 +44,8 @@
   body.lefty #padL { left: auto; right: max(18px, env(safe-area-inset-right)); }
   body.lefty #padR { right: auto; left: max(18px, env(safe-area-inset-left)); }
   @media (pointer: coarse) { .pad { display: flex; } }
-  body.tilt .pad { display: none; }   /* w trybie przechyłu przyciski znikają – cały ekran to „skok” */
+  body.tilt .pad { display: none; }
+  body[data-state=replay] .pad, body[data-state=recap] .pad { display: none; }   /* powtórka i podsumowanie tygodnia mają własne przyciski */   /* w trybie przechyłu przyciski znikają – cały ekran to „skok” */
 
   /* prawy górny róg okna: pauza (tylko w biegu) i pełny ekran – poza płótnem na większości ekranów */
   #corner {

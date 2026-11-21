@@ -104,6 +104,24 @@ const pl = {
   'and.step1': 'Otwórz menu przeglądarki (⋮ albo ☰).',
   'and.step2': 'Wybierz „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”.',
   'and.later': 'Nie teraz', 'and.install': 'Zainstaluj',
+  // nagrody dla najlepszej trójki, powtórki, podsumowanie tygodnia
+  'period.lastweek': 'ZESZŁY TYDZIEŃ',
+  'crown.1': 'ZŁOTA KORONA', 'crown.2': 'SREBRNA KORONA', 'crown.3': 'BRĄZOWA KORONA',
+  'crown.sub': 'nagroda za #{rank} w zeszłym tygodniu',
+  'replay.title': 'POWTÓRKA', 'replay.loading': 'Wczytuję powtórkę…',
+  'replay.fail': 'POWTÓRKA NIEDOSTĘPNA', 'replay.failSub': 'sprawdź połączenie i spróbuj jeszcze raz',
+  'replay.old': 'STARA POWTÓRKA', 'replay.oldSub': 'ten bieg zagrano w poprzedniej wersji gry',
+  'replay.end': 'KONIEC POWTÓRKI', 'replay.again': 'OD NOWA', 'replay.back': 'WRÓĆ', 'replay.paused': 'PAUZA', 'replay.stopped': 'STOP',
+  'replay.keys': 'Spacja: start / pauza  ·  S: stop  ·  ← →: tempo  ·  Esc: wyjście',
+  'recap.title': 'TYDZIEŃ {n} – WYNIKI', 'recap.sub': 'Najlepsza trójka nosi korony przez cały ten tydzień',
+  'recap.watch': '▶ POWTÓRKA', 'recap.noReplay': 'bez powtórki',
+  'recap.me': 'Twoje miejsce: #{rank}  ·  {score} pkt',
+  'recap.crown1': 'Brawo! Złota korona jest twoja do końca tygodnia!',
+  'recap.crown2': 'Brawo! Srebrna korona jest twoja do końca tygodnia!',
+  'recap.crown3': 'Brawo! Brązowa korona jest twoja do końca tygodnia!',
+  'recap.none': 'W zeszłym tygodniu nie było cię w rankingu – powodzenia w tym!',
+  'recap.board': 'PEŁNY RANKING', 'recap.next': 'DALEJ',
+  'recap.keys': '1–3: powtórki  ·  R: pełny ranking  ·  Enter: dalej',
 };
 
 const en = {
@@ -206,6 +224,24 @@ const en = {
   'and.step1': 'Open the browser menu (⋮ or ☰).',
   'and.step2': 'Choose “Install app” or “Add to Home screen”.',
   'and.later': 'Not now', 'and.install': 'Install',
+  // rewards for the top three, replays, weekly recap
+  'period.lastweek': 'LAST WEEK',
+  'crown.1': 'GOLD CROWN', 'crown.2': 'SILVER CROWN', 'crown.3': 'BRONZE CROWN',
+  'crown.sub': 'your reward for #{rank} last week',
+  'replay.title': 'REPLAY', 'replay.loading': 'Loading the replay…',
+  'replay.fail': 'REPLAY UNAVAILABLE', 'replay.failSub': 'check your connection and try again',
+  'replay.old': 'OLD REPLAY', 'replay.oldSub': 'this run was played in an earlier version of the game',
+  'replay.end': 'END OF REPLAY', 'replay.again': 'WATCH AGAIN', 'replay.back': 'BACK', 'replay.paused': 'PAUSED', 'replay.stopped': 'STOPPED',
+  'replay.keys': 'Space: play / pause  ·  S: stop  ·  ← →: speed  ·  Esc: exit',
+  'recap.title': 'WEEK {n} – RESULTS', 'recap.sub': 'The top three wear crowns all through this week',
+  'recap.watch': '▶ REPLAY', 'recap.noReplay': 'no replay',
+  'recap.me': 'Your rank: #{rank}  ·  {score} pts',
+  'recap.crown1': 'Well done! The gold crown is yours until the end of the week!',
+  'recap.crown2': 'Well done! The silver crown is yours until the end of the week!',
+  'recap.crown3': 'Well done! The bronze crown is yours until the end of the week!',
+  'recap.none': 'You were not on the leaderboard last week – good luck this week!',
+  'recap.board': 'FULL LEADERBOARD', 'recap.next': 'CONTINUE',
+  'recap.keys': '1–3: replays  ·  R: full leaderboard  ·  Enter: continue',
 };
 
 const de = {
@@ -308,6 +344,24 @@ const de = {
   'and.step1': 'Öffne das Browsermenü (⋮ oder ☰).',
   'and.step2': 'Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.',
   'and.later': 'Nicht jetzt', 'and.install': 'Installieren',
+  // Belohnungen für die besten drei, Wiederholungen, Wochenrückblick
+  'period.lastweek': 'LETZTE WOCHE',
+  'crown.1': 'GOLDENE KRONE', 'crown.2': 'SILBERNE KRONE', 'crown.3': 'BRONZENE KRONE',
+  'crown.sub': 'Belohnung für Platz {rank} letzte Woche',
+  'replay.title': 'WIEDERHOLUNG', 'replay.loading': 'Wiederholung wird geladen…',
+  'replay.fail': 'WIEDERHOLUNG NICHT VERFÜGBAR', 'replay.failSub': 'prüfe die Verbindung und versuche es erneut',
+  'replay.old': 'ALTE WIEDERHOLUNG', 'replay.oldSub': 'dieser Lauf stammt aus einer älteren Spielversion',
+  'replay.end': 'ENDE DER WIEDERHOLUNG', 'replay.again': 'NOCHMAL', 'replay.back': 'ZURÜCK', 'replay.paused': 'PAUSE', 'replay.stopped': 'STOPP',
+  'replay.keys': 'Leertaste: Start / Pause  ·  S: Stopp  ·  ← →: Tempo  ·  Esc: Ende',
+  'recap.title': 'WOCHE {n} – ERGEBNISSE', 'recap.sub': 'Die besten drei tragen die ganze Woche über Kronen',
+  'recap.watch': '▶ ANSEHEN', 'recap.noReplay': 'keine Wiederholung',
+  'recap.me': 'Dein Platz: #{rank}  ·  {score} Pkt.',
+  'recap.crown1': 'Bravo! Die goldene Krone gehört dir bis Ende der Woche!',
+  'recap.crown2': 'Bravo! Die silberne Krone gehört dir bis Ende der Woche!',
+  'recap.crown3': 'Bravo! Die bronzene Krone gehört dir bis Ende der Woche!',
+  'recap.none': 'Letzte Woche warst du nicht in der Rangliste – viel Glück diese Woche!',
+  'recap.board': 'GANZE RANGLISTE', 'recap.next': 'WEITER',
+  'recap.keys': '1–3: Wiederholungen  ·  R: ganze Rangliste  ·  Enter: weiter',
 };
 
 const fr = {
@@ -410,6 +464,24 @@ const fr = {
   'and.step1': 'Ouvrez le menu du navigateur (⋮ ou ☰).',
   'and.step2': 'Choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».',
   'and.later': 'Plus tard', 'and.install': 'Installer',
+  // récompenses du top 3, rediffusions, bilan de la semaine
+  'period.lastweek': 'SEMAINE DERNIÈRE',
+  'crown.1': 'COURONNE D’OR', 'crown.2': 'COURONNE D’ARGENT', 'crown.3': 'COURONNE DE BRONZE',
+  'crown.sub': 'récompense pour la place n° {rank} la semaine dernière',
+  'replay.title': 'REDIFFUSION', 'replay.loading': 'Chargement de la rediffusion…',
+  'replay.fail': 'REDIFFUSION INDISPONIBLE', 'replay.failSub': 'vérifie ta connexion et réessaie',
+  'replay.old': 'ANCIENNE REDIFFUSION', 'replay.oldSub': 'cette partie vient d’une version précédente du jeu',
+  'replay.end': 'FIN DE LA REDIFFUSION', 'replay.again': 'REVOIR', 'replay.back': 'RETOUR', 'replay.paused': 'PAUSE', 'replay.stopped': 'STOP',
+  'replay.keys': 'Espace : lecture / pause  ·  S : stop  ·  ← → : vitesse  ·  Échap : quitter',
+  'recap.title': 'SEMAINE {n} – RÉSULTATS', 'recap.sub': 'Le top 3 porte une couronne pendant toute cette semaine',
+  'recap.watch': '▶ REVOIR', 'recap.noReplay': 'pas de rediffusion',
+  'recap.me': 'Ta place : n° {rank}  ·  {score} pts',
+  'recap.crown1': 'Bravo ! La couronne d’or est à toi jusqu’à la fin de la semaine !',
+  'recap.crown2': 'Bravo ! La couronne d’argent est à toi jusqu’à la fin de la semaine !',
+  'recap.crown3': 'Bravo ! La couronne de bronze est à toi jusqu’à la fin de la semaine !',
+  'recap.none': 'Tu n’étais pas au classement la semaine dernière – bonne chance cette semaine !',
+  'recap.board': 'CLASSEMENT COMPLET', 'recap.next': 'CONTINUER',
+  'recap.keys': '1–3 : rediffusions  ·  R : classement complet  ·  Entrée : continuer',
 };
 
 const es = {
@@ -512,6 +584,24 @@ const es = {
   'and.step1': 'Abre el menú del navegador (⋮ o ☰).',
   'and.step2': 'Elige «Instalar aplicación» o «Añadir a pantalla de inicio».',
   'and.later': 'Ahora no', 'and.install': 'Instalar',
+  // premios para los tres mejores, repeticiones, resumen semanal
+  'period.lastweek': 'SEMANA PASADA',
+  'crown.1': 'CORONA DE ORO', 'crown.2': 'CORONA DE PLATA', 'crown.3': 'CORONA DE BRONCE',
+  'crown.sub': 'premio por el puesto {rank} la semana pasada',
+  'replay.title': 'REPETICIÓN', 'replay.loading': 'Cargando la repetición…',
+  'replay.fail': 'REPETICIÓN NO DISPONIBLE', 'replay.failSub': 'revisa la conexión e inténtalo de nuevo',
+  'replay.old': 'REPETICIÓN ANTIGUA', 'replay.oldSub': 'esta partida se jugó en una versión anterior del juego',
+  'replay.end': 'FIN DE LA REPETICIÓN', 'replay.again': 'OTRA VEZ', 'replay.back': 'VOLVER', 'replay.paused': 'PAUSA', 'replay.stopped': 'STOP',
+  'replay.keys': 'Espacio: iniciar / pausa  ·  S: stop  ·  ← →: velocidad  ·  Esc: salir',
+  'recap.title': 'SEMANA {n} – RESULTADOS', 'recap.sub': 'Los tres mejores llevan corona durante toda esta semana',
+  'recap.watch': '▶ VER', 'recap.noReplay': 'sin repetición',
+  'recap.me': 'Tu puesto: #{rank}  ·  {score} pts',
+  'recap.crown1': '¡Bravo! ¡La corona de oro es tuya hasta el final de la semana!',
+  'recap.crown2': '¡Bravo! ¡La corona de plata es tuya hasta el final de la semana!',
+  'recap.crown3': '¡Bravo! ¡La corona de bronce es tuya hasta el final de la semana!',
+  'recap.none': 'La semana pasada no estabas en la clasificación – ¡suerte esta semana!',
+  'recap.board': 'CLASIFICACIÓN', 'recap.next': 'CONTINUAR',
+  'recap.keys': '1–3: repeticiones  ·  R: clasificación completa  ·  Intro: continuar',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

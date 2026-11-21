@@ -97,6 +97,13 @@ export const PENCILS = ['#3b6fd4', '#d4483b', '#2f9e5b', '#8a4fd0', '#e08a1e', '
 export const cycle = (arr, n) => arr[Math.floor(n / 100) % arr.length];
 export const PEN = '#1f2a44';
 
+/** Kolory nagród najlepszej trójki (korony, pył przy ścianach, fala uderzeniowa): 1 złoto, 2 srebro, 3 brąz. */
+export const MEDALS = {
+  1: { hi: '#fff6b8', mid: '#ffd24a', lo: '#c98a0c', spark: '#fffbe0', dust: ['#ffe066', '#ffd24a', '#fff3a8', '#ffb52e'] },
+  2: { hi: '#ffffff', mid: '#d3dbe6', lo: '#8592a8', spark: '#ffffff', dust: ['#ffffff', '#dfe6f0', '#b9c6d8', '#eef6ff'] },
+  3: { hi: '#ffd9b3', mid: '#e0915a', lo: '#94501f', spark: '#fff0e0', dust: ['#ffb27a', '#e0915a', '#ffd2a6', '#c8743e'] },
+};
+
 // ───────────────────────── mapy (style graficzne) ─────────────────────────
 const UI_ICE = {
   text: '#ffffff', stroke: '#0b1030', label: '#9fb4ee', hint: '#cfe3ff', gold: '#ffe066', mint: '#7ef0e0', warn: '#ff7a59', note: '#ffe680',

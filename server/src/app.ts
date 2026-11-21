@@ -8,7 +8,7 @@ import type { SimState } from '../../src/sim';
 import { newSecret, parseBearer, sameHash, sha256hex } from './auth';
 import type { Env, Player } from './env';
 import { checkNick } from './nick';
-import { isPeriodKind, periodKey, periodKeys } from './periods';
+import { boardKey, isBoardKind, periodKeys } from './periods';
 import type { PeriodKind } from './periods';
 import { CHUNK_TICKS, MAX_CHUNKS, Rejected, verifyChunk } from './verify';
 
@@ -22,6 +22,8 @@ const MAX_CHUNK_BYTES = 4 * CHUNK_TICKS;   // porcja to w najgorszym razie 2 baj
 const TOP_DEFAULT = 50, TOP_MAX = 100, NEIGHBOURS = 5;
 const ID_RE = /^[a-z0-9_-]{1,24}$/;
 const PERIODS: PeriodKind[] = ['all', 'week', 'day'];
+/** Tylu najlepszym graczom ranking podaje identyfikator powtórki. */
+const REPLAY_TOP = 3;
 
 /** Odpowiedź z błędem, którą handler może po prostu rzucić. */
 class ApiError extends Error {
@@ -50,6 +52,12 @@ async function readJson(c: Ctx): Promise<Record<string, unknown>> {
   return v as Record<string, unknown>;
 }
 
+function toB64(b: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s);
+}
+
 const optText = (v: unknown, max: number) => (typeof v === 'string' && v.length <= max ? v : null);
 /** Krótki, stały znacznik gracza bez nicku (gra pokazuje go jako „Gracz AB12”, „Player AB12”… – zależnie od języka). */
 const playerTag = (id: string) => id.slice(0, 4).toUpperCase();
@@ -58,7 +66,10 @@ interface RunRow {
   id: string; player_id: string; seed: number; sim_version: number; status: string;
   issued_at: number; next_seq: number; checkpoint: string | null;
 }
-interface BoardRow { player_id: string; nick: string | null; country: string | null; score: number; floor: number; combo: number; char_id: string; achieved_at: number }
+interface BoardRow {
+  player_id: string; nick: string | null; country: string | null; score: number; floor: number; combo: number; char_id: string; achieved_at: number;
+  run_id: string; has_replay: number;
+}
 
 export function createApp(deps: { now?: () => number } = {}) {
   const now = deps.now ?? Date.now;
@@ -128,6 +139,7 @@ export function createApp(deps: { now?: () => number } = {}) {
   app.delete('/v1/me', requirePlayer, async (c) => {
     const id = c.var.player.id, db = c.env.DB;
     await db.batch([
+      db.prepare('DELETE FROM run_chunks WHERE run_id IN (SELECT id FROM runs WHERE player_id = ?)').bind(id),
       db.prepare('DELETE FROM bests WHERE player_id = ?').bind(id),
       db.prepare('DELETE FROM runs WHERE player_id = ?').bind(id),
       db.prepare('DELETE FROM players WHERE id = ?').bind(id),
@@ -174,8 +186,11 @@ export function createApp(deps: { now?: () => number } = {}) {
   }
 
   async function reject(c: Ctx, runId: string, reason: string): Promise<never> {
-    await c.env.DB.prepare("UPDATE runs SET status = 'rejected', reject_reason = ?, checkpoint = NULL, updated_at = ? WHERE id = ?")
-      .bind(reason, now(), runId).run();
+    const db = c.env.DB;
+    await db.batch([
+      db.prepare("UPDATE runs SET status = 'rejected', reject_reason = ?, checkpoint = NULL, updated_at = ? WHERE id = ?").bind(reason, now(), runId),
+      db.prepare('DELETE FROM run_chunks WHERE run_id = ?').bind(runId),
+    ]);
     throw fail(422, 'rejected', { reason });
   }
 
@@ -198,9 +213,14 @@ export function createApp(deps: { now?: () => number } = {}) {
       if (e instanceof Rejected) return reject(c, run.id, e.reason);
       throw e;
     }
-    const saved = await c.env.DB.prepare(
-      "UPDATE runs SET status = 'uploading', checkpoint = ?, ticks = ?, next_seq = next_seq + 1, updated_at = ? WHERE id = ? AND next_seq = ?",
-    ).bind(JSON.stringify(state), state.tick, now(), run.id, seq).run();
+    const db = c.env.DB;
+    const [saved] = await db.batch([
+      db.prepare(
+        "UPDATE runs SET status = 'uploading', checkpoint = ?, ticks = ?, next_seq = next_seq + 1, updated_at = ? WHERE id = ? AND next_seq = ?",
+      ).bind(JSON.stringify(state), state.tick, now(), run.id, seq),
+      // porcja zostaje na powtórkę; przy równoległej wysyłce tej samej porcji wygrywa ta, która pierwsza przesunęła next_seq
+      db.prepare('INSERT OR IGNORE INTO run_chunks (run_id, seq, data) VALUES (?, ?, ?)').bind(run.id, seq, data),
+    ]);
     if (!saved.meta.changes) throw fail(409, 'seq', { nextSeq: seq + 1 });   // równoległa wysyłka tej samej porcji
     return c.json({ nextSeq: seq + 1, ticks: state.tick, over: state.over });
   });
@@ -243,6 +263,10 @@ export function createApp(deps: { now?: () => number } = {}) {
         'char_id = ?, style_id = ?, control = ?, app_version = ? WHERE id = ?',
       ).bind(t, t, sc, state.maxFloor, state.bestCombo, char, optText(body.style, 24), optText(body.control, 24), optText(body.appVersion, 32), run.id),
       ...PERIODS.map((k) => upsert.bind(keys[k], p.id, sc, state.maxFloor, state.bestCombo, char, run.id, t)),
+      // powtórki trzymamy tylko dla biegów, które są czyimś najlepszym wynikiem (ten bieg albo wyparte nim starsze)
+      db.prepare(
+        'DELETE FROM run_chunks WHERE run_id IN (SELECT id FROM runs WHERE player_id = ?1) AND run_id NOT IN (SELECT run_id FROM bests WHERE player_id = ?1)',
+      ).bind(p.id),
     ]);
 
     const improved = {} as Record<PeriodKind, boolean>, ranks = {} as Record<PeriodKind, number>;
@@ -257,16 +281,19 @@ export function createApp(deps: { now?: () => number } = {}) {
   // ───────────────────────── rankingi ─────────────────────────
 
   const BOARD_SELECT =
-    'SELECT b.player_id, p.nick, p.country, b.score, b.floor, b.combo, b.char_id, b.achieved_at ' +
+    'SELECT b.player_id, p.nick, p.country, b.score, b.floor, b.combo, b.char_id, b.achieved_at, b.run_id, ' +
+    'EXISTS (SELECT 1 FROM run_chunks k WHERE k.run_id = b.run_id) AS has_replay ' +
     'FROM bests b JOIN players p ON p.id = b.player_id WHERE b.period = ? AND p.banned = 0 ' +
     'ORDER BY b.score DESC, b.achieved_at ASC, b.player_id ASC LIMIT ? OFFSET ?';
   const entry = (r: BoardRow, rank: number) => ({
     rank, nick: r.nick, tag: playerTag(r.player_id), score: r.score, floor: r.floor, combo: r.combo, char: r.char_id, country: r.country,
+    // najlepsza trójka: identyfikator biegu do obejrzenia (GET /v1/replays/:id)
+    ...(rank <= REPLAY_TOP && r.has_replay ? { replay: r.run_id } : {}),
   });
   function periodParam(c: Ctx): string {
     const kind = c.req.param('period') ?? '';
-    if (!isPeriodKind(kind)) throw fail(404, 'not_found');
-    return periodKey(kind, now());
+    if (!isBoardKind(kind)) throw fail(404, 'not_found');
+    return boardKey(kind, now());
   }
 
   app.get('/v1/leaderboards/:period', async (c) => {
@@ -287,6 +314,29 @@ export function createApp(deps: { now?: () => number } = {}) {
     const offset = Math.max(0, rank - 1 - NEIGHBOURS);
     const { results } = await db.prepare(BOARD_SELECT).bind(period, 2 * NEIGHBOURS + 1, offset).all<BoardRow>();
     return c.json({ period, rank, entries: results.map((r, i) => ({ ...entry(r, offset + i + 1), me: r.player_id === me })) });
+  });
+
+  // ───────────────────────── powtórki ─────────────────────────
+
+  // Zapis biegu do obejrzenia w grze: ziarno wieży + porcje sterowania. Zapis się nie zmienia, więc może długo leżeć w cache.
+  app.get('/v1/replays/:id', async (c) => {
+    const id = c.req.param('id'), db = c.env.DB;
+    const run = await db.prepare(
+      'SELECT r.id, r.seed, r.sim_version, r.next_seq, r.ticks, r.score, r.floor, r.combo, r.char_id, r.style_id, r.finished_at, ' +
+      'p.id AS player_id, p.nick, p.banned FROM runs r JOIN players p ON p.id = r.player_id WHERE r.id = ? AND r.status = \'verified\'',
+    ).bind(id).first<{
+      id: string; seed: number; sim_version: number; next_seq: number; ticks: number; score: number; floor: number; combo: number;
+      char_id: string; style_id: string | null; finished_at: number; player_id: string; nick: string | null; banned: number;
+    }>();
+    if (!run || run.banned) throw fail(404, 'not_found');
+    const { results } = await db.prepare('SELECT seq, data FROM run_chunks WHERE run_id = ? ORDER BY seq').bind(id).all<{ seq: number; data: ArrayBuffer | number[] }>();
+    if (results.length !== run.next_seq || results.some((r, i) => r.seq !== i)) throw fail(404, 'not_found');
+    c.header('cache-control', 'public, max-age=86400');
+    return c.json({
+      runId: run.id, seed: run.seed, simVersion: run.sim_version, ticks: run.ticks, score: run.score, floor: run.floor, combo: run.combo,
+      char: run.char_id, style: run.style_id, nick: run.nick, tag: playerTag(run.player_id), finishedAt: run.finished_at,
+      chunks: results.map((r) => toB64(new Uint8Array(r.data))),
+    });
   });
 
   return app;

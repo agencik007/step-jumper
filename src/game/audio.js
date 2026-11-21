@@ -60,6 +60,51 @@ class Sfx {
   slowEnd() { this.tone(440, 880, 0.18, { type: 'triangle', vol: 0.45 }); }
   hurry()  { for (let i = 0; i < 4; i++) this.tone(1320, 1320, 0.1, { type: 'sine', vol: 0.7, at: i * 0.15 }); }
   over()   { this.tone(420, 70, 0.7, { type: 'sawtooth', vol: 0.35 }); }
+  /** Nagroda najlepszej trójki: po combo syntezowany głos „WOW!” (im wyższe miejsce, tym niższy, pełniejszy głos) i błysk dzwoneczków. */
+  wow(tier = 1, big = false) {
+    if (!this.ctx || this.muted) return;
+    voiceWow(this.ctx, this.out, this.ctx.currentTime, [0, 150, 175, 205][tier] ?? 175, big ? 1 : 0.8);
+    const bells = [1568, 2093, 2637, 3136];
+    for (let i = 0; i < (big ? 4 : 3); i++) this.tone(bells[i], bells[i], 0.25, { type: 'sine', vol: 0.22, at: 0.5 + i * 0.06 });
+  }
 }
 
 export const sfx = new Sfx();
+
+/**
+ * Głos „wow” (/waʊ/): piłokształtne źródło z wibratem przepuszczone przez trzy formanty samogłosek,
+ * które przesuwają się od „u” przez „a” z powrotem do „u”. Funkcja osobno od Sfx, żeby dało się ją wyrenderować offline.
+ */
+export function voiceWow(ac, dest, t0, base, vol = 1) {
+  const dur = 0.78;
+  const src = ac.createOscillator();
+  src.type = 'sawtooth';
+  src.frequency.setValueAtTime(base * 0.8, t0);
+  src.frequency.linearRampToValueAtTime(base * 1.3, t0 + 0.22);
+  src.frequency.linearRampToValueAtTime(base * 1.15, t0 + 0.45);
+  src.frequency.linearRampToValueAtTime(base * 0.75, t0 + dur);
+  const lfo = ac.createOscillator(), depth = ac.createGain();
+  lfo.frequency.value = 5.5; depth.gain.value = base * 0.025;
+  lfo.connect(depth).connect(src.frequency);
+
+  const env = ac.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(vol, t0 + 0.06);
+  env.gain.setValueAtTime(vol, t0 + 0.5);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  env.connect(dest);
+  // formanty [u → a → u] i ich głośność
+  const F = [[320, 780, 320, 1.0], [760, 1150, 680, 0.55], [2250, 2450, 2200, 0.18]];
+  for (const [u, a, u2, g] of F) {
+    const bp = ac.createBiquadFilter(), gain = ac.createGain();
+    bp.type = 'bandpass'; bp.Q.value = 7;
+    bp.frequency.setValueAtTime(u, t0);
+    bp.frequency.linearRampToValueAtTime(a, t0 + 0.2);
+    bp.frequency.setValueAtTime(a, t0 + 0.4);
+    bp.frequency.linearRampToValueAtTime(u2, t0 + dur);
+    gain.gain.value = g * 2.8;
+    src.connect(bp).connect(gain).connect(env);
+  }
+  src.start(t0); lfo.start(t0);
+  src.stop(t0 + dur + 0.05); lfo.stop(t0 + dur + 0.05);
+}

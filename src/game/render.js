@@ -5,7 +5,7 @@ import {
 import { sfx } from './audio.js';
 import { CHARS, drawHero } from './characters.js';
 import {
-  FONT, NEON, PEN, PENCILS, STYLES, brickPattern, burst, canvas, ctx, cycle, ditherPattern, hatchPattern, lowCanvas, lowCtx, mainCtx,
+  FONT, MEDALS, NEON, PEN, PENCILS, STYLES, brickPattern, burst, canvas, ctx, cycle, ditherPattern, hatchPattern, lowCanvas, lowCtx, mainCtx,
   rr, setCtx, stonePattern, style, text, themeOf, ui, wobblyRect,
 } from './gfx.js';
 import { haptics } from './haptics.js';
@@ -43,6 +43,8 @@ export function render(g) {
   else if (g.state === 'over') drawOver(g);
   else if (g.state === 'board') drawBoard(g);
   else if (g.state === 'settings') drawSettings(g);
+  else if (g.state === 'replay') drawReplay(g);
+  else if (g.state === 'recap') drawRecap(g);
   drawMessages(g);
   style.post?.(g);
 }
@@ -58,8 +60,14 @@ function drawWorld(g) {
   c.translate(0, -camY);
   for (let n = g.sim.lowN; n < g.sim.genN; n++) drawPlatform(g, floorAt(g.sim.seed, n));
   drawItems(g);
+  drawWaves(g);
   for (const p of g.parts) {
     c.globalAlpha = clamp(p.life / p.max, 0, 1);
+    if (p.spark) {                                     // iskra: krótka smuga wzdłuż prędkości
+      c.strokeStyle = p.color; c.lineWidth = p.size; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - p.vx * 0.045, p.y - p.vy * 0.045); c.stroke();
+      continue;
+    }
     c.fillStyle = p.color;
     if (p.star) { burst(p.x, p.y, p.size * 0.45, p.size, 4, p.rot); c.fill(); }
     else { c.beginPath(); c.arc(p.x, p.y, p.size, 0, 7); c.fill(); }
@@ -71,7 +79,8 @@ function drawWorld(g) {
     glow.addColorStop(0, 'rgba(255,255,255,.22)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
     c.fillStyle = glow; c.fillRect(h.x - 46, h.y - 72, 92, 92);
   }
-  drawHero(h, g.fx, g.t, g.charIdx);
+  drawHero(h, g.fx, g.t, g.heroIdx);
+  if (g.tier && ['play', 'pause', 'over', 'replay'].includes(g.state)) drawCrown(h.x, h.y - 70 + (reduceMotion ? 0 : Math.sin(g.t * 3) * 2), g.tier, g.t, 1, -h.vx / 4000);
   c.restore();
 
   drawWalls(g);
@@ -79,6 +88,62 @@ function drawWorld(g) {
   danger.addColorStop(0, `rgba(${ui.dim},0)`); danger.addColorStop(1, `rgba(${ui.dim},.78)`);
   c.fillStyle = danger; c.fillRect(LEFT, H - 70, FIELD, 70);
   c.restore();
+}
+
+// ── nagrody najlepszej trójki ──
+/** Korona (1 złota, 2 srebrna, 3 brązowa) o środku podstawy w (x, y). */
+export function drawCrown(x, y, tier, time, k = 1, tiltA = 0) {
+  const c = ctx, m = MEDALS[tier];
+  c.save();
+  c.translate(x, y); c.rotate(clamp(tiltA, -0.25, 0.25)); c.scale(k, k);
+  const glow = c.createRadialGradient(0, -5, 2, 0, -5, 22);
+  glow.addColorStop(0, `${m.hi}88`); glow.addColorStop(1, `${m.hi}00`);
+  c.fillStyle = glow; c.fillRect(-24, -28, 48, 46);
+  c.beginPath();
+  c.moveTo(-12, 4); c.lineTo(-13, -9); c.lineTo(-6.5, -3); c.lineTo(0, -13); c.lineTo(6.5, -3); c.lineTo(13, -9); c.lineTo(12, 4); c.closePath();
+  const grad = c.createLinearGradient(0, -13, 0, 4);
+  grad.addColorStop(0, m.hi); grad.addColorStop(0.55, m.mid); grad.addColorStop(1, m.lo);
+  c.fillStyle = grad; c.fill();
+  c.strokeStyle = '#3a1c10'; c.lineWidth = 1.5; c.lineJoin = 'round'; c.stroke();
+  c.fillStyle = m.lo; c.fillRect(-12, 0.5, 24, 1.5);               // obręcz
+  for (const [px, py] of [[-13, -9], [0, -13], [13, -9]]) {         // kulki na szpicach
+    c.fillStyle = m.hi; c.beginPath(); c.arc(px, py, 2, 0, 7); c.fill(); c.stroke();
+  }
+  for (const [gx, col] of [[-6.5, '#3fa9ff'], [0, '#ff4f6d'], [6.5, '#3fd17a']]) {   // kamienie
+    c.fillStyle = col; c.beginPath(); c.arc(gx, -2.5, gx ? 1.7 : 2.2, 0, 7); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect(gx - 0.8, -3.6, 0.9, 0.9);
+  }
+  if (!reduceMotion) {                                               // błysk wędrujący po szpicach
+    const ph = mod(time * 0.9, 1), tip = [[-13, -9], [0, -13], [13, -9]][mod(Math.floor(time * 0.9), 3)];
+    const a = Math.sin(ph * Math.PI);
+    c.globalAlpha = a; c.fillStyle = '#fff';
+    burst(tip[0], tip[1], 0.8, 5.5 * a + 1, 4, time); c.fill();
+    c.globalAlpha = 1;
+  }
+  c.restore();
+}
+
+/** Fale uderzeniowe pod stopami (spłaszczone pierścienie rozchodzące się po piętrze). */
+function drawWaves(g) {
+  const c = ctx;
+  for (const w of g.waves) {
+    const k = w.t / w.dur, e = 1 - (1 - k) * (1 - k) * (1 - k);
+    c.save();
+    for (const [lag, width, col] of [[0, w.big ? 7 : 5, w.color], [0.18, 2.5, w.hi]]) {
+      const kk = clamp((k - lag) / (1 - lag), 0, 1), ee = 1 - (1 - kk) * (1 - kk) * (1 - kk);
+      if (kk <= 0) continue;
+      c.globalAlpha = (1 - kk) * 0.95;
+      c.strokeStyle = col; c.lineWidth = width * (1 - kk * 0.7);
+      c.beginPath(); c.ellipse(w.x, w.y + 2, w.r * ee, w.r * ee * 0.26, 0, 0, 7); c.stroke();
+    }
+    if (w.big && k < 0.35) {                                         // błysk w miejscu lądowania
+      c.globalAlpha = (1 - k / 0.35) * 0.7;
+      const fl = c.createRadialGradient(w.x, w.y - 10, 2, w.x, w.y - 10, 60 * e + 20);
+      fl.addColorStop(0, '#ffffff'); fl.addColorStop(0.4, w.hi); fl.addColorStop(1, `${w.hi}00`);
+      c.fillStyle = fl; c.fillRect(w.x - 90, w.y - 100, 180, 140);
+    }
+    c.restore();
+  }
 }
 
 // ── tło ──
@@ -467,6 +532,7 @@ function drawTitle(g) {
     if (on) { c.strokeStyle = ui.gold; c.lineWidth = 2.5; c.stroke(); }
     const hop = on ? Math.abs(Math.sin(time * 4)) * 4 : 0;
     drawHero({ x: x - 2, y: UIBOX.chars.y + 68 - hop, vx: on ? 260 : 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: on ? time * 22 : 0 }, time + i * 0.7, i);
+    if (on && g.crown) drawCrown(x - 1, UIBOX.chars.y + 9 - hop * 0.6, g.crown, time, 0.62);   // nagroda: korona nad wybraną postacią
   });
   const ch = CHARS[g.charIdx];
   text(`${ch.name} – ${t(`char.${ch.id}`)}`, W / 2, 212, { size: 13, sw: 0, maxW: 370 });
@@ -563,7 +629,7 @@ function drawBoard(g) {
   const c = ctx, b = g.board, kind = b.kind, d = b.data[kind], o = g.online;
   dim(0.66);
   text(t('board.title'), W / 2, 34, { size: 30, color: ui.gold, sw: 6, maxW: 420 });
-  PERIODS.forEach((k, i) => button(UIBOX.tab(i), t(`period.${k}`), { accent: k === kind, size: 13 }));
+  PERIODS.forEach((k, i) => button(UIBOX.tab(i), t(`period.${k}`), { accent: k === kind, size: 12 }));
 
   const L = UIBOX.list;
   panel(L.x, L.y, L.w, L.h);
@@ -580,13 +646,26 @@ function drawBoard(g) {
     text(t('board.colScore'), L.x + L.w - 18, L.y + 16, { ...head, align: 'right' });
     const myRank = d.me?.rank;
     d.top.entries.forEach((e, i) => {
-      const y = L.y + 40 + i * 23, mine = e.rank === myRank;
-      if (mine) { c.fillStyle = ui.sel; rr(L.x + 8, y - 11, L.w - 16, 22, 6); c.fill(); }
+      const y = L.y + 40 + i * 23, mine = e.rank === myRank, medal = MEDALS[e.rank], box = UIBOX.boardRow(i);
+      if (medal) {                                       // najlepsza trójka: pasek w kolorze medalu i korona zamiast numeru
+        const bg = c.createLinearGradient(box.x, 0, box.x + box.w, 0);
+        bg.addColorStop(0, `${medal.mid}66`); bg.addColorStop(0.6, `${medal.mid}22`); bg.addColorStop(1, `${medal.mid}08`);
+        c.fillStyle = bg; rr(box.x, box.y, box.w, box.h, 6); c.fill();
+        c.strokeStyle = `${medal.mid}aa`; c.lineWidth = mine ? 2 : 1; c.stroke();
+        drawCrown(L.x + 27, y + 5, e.rank, g.t + e.rank * 0.4, 0.72);
+      } else if (mine) { c.fillStyle = ui.sel; rr(box.x, box.y, box.w, box.h, 6); c.fill(); }
       const row = { size: 13, sw: 0 };
-      text(String(e.rank), L.x + 36, y, { ...row, align: 'right', color: e.rank <= 3 ? ui.gold : ui.label });
-      text(e.nick ?? t('board.player', { tag: e.tag }), L.x + 52, y, { ...row, align: 'left', color: mine ? ui.gold : ui.text, weight: 700, maxW: 200 });
+      if (!medal) text(String(e.rank), L.x + 36, y, { ...row, align: 'right', color: ui.label });
+      const nameCol = mine ? ui.gold : medal && style.world !== 'sketch' ? medal.hi : ui.text;
+      text(e.nick ?? t('board.player', { tag: e.tag }), L.x + 52, y, { ...row, align: 'left', color: nameCol, weight: 700, maxW: e.replay ? 170 : 200 });
+      if (e.replay) {                                    // powtórka do obejrzenia
+        const px = L.x + 232, loading = g.replay?.loading && g.replay.entry === e;
+        c.fillStyle = loading ? ui.panel : ui.btn; rr(px, y - 8.5, 50, 17, 8.5); c.fill();
+        c.strokeStyle = ui.frame; c.lineWidth = 1; c.stroke();
+        text(loading ? '…' : isTouch ? '▶' : `▶ ${e.rank}`, px + 25, y + 0.5, { size: 10, color: loading ? ui.hint : ui.btnText, sw: 0, maxW: 44 });
+      }
       text(String(e.floor), L.x + 318, y, { ...row, align: 'right', color: ui.label });
-      text(String(e.score), L.x + L.w - 18, y, { ...row, size: 14, align: 'right', color: ui.text });
+      text(String(e.score), L.x + L.w - 18, y, { ...row, size: 14, align: 'right', color: medal ? ui.gold : ui.text });
     });
   }
 
@@ -597,6 +676,7 @@ function drawBoard(g) {
     text(line, W / 2, 394, { size: 13, color: ui.mint, sw: 3, maxW: 420 });
   }
   if (o.pending) text(t('board.pending', { n: o.pending }), W / 2, 410, { size: 10, color: ui.label, sw: 0 });
+  else if (g.replay?.loading) text(t('replay.loading'), W / 2, 410, { size: 11, color: ui.hint, sw: 0 });
 
   const name = o.nick ?? (o.tag ? t('board.player', { tag: o.tag }) : '—');
   button(UIBOX.nick, t(isTouch ? 'board.nick' : 'board.nickKey', { name: o.enabled ? name : '—' }), { size: 12 });
@@ -631,4 +711,104 @@ function drawSettings(g) {
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 440 };
   text(t('set.privacy'), W / 2, 410, hint);
   if (!isTouch) text(t('set.keys'), W / 2, 430, { ...hint, color: ui.hint });
+}
+
+// ───────────────────────── powtórka ─────────────────────────
+
+function iconBtn(b, draw, { on = false } = {}) {
+  const c = ctx;
+  c.fillStyle = ui.panel; rr(b.x, b.y, b.w, b.h, 9); c.fill();
+  c.strokeStyle = on ? ui.gold : ui.line; c.lineWidth = on ? 2.5 : 1.5; c.stroke();
+  c.save(); c.translate(b.x + b.w / 2, b.y + b.h / 2); c.fillStyle = ui.hint; c.strokeStyle = ui.hint; draw(c); c.restore();
+}
+const playIcon = (c) => { c.beginPath(); c.moveTo(-5, -8); c.lineTo(8, 0); c.lineTo(-5, 8); c.closePath(); c.fill(); };
+const pauseIcon = (c) => { c.fillRect(-6, -8, 4.5, 16); c.fillRect(1.5, -8, 4.5, 16); };
+const stopIcon = (c) => { c.fillRect(-6.5, -6.5, 13, 13); };
+
+function drawReplay(g) {
+  const c = ctx, r = g.replay;
+  if (!r?.data) return;
+  const d = r.data;
+  // nagłówek: kto i jaki wynik
+  c.fillStyle = ui.panel; rr(LEFT + 10, 8, RIGHT - LEFT - 20, 30, 12); c.fill();
+  c.strokeStyle = MEDALS[r.rank]?.mid ?? ui.line; c.lineWidth = 1.5; c.stroke();
+  if (MEDALS[r.rank]) drawCrown(LEFT + 30, 29, r.rank, g.t, 0.7);
+  text(`${t('replay.title')} · #${r.rank} ${r.name}`, LEFT + 46, 23, { size: 13, color: ui.gold, sw: 0, align: 'left', maxW: 290 });
+  text(`${d.score}`, RIGHT - 22, 23, { size: 14, color: ui.text, sw: 0, align: 'right', maxW: 80 });
+
+  if (r.ended) {
+    dim(0.55);
+    text(t('replay.end'), W / 2, 196, { size: 38, color: ui.gold, sw: 7, maxW: 420 });
+    text(`${t('over.score')}: ${d.score}   ·   ${t('over.floor')}: ${d.floor}   ·   ${t('over.combo')}: ${d.combo}`, W / 2, 244, { size: 14, sw: 4, maxW: 430 });
+    button(UIBOX.rAgain, t('replay.again'), { accent: true, size: 13 });
+    button(UIBOX.rBack, t('replay.back'), { size: 13 });
+    return;
+  }
+  if (!r.playing) {                                    // pauza albo stop: duży przycisk na środku
+    c.fillStyle = `rgba(${ui.dim},.35)`; c.fillRect(LEFT, 40, RIGHT - LEFT, H - 40);
+    c.fillStyle = ui.panel; c.beginPath(); c.arc(W / 2, 220, 34, 0, 7); c.fill();
+    c.strokeStyle = ui.gold; c.lineWidth = 2.5; c.stroke();
+    c.save(); c.translate(W / 2 + 3, 220); c.scale(2, 2); c.fillStyle = ui.gold; playIcon(c); c.restore();
+    text(t(r.i === 0 ? 'replay.stopped' : 'replay.paused'), W / 2, 276, { size: 18, sw: 5, maxW: 300 });
+    if (!isTouch) text(t('replay.keys'), W / 2, 418, { size: 11, color: ui.hint, sw: 3, weight: 700, maxW: 440 });
+  }
+  // pasek sterowania
+  iconBtn(UIBOX.rPlay, r.playing ? pauseIcon : playIcon, { on: !r.playing });
+  iconBtn(UIBOX.rStop, stopIcon);
+  button(UIBOX.rSpeed, `${g.replaySpeedX}×`, { on: g.replaySpeedX > 1, size: 14 });
+  const b = UIBOX.rBar, f = clamp(r.i / Math.max(1, d.ticks.length), 0, 1);
+  c.fillStyle = ui.panel; rr(b.x - 3, b.y - 3, b.w + 6, b.h + 6, 9); c.fill();
+  c.strokeStyle = ui.line; c.lineWidth = 1; c.stroke();
+  c.fillStyle = ui.gold; rr(b.x, b.y, Math.max(b.h, b.w * f), b.h, b.h / 2); c.fill();
+  const sec = (n) => { const s2 = Math.floor(n / 120); return `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, '0')}`; };
+  text(`${sec(r.i)} / ${sec(d.ticks.length)}`, b.x + b.w / 2, b.y - 11, { size: 10, color: ui.hint, sw: 3, maxW: b.w });
+  button(UIBOX.rExit, t('replay.back'), { size: 12 });
+}
+
+// ───────────────────────── podsumowanie tygodnia ─────────────────────────
+
+function drawRecap(g) {
+  const c = ctx, lw = g.recap, time = g.t;
+  if (!lw) return;
+  dim(0.8);
+  const week = String(lw.top.period).split('-')[1] ?? '';
+  text(t('recap.title', { n: Number(week) || week }), W / 2, 36, { size: 30, color: ui.gold, sw: 6, maxW: 440 });
+  text(t('recap.sub'), W / 2, 66, { size: 12, color: ui.hint, sw: 3, weight: 700, maxW: 440 });
+
+  // promienie za zwycięzcą
+  if (!reduceMotion) {
+    c.save(); c.translate(UIBOX.podX[0], UIBOX.podBase - UIBOX.podH[0] - 30); c.rotate(time * 0.25);
+    c.fillStyle = 'rgba(255,224,102,.08)';
+    for (let i = 0; i < 12; i++) { c.rotate(Math.PI / 6); c.beginPath(); c.moveTo(0, 0); c.lineTo(-14, -150); c.lineTo(14, -150); c.closePath(); c.fill(); }
+    c.restore();
+  }
+  for (let i = 0; i < 3; i++) {
+    const e = lw.top.entries[i], m = MEDALS[i + 1], x = UIBOX.podX[i], top = UIBOX.podBase - UIBOX.podH[i];
+    // stopień podium
+    const grad = c.createLinearGradient(0, top, 0, UIBOX.podBase);
+    grad.addColorStop(0, m.mid); grad.addColorStop(1, m.lo);
+    c.fillStyle = grad; rr(x - 46, top, 92, UIBOX.podH[i], [8, 8, 2, 2]); c.fill();
+    c.strokeStyle = ui.frame; c.lineWidth = 2; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(x - 40, top + 4, 80, 3);
+    text(String(i + 1), x, top + UIBOX.podH[i] / 2 + 3, { size: 26, color: '#fff', stroke: m.lo, sw: 5 });
+    if (!e) { text('—', x, top - 24, { size: 20, color: ui.label, sw: 0 }); continue; }
+    // zwycięzca na stopniu, z koroną
+    const ci = Math.max(0, CHARS.findIndex((ch) => ch.id === e.char)), hop = reduceMotion ? 0 : Math.abs(Math.sin(time * 3 + i)) * (i ? 2 : 4);
+    drawHero({ x, y: top - hop, vx: 0, vy: 0, face: i === 2 ? -1 : 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: 0 }, time + i, ci);
+    drawCrown(x, top - 68 - hop, i + 1, time + i * 0.5, i ? 0.95 : 1.15);
+    text(e.nick ?? t('board.player', { tag: e.tag }), x, UIBOX.podBase + 14, { size: 13, color: e.me ? ui.gold : ui.text, sw: 3, maxW: 104 });
+    text(`${e.score}`, x, UIBOX.podBase + 31, { size: 12, color: ui.gold, sw: 3, maxW: 104 });
+    const b = UIBOX.podWatch(i), loading = g.replay?.loading && g.replay.entry === e;
+    if (e.replay) button(b, loading ? '…' : isTouch ? t('recap.watch') : `${t('recap.watch')} · ${i + 1}`, { accent: true, size: 10 });
+    else text(t('recap.noReplay'), x, b.y + b.h / 2, { size: 10, color: ui.label, sw: 0, maxW: 100 });
+  }
+  // moje miejsce
+  const me = lw.me, mine = me?.entries.find((e) => e.me);
+  const line = me?.rank && me.rank <= 3 ? t(`recap.crown${me.rank}`)
+    : me?.rank ? t('recap.me', { rank: me.rank, score: mine?.score ?? '' }) : t('recap.none');
+  text(line, W / 2, 392, { size: 14, color: me?.rank && me.rank <= 3 ? ui.gold : ui.mint, sw: 4, maxW: 460 });
+  button(UIBOX.recapBoard, t('recap.board'), { size: 12 });
+  button(UIBOX.recapNext, t('recap.next'), { accent: true, size: 13 });
+  if (!isTouch) text(t('recap.keys'), W / 2, 466, { size: 10, color: ui.note, sw: 3, weight: 700, maxW: 440 });
+  else if (g.replay?.loading) text(t('replay.loading'), W / 2, 466, { size: 11, color: ui.hint, sw: 3 });
 }

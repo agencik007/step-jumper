@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { cleanup } from '../../server/src/cleanup';
 import { CHUNK_TICKS, splitChunks } from '../../server/src/verify';
-import { SIM_VERSION, encodeInputs } from '../../src/sim';
+import { SIM_VERSION, decodeInputs, encodeInputs, runReplay, score } from '../../src/sim';
 import { idleThen, momentumPilot } from '../helpers';
 import { START, playRun, startServer } from './harness';
 
@@ -295,6 +295,74 @@ describe('rankingi', () => {
   });
 });
 
+describe('powtórki', () => {
+  test('najlepsza trójka ma powtórkę, która odtwarza dokładnie ten sam bieg', async () => {
+    const players = [];
+    for (let i = 1; i <= 4; i++) {
+      const token = await srv.newPlayer();
+      await srv.call('PATCH', '/v1/me', { token, json: { nick: `Gracz${i}` } });
+      const { runId, run } = await ticketAndPlay(token, i, i === 4 ? 300 : 0);
+      expect((await srv.submit(token, runId, run)).data.status).toBe('verified');
+      players.push({ token, runId, run });
+    }
+    const board = (await srv.call('GET', '/v1/leaderboards/week')).data.entries;
+    expect(board.length).toBe(4);
+    expect(board.slice(0, 3).every((e: any) => typeof e.replay === 'string')).toBe(true);
+    expect(board[3].replay).toBeUndefined();
+    // „/me” też podaje powtórki trójki (sąsiedzi gracza z czołówki)
+    expect((await srv.call('GET', '/v1/leaderboards/week/me', { token: players[0].token })).data.entries.filter((e: any) => e.replay).length).toBe(3);
+
+    const top = board[0];
+    const p = players.find((x) => x.runId === top.replay)!;
+    const r = await srv.call('GET', `/v1/replays/${top.replay}`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('cache-control')).toBe('public, max-age=86400');
+    expect(r.data).toMatchObject({ runId: p.runId, simVersion: SIM_VERSION, score: p.run.score, nick: top.nick, char: 'fox', style: 'classic' });
+    const parts = r.data.chunks.map((b: string) => decodeInputs(Uint8Array.from(atob(b), (ch) => ch.charCodeAt(0))));
+    const ticks = new Uint8Array(parts.reduce((n: number, x: Uint8Array) => n + x.length, 0));
+    let at = 0;
+    for (const x of parts) { ticks.set(x, at); at += x.length; }
+    expect(ticks).toEqual(p.run.ticks);
+    const end = runReplay(r.data.seed, ticks);
+    expect(end.over).toBe(true);
+    expect(score(end)).toBe(p.run.score);
+  });
+
+  test('bieg, który nie poprawił żadnego rekordu, nie zostawia powtórki', async () => {
+    const token = await srv.newPlayer();
+    const runs = [await ticketAndPlay(token, 1), await ticketAndPlay(token, 2)];
+    runs.sort((x, y) => y.run.score - x.run.score);
+    await srv.submit(token, runs[0].runId, runs[0].run);
+    await srv.submit(token, runs[1].runId, runs[1].run);
+    expect((await rows('SELECT DISTINCT run_id FROM run_chunks')).map((r) => r.run_id)).toEqual([runs[0].runId]);
+    expect((await srv.call('GET', `/v1/replays/${runs[1].runId}`)).status).toBe(404);
+  });
+
+  test('odrzucony bieg nie zostawia powtórki; nieznany bieg to 404', async () => {
+    const token = await srv.newPlayer();
+    const { runId, run } = await ticketAndPlay(token);
+    expect((await srv.submit(token, runId, run, { claimScore: run.score + 10 })).status).toBe(422);
+    expect(await rows('SELECT * FROM run_chunks')).toEqual([]);
+    expect((await srv.call('GET', `/v1/replays/${runId}`)).status).toBe(404);
+    expect((await srv.call('GET', '/v1/replays/nie-ma-takiego')).status).toBe(404);
+  });
+
+  test('ranking zeszłego tygodnia: zamknięte wyniki i moje miejsce', async () => {
+    const token = await srv.newPlayer();
+    await srv.call('PATCH', '/v1/me', { token, json: { nick: 'Mistrz' } });
+    const { runId, run } = await ticketAndPlay(token);
+    await srv.submit(token, runId, run);
+    expect((await srv.call('GET', '/v1/leaderboards/lastweek')).data.entries).toEqual([]);
+    srv.clock.now = START + 7 * DAY;                     // następny tydzień
+    const last = await srv.call('GET', '/v1/leaderboards/lastweek');
+    expect(last.data.period).toBe('W:2026-47');
+    expect(last.data.entries).toMatchObject([{ rank: 1, nick: 'Mistrz', score: run.score, replay: runId }]);
+    expect((await srv.call('GET', '/v1/leaderboards/lastweek/me', { token })).data.rank).toBe(1);
+    expect((await srv.call('GET', '/v1/leaderboards/week')).data.entries).toEqual([]);
+    expect((await srv.call('GET', `/v1/replays/${runId}`)).status).toBe(200);
+  });
+});
+
 describe('usuwanie danych i sprzątanie', () => {
   test('DELETE /v1/me usuwa konto, biegi i wyniki', async () => {
     const token = await srv.newPlayer();
@@ -302,7 +370,7 @@ describe('usuwanie danych i sprzątanie', () => {
     await srv.submit(token, runId, run);
     await srv.newRun(token);
     expect((await srv.call('DELETE', '/v1/me', { token })).status).toBe(204);
-    for (const t of ['players', 'runs', 'bests']) expect(await rows(`SELECT * FROM ${t}`)).toEqual([]);
+    for (const t of ['players', 'runs', 'bests', 'run_chunks']) expect(await rows(`SELECT * FROM ${t}`)).toEqual([]);
     expect((await srv.call('GET', '/v1/me', { token })).status).toBe(401);
   });
 
@@ -322,8 +390,21 @@ describe('usuwanie danych i sprzątanie', () => {
     expect(periods).toEqual(['W:2026-47', 'all']);   // dzień sprzed 8 dni usunięty; poprzedni tydzień jeszcze widoczny
     srv.clock.now += 91 * DAY;
     await cleanup(srv.db, srv.clock.now);
-    expect((await rows('SELECT id FROM runs')).map((r) => r.id)).not.toContain(fresh.runId);
     expect((await rows('SELECT period FROM bests')).map((r) => r.period)).toEqual(['all']);   // rekord wszech czasów zostaje
+    // …razem ze swoim biegiem i powtórką
+    expect((await rows('SELECT id FROM runs')).map((r) => r.id)).toEqual([fresh.runId]);
+    expect((await rows('SELECT DISTINCT run_id FROM run_chunks')).map((r) => r.run_id)).toEqual([fresh.runId]);
+  });
+
+  test('sprzątanie usuwa stare biegi i powtórki, które nie są niczyim rekordem', async () => {
+    const token = await srv.newPlayer();
+    const a = await ticketAndPlay(token, 1);
+    await srv.submit(token, a.runId, a.run);
+    await srv.db.prepare('DELETE FROM bests').run();     // np. rekord wyparty i okresy wygasłe
+    srv.clock.now += 91 * DAY;
+    await cleanup(srv.db, srv.clock.now);
+    expect(await rows('SELECT id FROM runs')).toEqual([]);
+    expect(await rows('SELECT run_id FROM run_chunks')).toEqual([]);
   });
 });
 

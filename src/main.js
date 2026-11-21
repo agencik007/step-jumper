@@ -11,7 +11,7 @@ initFullscreen(game);
 initInstall(game);
 
 // ranking online: wczytaj konto, uzupełnij zapas biletów i dośli biegi, które czekały na sieć
-online.init().then(() => { online.refill(); online.flush(); });
+online.init().then(() => { online.refill(); online.flush(); game.loadLastWeek(); });
 addEventListener('online', () => { online.refill(); online.flush(); });
 // serwer jeszcze na starszej wersji symulacji (trwa wdrożenie): co minutę sprawdzamy, czy już go zaktualizowano
 setInterval(() => { if (online.serverBehind) online.refill(); }, 60_000);
@@ -26,7 +26,7 @@ if (import.meta.env.DEV) {             // podgląd stanu z konsoli – tylko w t
 
 let last = performance.now();
 function loop(now) {
-  const dt = Math.min(0.1, (now - last) / 1000);
+  const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));   // pierwsza klatka potrafi mieć znacznik czasu sprzed `last`
   last = now;
   pollGamepad();
   game.frame(dt);

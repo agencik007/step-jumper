@@ -5,7 +5,8 @@
 //  - zakończony bieg trafia najpierw do kolejki w pamięci urządzenia, a dopiero potem jest wysyłany;
 //    jeśli sieć zawiedzie, wysyłka wznowi się przy następnej okazji (od porcji, na której stanęła).
 // Protokół: server/README.md.
-import { SIM_VERSION, encodeInputs } from '../sim';
+import { SIM_VERSION, decodeInputs, encodeInputs } from '../sim';
+import { weekKey } from '../../server/src/periods';
 
 const DAY = 86_400_000;
 export const TICKET_RESERVE = 3;
@@ -13,7 +14,7 @@ export const TICKET_RESERVE = 3;
 export const TICKET_MAX_AGE = 6 * DAY;
 const MAX_QUEUE = 20;
 const TIMEOUT_MS = 10_000;
-const KEY = { account: 'sj.account', tickets: 'sj.tickets', queue: 'sj.queue', enabled: 'sj.online' };
+const KEY = { account: 'sj.account', tickets: 'sj.tickets', queue: 'sj.queue', enabled: 'sj.online', crown: 'sj.crown' };
 
 /** Trwała pamięć klucz–wartość: localStorage w przeglądarce, Capacitor Preferences w aplikacji, Map w testach. */
 export interface Store {
@@ -43,7 +44,12 @@ export class LocalStore implements Store {
 export interface Ticket { runId: string; seed: number; simVersion: number; chunkTicks: number; issuedAt: number }
 
 export type PeriodKind = 'all' | 'week' | 'day';
-export interface Entry { rank: number; nick: string | null; tag: string; score: number; floor: number; combo: number; char: string; country: string | null; me?: boolean }
+/** Rankingi do obejrzenia: okresy wyników i zamknięty poprzedni tydzień. */
+export type BoardKind = PeriodKind | 'lastweek';
+export interface Entry {
+  rank: number; nick: string | null; tag: string; score: number; floor: number; combo: number; char: string; country: string | null; me?: boolean;
+  replay?: string;   // identyfikator powtórki (tylko najlepsza trójka)
+}
 export interface Board { period: string; entries: Entry[] }
 export interface Around extends Board { rank: number | null }
 
@@ -53,6 +59,15 @@ export type SubmitResult =
   | { status: 'rejected'; reason: string };    // serwer nie przyjął biegu (albo bieg przepadł razem z kontem)
 
 export interface FinishedRun { ticket: Ticket; ticks: Uint8Array; score: number; char: string; style: string; control: string }
+
+/** Zapis biegu do obejrzenia: ziarno wieży + wejście w każdym kroku fizyki. */
+export interface Replay {
+  runId: string; seed: number; simVersion: number; score: number; floor: number; combo: number;
+  char: string; style: string | null; nick: string | null; tag: string; ticks: Uint8Array;
+}
+
+/** Korona za miejsce 1–3 w zamkniętym tygodniu; nosi się ją przez cały następny tydzień. */
+export interface Crown { week: string; rank: number }
 
 interface Account { playerId: string; token: string; nick: string | null }
 interface QueuedRun { runId: string; chunks: string[]; nextSeq: number; score: number; char: string; style: string; control: string; appVersion: string }
@@ -91,6 +106,7 @@ export class Online {
   private list: Ticket[] = [];
   private queue: QueuedRun[] = [];
   private results = new Map<string, SubmitResult>();
+  private crownSaved: Crown | null = null;
   private refilling: Promise<void> | null = null;
   private flushing: Promise<void> | null = null;
   private readonly fetchFn: typeof fetch;
@@ -107,6 +123,7 @@ export class Online {
     this.account = parse<Account | null>(await s.get(KEY.account), null);
     this.list = parse<Ticket[]>(await s.get(KEY.tickets), []);
     this.queue = parse<QueuedRun[]>(await s.get(KEY.queue), []);
+    this.crownSaved = parse<Crown | null>(await s.get(KEY.crown), null);
     this.dropStaleTickets();
     this.loaded = true;
   }
@@ -159,7 +176,46 @@ export class Online {
     return this.flushing;
   }
 
-  async leaderboard(kind: PeriodKind, limit = 50): Promise<Board | null> {
+  /** Tydzień, którego najlepsza trójka nosi teraz korony (klucz 'W:2026-47'). */
+  get crownWeek(): string { return weekKey(this.now() - 7 * DAY); }
+
+  /** Moja korona na ten tydzień: miejsce 1–3 w zeszłym tygodniu albo null. Działa bez sieci (zapamiętana). */
+  get crown(): number | null {
+    const c = this.crownSaved;
+    return this.enabled && this.account && c && c.week === this.crownWeek && c.rank >= 1 && c.rank <= 3 ? c.rank : null;
+  }
+
+  /**
+   * Wyniki zamkniętego, poprzedniego tygodnia: najlepsi i moje miejsce. Przy okazji zapamiętuje koronę.
+   * Null bez sieci.
+   */
+  async lastWeek(limit = 10): Promise<{ top: Board; me: Around | null } | null> {
+    const [top, me] = await Promise.all([this.leaderboard('lastweek', limit), this.around('lastweek')]);
+    if (!top) return null;
+    if (me && this.account) {
+      this.crownSaved = { week: me.period, rank: me.rank ?? 0 };
+      await this.o.store.set(KEY.crown, JSON.stringify(this.crownSaved));
+    }
+    return { top, me };
+  }
+
+  /** Powtórka biegu z rankingu; null bez sieci, gdy jej nie ma albo gdy zapis jest uszkodzony. */
+  async replay(runId: string): Promise<Replay | null> {
+    try {
+      const r = await this.req('GET', `/v1/replays/${encodeURIComponent(runId)}`);
+      if (r.status !== 200) return null;
+      const d = r.data, parts = (d.chunks as string[]).map((b) => decodeInputs(fromB64(b)));
+      const ticks = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
+      let at = 0;
+      for (const x of parts) { ticks.set(x, at); at += x.length; }
+      return {
+        runId: d.runId, seed: d.seed, simVersion: d.simVersion, score: d.score, floor: d.floor, combo: d.combo,
+        char: d.char, style: d.style ?? null, nick: d.nick ?? null, tag: d.tag, ticks,
+      };
+    } catch { return null; }
+  }
+
+  async leaderboard(kind: BoardKind, limit = 50): Promise<Board | null> {
     if (!this.enabled) return null;
     try {
       const r = await this.req('GET', `/v1/leaderboards/${kind}?limit=${limit}`);
@@ -168,7 +224,7 @@ export class Online {
   }
 
   /** Moje miejsce z sąsiadami; null bez konta albo bez sieci. */
-  async around(kind: PeriodKind): Promise<Around | null> {
+  async around(kind: BoardKind): Promise<Around | null> {
     if (!this.enabled || !this.account) return null;
     try {
       const r = await this.req('GET', `/v1/leaderboards/${kind}/me`, { auth: true });
@@ -202,9 +258,9 @@ export class Online {
         if (r.status !== 204 && r.status !== 401) return false;
       } catch { return false; }
     }
-    this.account = null; this.list = []; this.queue = []; this.results.clear();
+    this.account = null; this.list = []; this.queue = []; this.results.clear(); this.crownSaved = null;
     const s = this.o.store;
-    await Promise.all([s.remove(KEY.account), s.remove(KEY.tickets), s.remove(KEY.queue)]);
+    await Promise.all([s.remove(KEY.account), s.remove(KEY.tickets), s.remove(KEY.queue), s.remove(KEY.crown)]);
     return true;
   }
 

@@ -102,6 +102,11 @@ export function pollGamepad() {
   } else if (game.state === 'board') {
     if (pad.left && !was.left) game.boardTab(-1);
     if (pad.right && !was.right) game.boardTab(1);
+  } else if (game.state === 'replay') {
+    if (pad.left && !was.left) game.replaySpeed(-1);
+    if (pad.right && !was.right) game.replaySpeed(1);
+    if (pad.down && !was.down) game.replayStop();
+    if (pad.up && !was.up) game.exitReplay();
   } else if (game.state === 'settings') {
     if (pad.up && !was.up) game.settingsMove(-1);
     if (pad.down && !was.down) game.settingsMove(1);
@@ -136,12 +141,21 @@ export function initInput(theGame) {
       if (act === 'left') game.boardTab(-1);
       else if (act === 'right') game.boardTab(1);
       else if (e.code === 'KeyN') { e.preventDefault(); game.editNick(); return; }   // bez „n” w otwieranym polu
+      else if (/^(Digit|Numpad)[123]$/.test(e.code)) { game.boardReplay(Number(e.code.slice(-1))); return; }
+    } else if (game.state === 'recap') {
+      if (/^(Digit|Numpad)[123]$/.test(e.code)) { game.recapReplay(Number(e.code.slice(-1))); return; }
+      if (e.code === 'KeyR') { game.recapBoard(); return; }
+      if (e.code === 'Escape') { game.closeRecap(); return; }
+    } else if (game.state === 'replay') {
+      if (act === 'left' || act === 'right') { game.replaySpeed(act === 'left' ? -1 : 1); return; }
+      if (e.code === 'KeyS') { game.replayStop(); return; }
+      if (e.code === 'Escape') { game.exitReplay(); return; }
     } else if (game.state === 'settings') {
       if (up) { game.settingsMove(-1); return; }
       if (dn) { game.settingsMove(1); return; }
       if (act === 'left' || act === 'right') { game.settingsSide(act === 'left' ? -1 : 1); return; }
     }
-    if (act && game.state !== 'board' && game.state !== 'settings') down.add(e.code);
+    if (act && game.state !== 'board' && game.state !== 'settings' && game.state !== 'replay') down.add(e.code);
     if (e.code === 'Space' || e.code === 'Enter') input.edge = true;
     else if (e.code === 'KeyP') game.togglePause();
     else if (e.code === 'KeyT' && game.state === 'title') toggleTilt();
@@ -182,6 +196,7 @@ export function initInput(theGame) {
       if (act === 'jump') input.edge = true;
       else if (game.state === 'title') game.pick('char', act === 'left' ? -1 : 1);
       else if (game.state === 'board') game.boardTab(act === 'left' ? -1 : 1);
+      else if (game.state === 'replay') game.replaySpeed(act === 'left' ? -1 : 1);
     });
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) btn.addEventListener(ev, () => set(false));
     btn.addEventListener('contextmenu', (e) => e.preventDefault());

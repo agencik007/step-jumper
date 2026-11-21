@@ -244,3 +244,40 @@ describe('rankingi, nick i dane', () => {
     expect(o.tickets).toBe(TICKET_RESERVE);
   });
 });
+
+describe('korony i powtórki', () => {
+  const DAY = 86_400_000;
+
+  test('miejsce w najlepszej trójce zeszłego tygodnia daje koronę na cały następny tydzień – także bez sieci', async () => {
+    const store = new MemoryStore();
+    const o = client(store); await o.init(); await o.refill();
+    expect((await o.submit(play(o.takeTicket()!))).status).toBe('verified');
+    expect(o.crown).toBeNull();
+    srv.clock.now += 7 * DAY;
+    const lw = await o.lastWeek();
+    expect(lw?.top.entries.length).toBe(1);
+    expect(lw?.me?.rank).toBe(1);
+    expect(o.crown).toBe(1);
+    // po ponownym uruchomieniu korona jest od razu, bez pytania serwera
+    net.down = true;
+    const again = client(store); await again.init();
+    expect(again.crown).toBe(1);
+    // tydzień później korona wygasa
+    srv.clock.now += 7 * DAY;
+    expect(again.crown).toBeNull();
+  });
+
+  test('powtórka z rankingu odtwarza ten sam bieg', async () => {
+    const o = await ready();
+    const run = play(o.takeTicket()!);
+    await o.submit(run);
+    const top = await o.leaderboard('week', 10);
+    const id = top!.entries[0].replay!;
+    const r = await o.replay(id);
+    expect(r).toMatchObject({ seed: run.ticket.seed, score: run.score, char: 'fox', style: 'ice', simVersion: SIM_VERSION });
+    expect(r!.ticks).toEqual(run.ticks);
+    expect(await o.replay('nie-ma')).toBeNull();
+    net.down = true;
+    expect(await o.replay(id)).toBeNull();
+  });
+});
