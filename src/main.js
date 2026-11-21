@@ -2,12 +2,16 @@
 import { online } from './net';
 import { initFullscreen } from './game/fullscreen.js';
 import { Game } from './game/game.js';
+import { focusGame } from './game/gfx.js';
 import { initInput, pollGamepad, tilt, tiltDegrees } from './game/input.js';
 import { initInstall } from './game/install.js';
+import { initSpeech } from './game/speech.js';
 import { initUpdateCheck } from './game/update.js';
 
 const game = new Game();
+initSpeech();
 initInput(game);
+focusGame();                           // klawiatura i czytnik ekranu od razu „w grze”
 initFullscreen(game);
 initInstall(game);
 initUpdateCheck();                     // nowa wersja na serwerze → przycisk PRZEŁADUJ na ekranie tytułowym

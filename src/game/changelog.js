@@ -5,6 +5,34 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.16.0', date: '2026-11-21',
+    pl: [
+      'Gra współpracuje z czytnikami ekranu: mówi, co jest na ekranie – wybraną postać i mapę, opcje i ich wartości, ranking, wynik po biegu i komunikaty w grze.',
+      'Klawisz I w trakcie biegu odczytuje wynik, piętro, combo i tempo.',
+      'Lepsza obsługa klawiaturą: Tab przechodzi do przycisków pauzy i pełnego ekranu, Enter i spacja je naciskają, a po zamknięciu okienek klawisze od razu znów sterują grą.',
+    ],
+    en: [
+      'The game works with screen readers: it says what is on the screen – the chosen character and map, options and their values, the ranking, your result after a run and in-game messages.',
+      'The I key reads your score, floor, combo and speed during a run.',
+      'Better keyboard support: Tab reaches the pause and full screen buttons, Enter and space press them, and after closing a window the keys control the game again right away.',
+    ],
+    de: [
+      'Das Spiel arbeitet mit Screenreadern: Es sagt, was auf dem Bildschirm ist – gewählte Figur und Karte, Optionen und ihre Werte, die Rangliste, dein Ergebnis nach dem Lauf und Meldungen im Spiel.',
+      'Die Taste I liest im Lauf Punkte, Etage, Combo und Tempo vor.',
+      'Bessere Tastaturbedienung: Mit Tab erreichst du die Tasten für Pause und Vollbild, Enter und Leertaste drücken sie, und nach dem Schließen eines Fensters steuern die Tasten sofort wieder das Spiel.',
+    ],
+    fr: [
+      'Le jeu fonctionne avec les lecteurs d’écran : il dit ce qui est à l’écran – personnage et carte choisis, options et leurs valeurs, classement, votre résultat après la partie et messages du jeu.',
+      'La touche I lit votre score, l’étage, le combo et la vitesse pendant la partie.',
+      'Meilleure prise en charge du clavier : Tab atteint les boutons pause et plein écran, Entrée et espace les activent, et après la fermeture d’une fenêtre les touches pilotent de nouveau le jeu.',
+    ],
+    es: [
+      'El juego funciona con lectores de pantalla: dice lo que hay en la pantalla – el personaje y el mapa elegidos, las opciones y sus valores, el ranking, tu resultado tras la partida y los mensajes del juego.',
+      'La tecla I lee tu puntuación, el piso, el combo y el ritmo durante la partida.',
+      'Mejor manejo con teclado: Tab llega a los botones de pausa y pantalla completa, Enter y espacio los pulsan, y al cerrar una ventana las teclas vuelven a controlar el juego enseguida.',
+    ],
+  },
+  {
     v: '0.15.0', date: '2026-11-21',
     pl: [
       'Nowa strona OPCJE → DŹWIĘK: osobne suwaki głośności efektów i muzyki (od 0 do 100%).',

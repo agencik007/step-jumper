@@ -41,6 +41,12 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
   wzmocnienie w kwadracie – `src/game/audio.js`) oraz **ostrzeżenie przy dole ekranu** – wizualny odpowiednik tykania w muzyce:
   dół planszy pulsuje na czerwono (~1 raz na sekundę), z paskiem i strzałkami, przy tym samym progu co tykanie (`drawDangerWarn`
   w `render.js`). Pozostałe dźwięki mają już swój obraz (komunikaty, kurz, zegar, HUD).
+- **Czytniki ekranu i klawiatura** (`src/game/speech.js`): płótno ma `role="application"`, opis klawiszy (`aria-describedby`)
+  i dostaje fokus przy starcie. Gra opisuje ekran słowami w ukrytych regionach `aria-live`: po wejściu na ekran czyta całość,
+  potem tylko to, co się zmieniło (wybrana postać i mapa, wiersz opcji z wartością, zakładka i lista rankingu, wynik i miejsce
+  po biegu, powtórka, podsumowanie tygodnia, najnowszy wpis NOWOŚCI), a komunikaty z `game.say` idą tą samą drogą.
+  Klawisz **I** w biegu i w pauzie czyta wynik, piętro, combo i tempo. Tab dochodzi do przycisków pauzy i pełnego ekranu
+  (Enter / spacja je naciskają), przyciski dotykowe są poza kolejnością Tab, a po zamknięciu okienek fokus wraca na płótno.
 - Ekran NOWOŚCI rysuje sam tekst na jednolitym tle, bez mapy i efektów pod spodem.
 - Wibracje w 4 stopniach (wył. / słabe / średnie / mocne) – telefon i pad (`vibrationActuator`).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).

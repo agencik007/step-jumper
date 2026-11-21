@@ -13,7 +13,7 @@
 import { H, W } from '../sim';
 import { sfx } from './audio.js';
 import { BTN, KIND_NAMES, padKind, readPad } from './gamepad.js';
-import { canvas } from './gfx.js';
+import { canvas, focusGame } from './gfx.js';
 import { t } from './i18n.js';
 import { toggleFullscreen } from './fullscreen.js';
 import { hideInstall, installOpen } from './install.js';
@@ -423,6 +423,8 @@ function handlePad(p, B) {
 // ───────────────────────── klawiatura ─────────────────────────
 function onKey(e) {
   if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;   // pisanie nicku – klawisze należą do pola tekstowego
+  // przycisk z fokusem (Tab): Enter i spacja go naciskają, a nie startują gry pod spodem
+  if (e.target instanceof HTMLButtonElement && ['Enter', 'NumpadEnter', 'Space'].includes(e.code)) return;
   inputSrc.last = 'keys';
   if (padEditing()) {                                  // edytor układu: suwaki działają strzałkami, Esc / Enter kończy
     if (e.code === 'Escape' || (e.code === 'Enter' && !(e.target instanceof HTMLButtonElement))) { e.preventDefault(); closePadEditor(); }
@@ -486,6 +488,7 @@ function onKey(e) {
   else if (act === 'pause') game.togglePause();
   else if (free && code === 'KeyT' && s === 'title') toggleTilt();
   else if (free && code === 'KeyF') toggleFullscreen();
+  else if (free && code === 'KeyI' && (s === 'play' || s === 'pause')) game.speakStatus();   // czytnik ekranu: stan biegu
   else if (code === 'Escape') { if (['over', 'pause', 'board', 'settings'].includes(s)) game.toTitle(); else game.pause(); }
   else if (free && code === 'KeyM') {
     sfx.muted = !sfx.muted;
@@ -565,7 +568,7 @@ export function initInput(theGame) {
   const pauseBtn = document.getElementById('pause');
   if (pauseBtn) {
     pauseBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); });   // w trybie przechyłu to nie jest skok
-    pauseBtn.addEventListener('click', (e) => { e.stopPropagation(); sfx.unlock(); sfx.pick(); game.togglePause(); pauseBtn.blur(); });
+    pauseBtn.addEventListener('click', (e) => { e.stopPropagation(); sfx.unlock(); sfx.pick(); game.togglePause(); focusGame(); });
     pauseBtn.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 

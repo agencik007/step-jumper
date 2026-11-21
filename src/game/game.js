@@ -20,6 +20,7 @@ import { nickOpen, openNick } from './nickform.js';
 import { buildNews, buildPages, selectable } from './options.js';
 import { loadPads, mirrorPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
+import { announce, speakFrame, speakStatus } from './speech.js';
 import { reloadForUpdate, update } from './update.js';
 import { clamp, loadJSON, mod, rand, reduceMotion, saveJSON } from './util.js';
 
@@ -535,7 +536,12 @@ export class Game {
     }
   }
 
-  say(title, sub = '', color = 'gold', dur = 1.6) { this.msgs.push({ title, sub, color, dur, t: 0 }); if (this.msgs.length > 3) this.msgs.shift(); }
+  /** Klawisz I: stan biegu dla czytnika ekranu. */
+  speakStatus() { speakStatus(this); }
+  say(title, sub = '', color = 'gold', dur = 1.6) {
+    this.msgs.push({ title, sub, color, dur, t: 0 }); if (this.msgs.length > 3) this.msgs.shift();
+    announce(sub ? `${title} ${sub}` : title);           // czytnik ekranu: te same komunikaty słowami
+  }
 
   // ── cząsteczki ──
   puff(x, y, n, { color = '#fff', sx = 120, sy = 80, up = 60, life = 0.4, size = 3, g = 300, star = false } = {}) {
@@ -788,6 +794,7 @@ export class Game {
     sfx.song(live ? this.musicParams() : null, dt);
     if (document.body.dataset.state !== this.state) this.showState();
     render(this);
+    speakFrame(this);                    // czytnik ekranu: opis ekranu i zmian (speech.js)
   }
 
   /** Stan gry na <body>: CSS pokazuje przycisk pauzy tylko w biegu i w pauzie (wtedy z ikoną „graj”). */

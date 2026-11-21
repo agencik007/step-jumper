@@ -251,6 +251,22 @@ const pl = {
   'snd.offMuted': 'Dźwięk jest wyłączony – włącz go wierszem wyżej albo klawiszem M.',
   'snd.warn': 'Ostrzeżenie przy dole ekranu',
   'snd.warn.tip': 'Pulsujący czerwony pasek i strzałki, gdy bohater zjeżdża ku przegranej – to samo, co tykanie w muzyce.',
+  // czytniki ekranu (speech.js)
+  'sr.help': 'Gra na klawiaturę. Ekran tytułowy: strzałki ← → – postać, ↑ ↓ – mapa, Enter – graj, O – opcje, R – ranking, N – nowości. W biegu: strzałki – bieg, spacja – skok, P – pauza, I – wynik i piętro. W menu: strzałki – wybór, Enter – zmień, Esc – wróć.',
+  'sr.title': 'Ekran tytułowy. Enter – graj, O – opcje, R – ranking, N – nowości, strzałki – postać i mapa.',
+  'sr.play': 'Bieg. P – pauza, I – wynik i piętro.',
+  'sr.status': 'Wynik {score}, piętro {floor}, combo {combo}, tempo {tempo}.',
+  'sr.over': 'Koniec gry. Wynik {score}, piętro {floor}, najlepsze combo {combo}, rekord {best}.',
+  'sr.newBest': 'Nowy rekord!',
+  'sr.again': 'Enter – jeszcze raz, Esc – menu.',
+  'sr.boardRow': '{rank}. {name}: {score} pkt, piętro {floor}',
+  'sr.boardSel': 'Wybrane miejsce {rank}: {name}. Enter – powtórka.',
+  'sr.selected': 'wybrany',
+  'sr.slot': 'pole {n}',
+  'sr.empty': 'puste',
+  'sr.update': 'Jest nowa wersja gry {v} – klawisz U ją wczyta.',
+  'sr.replay': 'Powtórka: miejsce {rank}, {name}, wynik {score}. Spacja – start i pauza, S – stop, ← → – tempo, Esc – wyjście.',
+  'sr.recapSel': 'Wybrane miejsce {rank}: {name}.',
 };
 
 const en = {
@@ -500,6 +516,22 @@ const en = {
   'snd.offMuted': 'Sound is off – turn it on in the row above or with the M key.',
   'snd.warn': 'Warning at the bottom of the screen',
   'snd.warn.tip': 'A pulsing red bar and arrows when the hero slides towards losing – the same as the ticking in the music.',
+  // czytniki ekranu (speech.js)
+  'sr.help': 'Keyboard game. Title screen: arrows ← → – character, ↑ ↓ – map, Enter – play, O – options, R – ranking, N – what’s new. While running: arrows – run, space – jump, P – pause, I – score and floor. In menus: arrows – select, Enter – change, Esc – back.',
+  'sr.title': 'Title screen. Enter – play, O – options, R – ranking, N – what’s new, arrows – character and map.',
+  'sr.play': 'Run started. P – pause, I – score and floor.',
+  'sr.status': 'Score {score}, floor {floor}, combo {combo}, speed {tempo}.',
+  'sr.over': 'Game over. Score {score}, floor {floor}, best combo {combo}, best {best}.',
+  'sr.newBest': 'New record!',
+  'sr.again': 'Enter – play again, Esc – menu.',
+  'sr.boardRow': '{rank}. {name}: {score} points, floor {floor}',
+  'sr.boardSel': 'Selected rank {rank}: {name}. Enter – replay.',
+  'sr.selected': 'selected',
+  'sr.slot': 'field {n}',
+  'sr.empty': 'empty',
+  'sr.update': 'A new game version {v} is out – the U key loads it.',
+  'sr.replay': 'Replay: rank {rank}, {name}, score {score}. Space – play and pause, S – stop, ← → – speed, Esc – exit.',
+  'sr.recapSel': 'Selected rank {rank}: {name}.',
 };
 
 const de = {
@@ -749,6 +781,22 @@ const de = {
   'snd.offMuted': 'Der Ton ist aus – schalte ihn in der Zeile darüber oder mit der Taste M ein.',
   'snd.warn': 'Warnung am unteren Rand',
   'snd.warn.tip': 'Ein pulsierender roter Balken und Pfeile, wenn die Figur Richtung Niederlage rutscht – wie das Ticken in der Musik.',
+  // czytniki ekranu (speech.js)
+  'sr.help': 'Spiel mit Tastatur. Titelbildschirm: Pfeile ← → – Figur, ↑ ↓ – Karte, Enter – spielen, O – Optionen, R – Rangliste, N – Neuigkeiten. Im Lauf: Pfeile – laufen, Leertaste – springen, P – Pause, I – Punkte und Etage. In Menüs: Pfeile – wählen, Enter – ändern, Esc – zurück.',
+  'sr.title': 'Titelbildschirm. Enter – spielen, O – Optionen, R – Rangliste, N – Neuigkeiten, Pfeile – Figur und Karte.',
+  'sr.play': 'Lauf gestartet. P – Pause, I – Punkte und Etage.',
+  'sr.status': 'Punkte {score}, Etage {floor}, Combo {combo}, Tempo {tempo}.',
+  'sr.over': 'Spiel vorbei. Punkte {score}, Etage {floor}, beste Combo {combo}, Rekord {best}.',
+  'sr.newBest': 'Neuer Rekord!',
+  'sr.again': 'Enter – nochmal, Esc – Menü.',
+  'sr.boardRow': '{rank}. {name}: {score} Punkte, Etage {floor}',
+  'sr.boardSel': 'Gewählt: Platz {rank}, {name}. Enter – Wiederholung.',
+  'sr.selected': 'ausgewählt',
+  'sr.slot': 'Feld {n}',
+  'sr.empty': 'leer',
+  'sr.update': 'Es gibt eine neue Spielversion {v} – die Taste U lädt sie.',
+  'sr.replay': 'Wiederholung: Platz {rank}, {name}, Punkte {score}. Leertaste – Start und Pause, S – Stopp, ← → – Tempo, Esc – Ende.',
+  'sr.recapSel': 'Gewählt: Platz {rank}, {name}.',
 };
 
 const fr = {
@@ -998,6 +1046,22 @@ const fr = {
   'snd.offMuted': 'Le son est coupé – activez-le sur la ligne du dessus ou avec la touche M.',
   'snd.warn': 'Alerte en bas de l’écran',
   'snd.warn.tip': 'Une barre rouge qui pulse et des flèches quand le héros glisse vers la défaite – comme le tic-tac de la musique.',
+  // czytniki ekranu (speech.js)
+  'sr.help': 'Jeu au clavier. Écran titre : flèches ← → – personnage, ↑ ↓ – carte, Entrée – jouer, O – options, R – classement, N – nouveautés. En partie : flèches – courir, espace – sauter, P – pause, I – score et étage. Dans les menus : flèches – choisir, Entrée – modifier, Échap – retour.',
+  'sr.title': 'Écran titre. Entrée – jouer, O – options, R – classement, N – nouveautés, flèches – personnage et carte.',
+  'sr.play': 'C’est parti. P – pause, I – score et étage.',
+  'sr.status': 'Score {score}, étage {floor}, combo {combo}, vitesse {tempo}.',
+  'sr.over': 'Partie terminée. Score {score}, étage {floor}, meilleur combo {combo}, record {best}.',
+  'sr.newBest': 'Nouveau record !',
+  'sr.again': 'Entrée – rejouer, Échap – menu.',
+  'sr.boardRow': '{rank}. {name} : {score} points, étage {floor}',
+  'sr.boardSel': 'Sélection : place {rank}, {name}. Entrée – rediffusion.',
+  'sr.selected': 'sélectionné',
+  'sr.slot': 'case {n}',
+  'sr.empty': 'vide',
+  'sr.update': 'Une nouvelle version du jeu {v} est sortie – la touche U la charge.',
+  'sr.replay': 'Rediffusion : place {rank}, {name}, score {score}. Espace – lecture et pause, S – stop, ← → – vitesse, Échap – quitter.',
+  'sr.recapSel': 'Sélection : place {rank}, {name}.',
 };
 
 const es = {
@@ -1247,6 +1311,22 @@ const es = {
   'snd.offMuted': 'El sonido está desactivado: actívalo en la fila de arriba o con la tecla M.',
   'snd.warn': 'Aviso en la parte inferior',
   'snd.warn.tip': 'Una barra roja que late y flechas cuando el héroe se desliza hacia la derrota, igual que el tictac de la música.',
+  // czytniki ekranu (speech.js)
+  'sr.help': 'Juego con teclado. Pantalla de título: flechas ← → – personaje, ↑ ↓ – mapa, Enter – jugar, O – opciones, R – ranking, N – novedades. En la partida: flechas – correr, espacio – saltar, P – pausa, I – puntuación y piso. En los menús: flechas – elegir, Enter – cambiar, Esc – volver.',
+  'sr.title': 'Pantalla de título. Enter – jugar, O – opciones, R – ranking, N – novedades, flechas – personaje y mapa.',
+  'sr.play': 'Empieza la partida. P – pausa, I – puntuación y piso.',
+  'sr.status': 'Puntuación {score}, piso {floor}, combo {combo}, ritmo {tempo}.',
+  'sr.over': 'Fin de la partida. Puntuación {score}, piso {floor}, mejor combo {combo}, récord {best}.',
+  'sr.newBest': '¡Nuevo récord!',
+  'sr.again': 'Enter – otra vez, Esc – menú.',
+  'sr.boardRow': '{rank}. {name}: {score} puntos, piso {floor}',
+  'sr.boardSel': 'Elegido el puesto {rank}: {name}. Enter – repetición.',
+  'sr.selected': 'elegido',
+  'sr.slot': 'casilla {n}',
+  'sr.empty': 'vacía',
+  'sr.update': 'Hay una nueva versión del juego {v}: la tecla U la carga.',
+  'sr.replay': 'Repetición: puesto {rank}, {name}, puntuación {score}. Espacio – reproducir y pausa, S – stop, ← → – velocidad, Esc – salir.',
+  'sr.recapSel': 'Elegido el puesto {rank}: {name}.',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

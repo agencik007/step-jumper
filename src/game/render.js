@@ -777,7 +777,7 @@ function drawOver(g) {
 // ───────────────────────── ranking online ─────────────────────────
 
 /** Jedna linijka o losie wyniku na ekranie końca gry: [tekst, kolor]. */
-function netLine(n) {
+export function netLine(n) {
   if (!n) return null;
   switch (n.status) {
     case 'sending': return [t('net.sending'), ui.hint];

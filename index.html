@@ -30,6 +30,10 @@
     box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 2px #2c3769;
   }
   svg.fx { position: absolute; width: 0; height: 0; }
+  /* tylko dla czytników ekranu */
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  canvas:focus { outline: none; }
+  canvas:focus-visible { outline: 3px solid #ffe066; outline-offset: 3px; }
   /* rozmiar (--pad-scale) i widoczność (--pad-alpha) przycisków ekranowych ustawia src/game/padlayout.js */
   :root { --pad-scale: 1; --pad-alpha: 1; --text-k: 1; }
   /* OPCJE → DOSTĘPNOŚĆ: rozmiar tekstu skaluje też okienka HTML (nick, instalacja, edytor układu) */
@@ -222,16 +226,20 @@
   </filter>
 </svg>
 
-<div id="stage"><canvas id="game" aria-label="Step Jumper – gra zręcznościowa" data-i18n-aria="aria.game"></canvas></div>
+<main id="stage"><canvas id="game" tabindex="0" role="application" aria-label="Step Jumper – gra zręcznościowa" data-i18n-aria="aria.game" aria-describedby="srHelp"></canvas></main>
+<!-- czytniki ekranu: płótna nie widać, więc gra opisuje ekran słowami (src/game/speech.js) -->
+<p id="srHelp" class="sr-only" data-i18n="sr.help"></p>
+<div id="srPolite" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="srAlert" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
 <div class="pad" id="padL">
-  <button data-act="left" aria-label="W lewo" data-i18n-aria="aria.left">◀</button>
-  <button data-act="right" aria-label="W prawo" data-i18n-aria="aria.right">▶</button>
+  <button tabindex="-1" data-act="left" aria-label="W lewo" data-i18n-aria="aria.left">◀</button>
+  <button tabindex="-1" data-act="right" aria-label="W prawo" data-i18n-aria="aria.right">▶</button>
 </div>
 <div class="pad" id="padR">
-  <button data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
+  <button tabindex="-1" data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
 </div>
 <div class="pad" id="padJ">
-  <button data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
+  <button tabindex="-1" data-act="jump" aria-label="Skok" data-i18n-aria="aria.jump">▲</button>
 </div>
 <div id="stick" aria-hidden="true"></div>
 
