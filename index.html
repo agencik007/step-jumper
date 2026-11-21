@@ -31,7 +31,13 @@
   }
   svg.fx { position: absolute; width: 0; height: 0; }
   /* rozmiar (--pad-scale) i widoczność (--pad-alpha) przycisków ekranowych ustawia src/game/padlayout.js */
-  :root { --pad-scale: 1; --pad-alpha: 1; }
+  :root { --pad-scale: 1; --pad-alpha: 1; --text-k: 1; }
+  /* OPCJE → DOSTĘPNOŚĆ: rozmiar tekstu skaluje też okienka HTML (nick, instalacja, edytor układu) */
+  .sheet .card, #nick, #padEdit { zoom: var(--text-k); }
+  /* wysoki kontrast: przyciski ekranowe i gałka z wyraźną krawędzią na ciemnym tle */
+  body.hi-contrast .pad button, body.hi-contrast #stick { border: 3px solid #fff; background: rgba(0,0,0,.55); box-shadow: 0 0 0 2px #000; }
+  body.hi-contrast .pad button.on { background: rgba(255,255,255,.4); }
+  body.hi-contrast #stick::after { background: #fff; border-color: #000; }
   .pad { position: fixed; bottom: max(18px, env(safe-area-inset-bottom)); display: none; gap: calc(14px * var(--pad-scale)); }
   .pad button {
     width: calc(76px * var(--pad-scale)); height: calc(76px * var(--pad-scale)); border-radius: 50%; padding: 0;

@@ -29,6 +29,15 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
   i Nintendo i rysuje ich przyciski (A B X Y, ✕ ○ □ △, B A Y X); pady bez układu „standard” mają krzyżak z osi / „hata”
   i numery przycisków do przypisania. Gałka pada daje płynną prędkość. Formularz nicku na padzie: B = graj bez nicku
   (gra zapyta przy następnym uruchomieniu).
+- **Dostępność** (OPCJE → DOSTĘPNOŚĆ, `src/game/access.js`; wszystko czysto wizualne, ranking bez zmian):
+  - rozmiar tekstu mały / średni (domyślny) / duży – mnożnik w `text()` (`gfx.js`) dla napisów poniżej 24 px, okienka HTML przez `zoom`,
+  - wysoki kontrast: prawie nieprzezroczyste tło menu, grube obrysy pięter, wyraźne przyciski ekranowe,
+  - efekty map wł. / wył. (filtry kolorów, ziarno, rysy, linie, piksele),
+  - ograniczenie ruchu: jak w systemie (`prefers-reduced-motion`), zawsze albo nigdy – bez wstrząsów, migania, podskakujących
+    napisów i gwiazdek za bohaterem; przyciemnienie taśmy w „Starym kinie” najwyżej raz na sekundę,
+  - asysta wzroku: poświata wokół bohatera i znacznik piętra, na które spada (rzut w pionie z układu pięter),
+  - miejsca 1–3 w rankingu mają numer obok korony, a wybrany wiersz opcji – znacznik ▸ (nie tylko kolor).
+- Ekran NOWOŚCI rysuje sam tekst na jednolitym tle, bez mapy i efektów pod spodem.
 - Wibracje w 4 stopniach (wył. / słabe / średnie / mocne) – telefon i pad (`vibrationActuator`).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
 - Pauza: klawisz **P** albo przycisk ⏸ w prawym górnym rogu (widoczny w trakcie biegu); z pauzy przycisk MENU wraca do wyboru postaci i mapy.

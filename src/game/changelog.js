@@ -5,6 +5,39 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.14.0', date: '2026-11-21',
+    pl: [
+      'Nowa strona OPCJE → DOSTĘPNOŚĆ: rozmiar tekstu (mały, średni, duży), wysoki kontrast i wyłączanie efektów map.',
+      'Ograniczenie ruchu w grze: bez wstrząsów, migania i podskakujących napisów – także niezależnie od ustawień telefonu.',
+      'Asysta wzroku: poświata wokół bohatera i znacznik piętra, na które spada.',
+      'NOWOŚCI czytelniejsze: sam tekst na jednolitym tle, bez mapy pod spodem.',
+    ],
+    en: [
+      'New OPTIONS → ACCESSIBILITY page: text size (small, medium, large), high contrast and switching map effects off.',
+      'Reduce motion in the game: no shaking, blinking or bouncing text – also regardless of your phone’s settings.',
+      'Visual assist: a glow around the hero and a marker on the platform they are falling onto.',
+      'WHAT’S NEW is easier to read: just the text on a plain background, no map behind it.',
+    ],
+    de: [
+      'Neue Seite OPTIONEN → BARRIEREFREIHEIT: Textgröße (klein, mittel, groß), hoher Kontrast und Karteneffekte zum Abschalten.',
+      'Bewegung reduzieren im Spiel: kein Wackeln, kein Blinken, keine hüpfenden Texte – auch unabhängig von den Handy-Einstellungen.',
+      'Sehhilfe: Leuchten um die Figur und eine Markierung auf der Plattform, auf die sie fällt.',
+      'NEUIGKEITEN besser lesbar: nur Text auf einfarbigem Hintergrund, ohne Karte dahinter.',
+    ],
+    fr: [
+      'Nouvelle page OPTIONS → ACCESSIBILITÉ : taille du texte (petit, moyen, grand), contraste élevé et effets des cartes désactivables.',
+      'Réduire les animations dans le jeu : sans tremblements, clignotements ni textes qui rebondissent – même sans régler le téléphone.',
+      'Aide visuelle : un halo autour du héros et un repère sur la plateforme où il tombe.',
+      'NOUVEAUTÉS plus lisibles : le texte seul sur un fond uni, sans la carte derrière.',
+    ],
+    es: [
+      'Nueva página OPCIONES → ACCESIBILIDAD: tamaño del texto (pequeño, mediano, grande), alto contraste y efectos de los mapas desactivables.',
+      'Reducir movimiento en el juego: sin sacudidas, parpadeos ni textos que rebotan, aunque no lo configures en el móvil.',
+      'Ayuda visual: un brillo alrededor del héroe y una marca en la plataforma sobre la que cae.',
+      'NOVEDADES más legible: solo el texto sobre un fondo liso, sin el mapa detrás.',
+    ],
+  },
+  {
     v: '0.13.0', date: '2026-11-21',
     pl: [
       'Gra sama zauważa nową wersję – na ekranie tytułowym pojawia się przycisk PRZEŁADUJ.',
