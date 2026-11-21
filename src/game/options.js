@@ -12,6 +12,7 @@
 // off() → klucz tekstu, gdy wiersz nie dotyczy obecnego trybu (jest przygaszony, ale da się go ustawić na zapas).
 import { ACCESS_DEFAULT, MOTION_MODES, TEXT_SIZES, access, applyAccess, systemReducesMotion } from './access.js';
 import { VOL_STEPS, sfx } from './audio.js';
+import { POWER_MODES, power, saving, setPowerMode } from './power.js';
 import { HAPTIC_LEVELS, haptics } from './haptics.js';
 import { LANG_NAMES, lang, t } from './i18n.js';
 import {
@@ -47,7 +48,12 @@ export function buildPages(g) {
     { k: 'vibrate', type: 'row', arrows: true, label: () => t('set.vibrate'),
       value: () => (haptics.available ? t(`vib.${HAPTIC_LEVELS[haptics.level]}`) : t('set.na')),
       act: () => setVibe(1), side: (d) => setVibe(d) },
+    { k: 'power', type: 'row', arrows: true, tip: 'pow.tip', label: () => t('pow.label'),
+      value: () => (power.mode === 'auto' ? t('pow.auto', { state: onOff(saving()) }) : onOff(power.mode === 'on')),
+      act: () => { setPowerMode(cycleIn(POWER_MODES, power.mode, 1)); save(); }, side: (d) => { setPowerMode(cycleIn(POWER_MODES, power.mode, d)); save(); } },
     { k: 'online', type: 'row', label: () => t('set.online'), value: () => onOff(g.online.enabled), act: () => g.toggleOnline() },
+    { k: 'resetAll', type: 'row', warn: true, ck: 'all', label: () => t(g.confirming('all') ? 'set.resetAllConfirm' : 'set.resetAll'),
+      act: confirm('all', () => g.resetSettings()) },
     { k: 'delete', type: 'row', warn: true, ck: 'delete', label: () => t(g.confirming('delete') ? 'set.deleteConfirm' : 'set.delete'),
       act: confirm('delete', () => g.deleteData()) },
     back,

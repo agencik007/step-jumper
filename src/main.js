@@ -2,7 +2,8 @@
 import { online } from './net';
 import { initFullscreen } from './game/fullscreen.js';
 import { Game } from './game/game.js';
-import { focusGame } from './game/gfx.js';
+import { focusGame, setDprCap } from './game/gfx.js';
+import { DPR_SAVE, FPS_SAVE, initPower, saving } from './game/power.js';
 import { initInput, pollGamepad, tilt, tiltDegrees } from './game/input.js';
 import { initInstall } from './game/install.js';
 import { initSpeech } from './game/speech.js';
@@ -30,8 +31,13 @@ if (import.meta.env.DEV) {             // podgląd stanu z konsoli – tylko w t
   window.__tilt = { state: tilt, degrees: tiltDegrees };
 }
 
-let last = performance.now();
+// oszczędzanie baterii: ostrość płótna do 1,5× i obraz najwyżej 30 razy na sekundę (fizyka i tak liczy stałe kroki)
+initPower(() => setDprCap(saving() ? DPR_SAVE : 3));
+
+let last = performance.now(), lastDraw = 0;
 function loop(now) {
+  if (saving() && now - lastDraw < 1000 / FPS_SAVE - 4) { requestAnimationFrame(loop); return; }   // przy 60 Hz – co druga klatka
+  lastDraw = now;
   const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));   // pierwsza klatka potrafi mieć znacznik czasu sprzed `last`
   last = now;
   pollGamepad();

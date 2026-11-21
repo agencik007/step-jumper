@@ -47,6 +47,16 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
   po biegu, powtórka, podsumowanie tygodnia, najnowszy wpis NOWOŚCI), a komunikaty z `game.say` idą tą samą drogą.
   Klawisz **I** w biegu i w pauzie czyta wynik, piętro, combo i tempo. Tab dochodzi do przycisków pauzy i pełnego ekranu
   (Enter / spacja je naciskają), przyciski dotykowe są poza kolejnością Tab, a po zamknięciu okienek fokus wraca na płótno.
+- **Technicznie** (wersja 0.17.0):
+  - ekran nie gaśnie w biegu i powtórce w każdym trybie (Screen Wake Lock, `src/game/wake.js`), poza grą blokada jest zwalniana,
+  - **oszczędzanie baterii** (OPCJE, `src/game/power.js`): WYŁ. / AUTO / WŁ. – obraz najwyżej 30 kl./s i płótno do 1,5× DPR;
+    AUTO włącza się przy baterii ≤ 20% bez ładowania (Battery API, Chrome na Androidzie). Fizyka liczy dalej stałe kroki,
+  - liczby z separatorem tysięcy wg języka i godzina zamknięcia rankingu dnia / tygodnia w czasie gracza (`src/game/format.js`,
+    zamknięcie liczone jak `server/src/periods.ts` – pilnuje tego `tests/format.test.ts`),
+  - gałka i machnięcie czytają też surowe ruchy palca (`pointerrawupdate`), obok zwykłych `pointermove`,
+  - OPCJE → Przywróć domyślne ustawienia (bez języka, postaci, mapy i rankingu),
+  - **testy E2E** (Playwright, `tests/e2e/`, `npm run e2e`): sześć trybów dotyku na emulowanym telefonie, układ leworęczny
+    i własny układ przycisków. Uruchamiają własny serwer deweloperski na porcie 5174 i nie łączą się z rankingiem online.
 - Ekran NOWOŚCI rysuje sam tekst na jednolitym tle, bez mapy i efektów pod spodem.
 - Wibracje w 4 stopniach (wył. / słabe / średnie / mocne) – telefon i pad (`vibrationActuator`).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
@@ -67,6 +77,7 @@ Plan wydania (Google Play, rankingi online, wycena): [`docs/PLAN.md`](docs/PLAN.
 npm install
 npm run dev        # serwer deweloperski (Vite)
 npm test           # testy symulacji
+npm run e2e        # testy E2E w przeglądarce (Playwright; raz: npx playwright install chromium)
 npm run typecheck
 npm run build      # wersja produkcyjna w dist/
 ```

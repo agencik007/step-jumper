@@ -8,6 +8,7 @@ import { PERIODS } from './layout.js';
 import { CHANGELOG } from './changelog.js';
 import { CHARS } from './characters.js';
 import { STYLES } from './gfx.js';
+import { fmt, fmtLeft, fmtWhen, periodEnd } from './format.js';
 import { lang, t } from './i18n.js';
 import { binds, ctrl, keyLabel } from './input.js';
 import { netLine } from './render.js';
@@ -78,7 +79,7 @@ function describe(g) {
   if (s === 'over') {
     const sim = g.sim;
     return [
-      ['screen', `${t('sr.over', { score: g.score, floor: sim.maxFloor, combo: sim.bestCombo, best: g.best.score })}${g.newBest ? ` ${t('sr.newBest')}` : ''} ${t('sr.again')}`],
+      ['screen', `${t('sr.over', { score: fmt(g.score), floor: fmt(sim.maxFloor), combo: sim.bestCombo, best: fmt(g.best.score) })}${g.newBest ? ` ${t('sr.newBest')}` : ''} ${t('sr.again')}`],
       ['net', netLine(g.net)?.[0] ?? ''],
     ];
   }
@@ -89,12 +90,14 @@ function describe(g) {
     else if (d && !d.top) list = t('board.noConn');
     else if (d?.top) {
       list = d.top.entries.length
-        ? d.top.entries.slice(0, 5).map((e) => t('sr.boardRow', { rank: e.rank, name: name(e), score: e.score, floor: e.floor })).join('; ')
+        ? d.top.entries.slice(0, 5).map((e) => t('sr.boardRow', { rank: e.rank, name: name(e), score: fmt(e.score), floor: fmt(e.floor) })).join('; ')
         : t(b.kind === 'day' ? 'board.emptyDay' : 'board.empty');
       if (d.me?.rank) list += `. ${t('board.place', { rank: d.me.rank })}`;
     }
     const sel = b.sel >= 0 ? d?.top?.entries.find((e) => e.rank === b.sel + 1) : null;
-    return [['screen', t('board.title')], ['tab', t(`period.${PERIODS.includes(b.kind) ? b.kind : 'week'}`)], ['list', list],
+    const end = periodEnd(b.kind), tab = t(`period.${PERIODS.includes(b.kind) ? b.kind : 'week'}`);
+    const ends = end && g.online.enabled ? t(b.kind === 'day' ? 'board.endsDay' : 'board.endsWeek', { when: fmtWhen(end), left: fmtLeft(end) }) : '';
+    return [['screen', t('board.title')], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
       ['sel', sel ? t('sr.boardSel', { rank: sel.rank, name: name(sel) }) : '']];
   }
   if (s === 'settings') {
@@ -112,14 +115,14 @@ function describe(g) {
   if (s === 'replay') {
     const r = g.replay;
     if (!r?.data) return [['screen', t('replay.loading')]];
-    return [['screen', t('sr.replay', { rank: r.rank, name: r.name, score: r.data.score })],
+    return [['screen', t('sr.replay', { rank: r.rank, name: r.name, score: fmt(r.data.score) })],
       ['status', r.ended ? t('replay.end') : r.playing ? '' : t(r.i === 0 ? 'replay.stopped' : 'replay.paused')],
       ['speed', `${g.replaySpeedX}×`]];
   }
   if (s === 'recap') {
     const lw = g.recap;
     if (!lw) return [];
-    const podium = lw.top.entries.slice(0, 3).map((e) => t('sr.boardRow', { rank: e.rank, name: name(e), score: e.score, floor: e.floor })).join('; ');
+    const podium = lw.top.entries.slice(0, 3).map((e) => t('sr.boardRow', { rank: e.rank, name: name(e), score: fmt(e.score), floor: fmt(e.floor) })).join('; ');
     const sel = lw.top.entries[g.recapSel];
     return [['screen', `${t('recap.sub')}. ${podium}`], ['sel', sel ? t('sr.recapSel', { rank: sel.rank, name: name(sel) }) : '']];
   }
@@ -145,5 +148,5 @@ export function speakFrame(g) {
 /** Klawisz I w trakcie biegu: wynik, piętro, combo i tempo – od razu, przed kolejką. */
 export function speakStatus(g) {
   const s = g.sim;
-  announce(t('sr.status', { score: g.score, floor: s.maxFloor, combo: s.combo.floors, tempo: s.scrolling ? s.level : '–' }), true);
+  announce(t('sr.status', { score: fmt(g.score), floor: fmt(s.maxFloor), combo: s.combo.floors, tempo: s.scrolling ? s.level : '–' }), true);
 }
