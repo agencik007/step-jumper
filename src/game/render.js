@@ -9,6 +9,7 @@ import {
   FONT, MEDALS, NEON, PEN, PENCILS, STYLES, brickPattern, burst, canvas, ctx, cycle, ditherPattern, hatchPattern, lowCanvas, lowCtx, mainCtx,
   rr, setCtx, setMapFilter, stonePattern, style, text, themeOf, ui, wobblyRect,
 } from './gfx.js';
+import { fmt, fmtLeft, fmtWhen, periodEnd } from './format.js';
 import { BTN, glyphOf } from './gamepad.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
@@ -466,11 +467,11 @@ function drawHud(g) {
   const rx = RIGHT + WALL / 2;
   c.fillStyle = ui.panel; rr(RIGHT + 9, 10, WALL - 18, 152, 10); c.fill();
   text(t('hud.score'), rx, 26, { size: 10, color: ui.label, sw: 0, maxW: 80 });
-  text(String(g.score), rx, 46, { size: 20, color: ui.gold, sw: 3, maxW: 70 });
+  text(fmt(g.score), rx, 46, { size: 20, color: ui.gold, sw: 3, maxW: 70 });
   text(t('hud.floor'), rx, 74, { size: 10, color: ui.label, sw: 0, maxW: 80 });
-  text(String(g.sim.maxFloor), rx, 94, { size: 20, sw: 3, maxW: 70 });
+  text(fmt(g.sim.maxFloor), rx, 94, { size: 20, sw: 3, maxW: 70 });
   text(t('hud.best'), rx, 122, { size: 10, color: ui.label, sw: 0, maxW: 80 });
-  text(String(Math.max(g.best.score, g.score)), rx, 141, { size: 15, color: ui.mint, sw: 3, maxW: 70 });
+  text(fmt(Math.max(g.best.score, g.score)), rx, 141, { size: 15, color: ui.mint, sw: 3, maxW: 70 });
   if (sfx.muted) text('🔇', rx, 182, { size: 16, sw: 0 });
 
   // skok przełącznikiem (włączony) albo automatyczny: bohater skacze sam przy każdym lądowaniu
@@ -716,7 +717,7 @@ function drawTitle(g) {
     text(t('title.tip'), W / 2, 420, hint);
     text(t('title.combo'), W / 2, 437, hint);
   }
-  if (g.best.score > 0) text(t('title.best', { score: g.best.score, floor: g.best.floor, combo: g.best.combo }), W / 2, 460, { size: 12, color: ui.mint, sw: 3, maxW: 436 });
+  if (g.best.score > 0) text(t('title.best', { score: fmt(g.best.score), floor: fmt(g.best.floor), combo: g.best.combo }), W / 2, 460, { size: 12, color: ui.mint, sw: 3, maxW: 436 });
 }
 
 /** PRZEŁADUJ: pulsujący złoty przycisk pod RANKINGIEM, a pod nim wersja czekająca na serwerze. */
@@ -754,7 +755,7 @@ function drawOver(g) {
   const rows = [[t('over.score'), g.score, ui.gold], [t('over.floor'), g.sim.maxFloor, ui.text], [t('over.combo'), g.sim.bestCombo, ui.text], [t('over.best'), g.best.score, ui.mint]];
   rows.forEach(([l, v, col], i) => {
     text(l, 196, 172 + i * 36, { size: 15, color: ui.label, align: 'left', sw: 0, weight: 600, maxW: 180 });
-    text(String(v), 444, 172 + i * 36, { size: i ? 20 : 26, color: col, align: 'right', sw: 0 });
+    text(fmt(v), 444, 172 + i * 36, { size: i ? 20 : 26, color: col, align: 'right', sw: 0 });
   });
   if (g.newBest) {
     c.save(); c.translate(486, 146); c.rotate(0.22);
@@ -830,15 +831,18 @@ function drawBoard(g) {
         c.strokeStyle = ui.frame; c.lineWidth = 1; c.stroke();
         text(loading ? '…' : isTouch ? '▶' : `▶ ${e.rank}`, px + 25, y + 0.5, { size: 10, color: loading ? ui.hint : ui.btnText, sw: 0, maxW: 44 });
       }
-      text(String(e.floor), L.x + 318, y, { ...row, align: 'right', color: ui.label });
-      text(String(e.score), L.x + L.w - 18, y, { ...row, size: 14, align: 'right', color: medal ? ui.gold : ui.text });
+      text(fmt(e.floor), L.x + 318, y, { ...row, align: 'right', color: ui.label });
+      text(fmt(e.score), L.x + L.w - 18, y, { ...row, size: 14, align: 'right', color: medal ? ui.gold : ui.text });
     });
   }
+
+  const end = periodEnd(kind);                          // dzień i tydzień: kiedy ranking się zamyka – w czasie gracza
+  if (end && o.enabled) text(t(kind === 'day' ? 'board.endsDay' : 'board.endsWeek', { when: fmtWhen(end), left: fmtLeft(end) }), W / 2, L.y + L.h - 11, { size: 10, color: ui.label, sw: 0, weight: 700, maxW: L.w - 20 });
 
   if (o.enabled && d?.top) {
     const me = d.me?.entries.find((e) => e.me);
     const line = !d.me?.rank ? t('board.noScore')
-      : d.me.rank > 10 ? t('board.placeScore', { rank: d.me.rank, score: me?.score ?? '' }) : t('board.place', { rank: d.me.rank });
+      : d.me.rank > 10 ? t('board.placeScore', { rank: d.me.rank, score: fmt(me?.score) }) : t('board.place', { rank: d.me.rank });
     text(line, W / 2, 394, { size: 13, color: ui.mint, sw: 3, maxW: 420 });
   }
   if (o.pending) text(t('board.pending', { n: o.pending }), W / 2, 410, { size: 10, color: ui.label, sw: 0 });
@@ -878,9 +882,9 @@ function drawSettings(g) {
   const back = items.find((it) => it.type === 'back');
   button(LIST_BACK, back.label(), { on: sel === back, size: 12, glyph: hm === 'pad' ? BTN.B : null });
 
-  const confirming = g.confirming('delete') || g.confirming('reset') || g.confirming('acc') || g.confirming('bind.key') || g.confirming('bind.pad');
+  const confirming = g.confirming('delete') || g.confirming('reset') || g.confirming('acc') || g.confirming('all') || g.confirming('bind.key') || g.confirming('bind.pad');
   const note = st.note ? t(st.note) : g.confirming('delete') ? t('set.deleteWarn') : g.confirming('reset') ? t('ctrl.resetWarn')
-    : g.confirming('acc') ? t('acc.resetWarn') : cur?.off?.() ? t(cur.off()) : cur?.tip ? t(cur.tip) : '';
+    : g.confirming('acc') ? t('acc.resetWarn') : g.confirming('all') ? t('set.resetAllWarn') : cur?.off?.() ? t(cur.off()) : cur?.tip ? t(cur.tip) : '';
   if (note) text(note, W / 2, 432, { size: 12, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 470 });
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 470 };
   if (st.page === 'main') text(t('set.privacy'), W / 2, 450, hint);
@@ -1044,12 +1048,12 @@ function drawReplay(g) {
   c.strokeStyle = MEDALS[r.rank]?.mid ?? ui.line; c.lineWidth = 1.5; c.stroke();
   if (MEDALS[r.rank]) drawCrown(LEFT + 30, 29, r.rank, g.t, 0.7);
   text(`${t('replay.title')} · #${r.rank} ${r.name}`, LEFT + 46, 23, { size: 13, color: ui.gold, sw: 0, align: 'left', maxW: 290 });
-  text(`${d.score}`, RIGHT - 22, 23, { size: 14, color: ui.text, sw: 0, align: 'right', maxW: 80 });
+  text(fmt(d.score), RIGHT - 22, 23, { size: 14, color: ui.text, sw: 0, align: 'right', maxW: 80 });
 
   if (r.ended) {
     dim(0.55);
     text(t('replay.end'), W / 2, 196, { size: 38, color: ui.gold, sw: 7, maxW: 420 });
-    text(`${t('over.score')}: ${d.score}   ·   ${t('over.floor')}: ${d.floor}   ·   ${t('over.combo')}: ${d.combo}`, W / 2, 244, { size: 14, sw: 4, maxW: 430 });
+    text(`${t('over.score')}: ${fmt(d.score)}   ·   ${t('over.floor')}: ${fmt(d.floor)}   ·   ${t('over.combo')}: ${d.combo}`, W / 2, 244, { size: 14, sw: 4, maxW: 430 });
     button(UIBOX.rAgain, t('replay.again'), { accent: true, size: 13 });
     button(UIBOX.rBack, t('replay.back'), { size: 13 });
     return;
@@ -1108,7 +1112,7 @@ function drawRecap(g) {
     drawHero({ x, y: top - hop, vx: 0, vy: 0, face: i === 2 ? -1 : 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: 0 }, time + i, ci);
     drawCrown(x, top - 68 - hop, i + 1, time + i * 0.5, i ? 0.95 : 1.15);
     text(e.nick ?? t('board.player', { tag: e.tag }), x, UIBOX.podBase + 14, { size: 13, color: e.me ? ui.gold : ui.text, sw: 3, maxW: 104 });
-    text(`${e.score}`, x, UIBOX.podBase + 31, { size: 12, color: ui.gold, sw: 3, maxW: 104 });
+    text(fmt(e.score), x, UIBOX.podBase + 31, { size: 12, color: ui.gold, sw: 3, maxW: 104 });
     const b = UIBOX.podWatch(i), loading = g.replay?.loading && g.replay.entry === e;
     if (e.replay) button(b, loading ? '…' : g.hint === 'keys' ? `${t('recap.watch')} · ${i + 1}` : t('recap.watch'), { accent: true, size: 10, on: g.hint === 'pad' && g.recapSel === i });
     else text(t('recap.noReplay'), x, b.y + b.h / 2, { size: 10, color: ui.label, sw: 0, maxW: 100 });
@@ -1116,7 +1120,7 @@ function drawRecap(g) {
   // moje miejsce
   const me = lw.me, mine = me?.entries.find((e) => e.me);
   const line = me?.rank && me.rank <= 3 ? t(`recap.crown${me.rank}`)
-    : me?.rank ? t('recap.me', { rank: me.rank, score: mine?.score ?? '' }) : t('recap.none');
+    : me?.rank ? t('recap.me', { rank: me.rank, score: fmt(mine?.score) }) : t('recap.none');
   text(line, W / 2, 392, { size: 14, color: me?.rank && me.rank <= 3 ? ui.gold : ui.mint, sw: 4, maxW: 460 });
   button(UIBOX.recapBoard, t('recap.board'), { size: 12 });
   button(UIBOX.recapNext, t('recap.next'), { accent: true, size: 13 });

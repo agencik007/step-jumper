@@ -5,6 +5,39 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.17.0', date: '2026-11-21',
+    pl: [
+      'Ekran nie gaśnie w trakcie biegu – w każdym trybie sterowania, także przy grze padem albo klawiaturą.',
+      'Nowa opcja OPCJE → Oszczędzanie baterii: mniej klatek na sekundę i pikseli; w trybie AUTO włącza się sama przy słabej baterii.',
+      'Wyniki z odstępami tysięcy jak w twoim języku, a ranking dnia i tygodnia pokazuje, kiedy się zamyka – w twoim czasie.',
+      'OPCJE → Przywróć domyślne ustawienia: jednym ruchem wracają domyślne sterowanie, dostępność, dźwięk i wibracje.',
+    ],
+    en: [
+      'The screen stays on during a run – in every control mode, also when playing with a gamepad or keyboard.',
+      'New OPTIONS → Battery saver: fewer frames per second and pixels; in AUTO mode it turns on by itself when the battery is low.',
+      'Scores with thousands separators for your language, and today’s and this week’s ranking show when they close – in your time.',
+      'OPTIONS → Restore default settings: controls, accessibility, sound and vibration back to default in one go.',
+    ],
+    de: [
+      'Der Bildschirm bleibt während eines Laufs an – in jedem Steuerungsmodus, auch mit Gamepad oder Tastatur.',
+      'Neu: OPTIONEN → Akku sparen: weniger Bilder pro Sekunde und Pixel; im Modus AUTO schaltet es sich bei schwachem Akku selbst ein.',
+      'Punkte mit Tausendertrennzeichen deiner Sprache, und die Tages- und Wochenrangliste zeigt, wann sie schließt – in deiner Zeit.',
+      'OPTIONEN → Standardeinstellungen wiederherstellen: Steuerung, Barrierefreiheit, Ton und Vibration auf einen Schlag zurücksetzen.',
+    ],
+    fr: [
+      'L’écran ne s’éteint plus pendant la partie – dans tous les modes de commande, aussi à la manette ou au clavier.',
+      'Nouveau : OPTIONS → Économie de batterie – moins d’images par seconde et de pixels ; en mode AUTO, elle s’active seule quand la batterie est faible.',
+      'Scores avec séparateurs de milliers selon votre langue, et les classements du jour et de la semaine indiquent leur clôture – à votre heure.',
+      'OPTIONS → Rétablir les réglages par défaut : commandes, accessibilité, son et vibrations reviennent par défaut d’un coup.',
+    ],
+    es: [
+      'La pantalla no se apaga durante la partida, en cualquier modo de control, también con mando o teclado.',
+      'Nuevo: OPCIONES → Ahorro de batería, con menos imágenes por segundo y menos píxeles; en modo AUTO se activa solo con la batería baja.',
+      'Puntuaciones con separador de miles según tu idioma, y los rankings del día y de la semana muestran cuándo cierran, en tu hora.',
+      'OPCIONES → Restaurar ajustes predeterminados: controles, accesibilidad, sonido y vibración vuelven a lo predeterminado de una vez.',
+    ],
+  },
+  {
     v: '0.16.0', date: '2026-11-21',
     pl: [
       'Gra współpracuje z czytnikami ekranu: mówi, co jest na ekranie – wybraną postać i mapę, opcje i ich wartości, ranking, wynik po biegu i komunikaty w grze.',

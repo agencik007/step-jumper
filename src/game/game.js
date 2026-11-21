@@ -13,14 +13,16 @@ import { KIND_NAMES, gpad } from './gamepad.js';
 import { HAPTIC_LEVELS, haptics } from './haptics.js';
 import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
 import {
-  CONTROLS, DEAD_STEPS, JUMP_MODES, SENS_MAX, TILT_ZERO_MAX, binds, ctrl, hintMode, input, isTouch, loadBinds, opts, setBind, setControl, tilt, touchAxis,
+  CONTROLS, DEAD_STEPS, JUMP_MODES, OPTS_DEFAULT, SENS_MAX, TILT_ZERO_MAX, binds, ctrl, hintMode, input, isTouch, loadBinds, opts, resetBinds, setBind, setControl, tilt, touchAxis,
 } from './input.js';
 import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, inBox, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
 import { buildNews, buildPages, selectable } from './options.js';
-import { loadPads, mirrorPads, savedPads } from './padlayout.js';
+import { loadPads, mirrorPads, resetPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
 import { announce, speakFrame, speakStatus } from './speech.js';
+import { keepAwake } from './wake.js';
+import { power, setPowerMode } from './power.js';
 import { reloadForUpdate, update } from './update.js';
 import { clamp, loadJSON, mod, rand, reduceMotion, saveJSON } from './util.js';
 
@@ -41,7 +43,7 @@ export class Game {
     this.best = loadJSON(STORE, { score: 0, floor: 0, combo: 0 });
     const prefs = loadJSON(PREFS, {
       char: 0, style: 0, control: null, tilt: false, tiltSens: SENS_MAX / 2, tiltZero: 0, sound: true, music: true, vibrate: 2, lefty: false, lang: null,
-      jumpMode: 'hold', stickDead: opts.stickDead, padDead: opts.padDead, pads: null, keys: null, padKeys: null, keyNames: null,
+      power: 'auto', jumpMode: 'hold', stickDead: opts.stickDead, padDead: opts.padDead, pads: null, keys: null, padKeys: null, keyNames: null,
     });
     setLang(prefs.lang ?? detectLang());   // pierwsze uruchomienie: język przeglądarki
     this.charIdx = clamp(prefs.char | 0, 0, CHARS.length - 1);
@@ -54,6 +56,7 @@ export class Game {
     loadBinds(prefs.keys, prefs.padKeys, prefs.keyNames);
     loadPads(prefs.pads);
     loadAccess(prefs.access);
+    setPowerMode(prefs.power);
     setControl(prefs.control ?? (prefs.tilt ? 'tilt' : 'buttons'));   // starsze zapisy znały tylko „przechył tak/nie”
     sfx.muted = !prefs.sound;
     // głośność efektów i muzyki 0…10; dawny przełącznik „muzyka wył.” to głośność 0
@@ -96,7 +99,7 @@ export class Game {
     saveJSON(PREFS, {
       char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, tiltZero: tilt.zero, sound: !sfx.muted, fxVol: sfx.fxVol, musicVol: sfx.musicVol,
       vibrate: haptics.level, lefty: this.lefty, lang: lang(), jumpMode: opts.jump, stickDead: opts.stickDead, padDead: opts.padDead,
-      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access },
+      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access }, power: power.mode,
     });
   }
   /** Układ przycisków ekranowych: leworęczny = skok pod lewym kciukiem, ◀ ▶ pod prawym. Własny układ odbija się wtedy w poziomie. */
@@ -149,7 +152,6 @@ export class Game {
     this.tier = this.crown;
     if (this.tier) this.say(t(`crown.${this.tier}`), t('crown.sub', { rank: this.tier }), 'gold', 2);
     sfx.music.reset();
-    if (tilt.active) navigator.wakeLock?.request('screen').catch(() => {});   // ekran nie gaśnie w trakcie gry
   }
   toTitle() {
     this.reset(); this.state = 'title';
@@ -536,6 +538,16 @@ export class Game {
     }
   }
 
+  /** OPCJE → Przywróć domyślne ustawienia: sterowanie, dostępność, dźwięk, wibracje, ręka, bateria. Język, postać, mapa i ranking zostają. */
+  resetSettings() {
+    Object.assign(opts, OPTS_DEFAULT); tilt.sens = SENS_MAX / 2; tilt.zero = 0;
+    resetPads(); resetBinds('key'); resetBinds('pad'); setControl('buttons');
+    loadAccess(null);
+    sfx.muted = false; sfx.fxVol = sfx.musicVol = VOL_STEPS; sfx.applyVolume();
+    haptics.level = 2; this.setLefty(false); setPowerMode('auto');
+    this.settings.note = 'set.resetAllDone';
+    this.savePrefs(); sfx.pick();
+  }
   /** Klawisz I: stan biegu dla czytnika ekranu. */
   speakStatus() { speakStatus(this); }
   say(title, sub = '', color = 'gold', dur = 1.6) {
@@ -800,6 +812,7 @@ export class Game {
   /** Stan gry na <body>: CSS pokazuje przycisk pauzy tylko w biegu i w pauzie (wtedy z ikoną „graj”). */
   showState() {
     document.body.dataset.state = this.state;
+    keepAwake(this.state === 'play' || this.state === 'replay');   // ekran nie gaśnie w trakcie biegu i powtórki (wake.js)
     const btn = document.getElementById('pause');
     if (!btn) return;
     btn.dataset.i18nAria = this.state === 'pause' ? 'aria.resume' : 'aria.pause';

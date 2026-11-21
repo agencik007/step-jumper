@@ -267,6 +267,16 @@ const pl = {
   'sr.update': 'Jest nowa wersja gry {v} – klawisz U ją wczyta.',
   'sr.replay': 'Powtórka: miejsce {rank}, {name}, wynik {score}. Spacja – start i pauza, S – stop, ← → – tempo, Esc – wyjście.',
   'sr.recapSel': 'Wybrane miejsce {rank}: {name}.',
+  // bateria, przywracanie ustawień, zamknięcie rankingu
+  'pow.label': 'Oszczędzanie baterii',
+  'pow.auto': 'AUTO ({state})',
+  'pow.tip': 'Obraz do 30 klatek na sekundę i mniej pikseli. AUTO – gdy bateria ma 20% lub mniej i telefon się nie ładuje.',
+  'set.resetAll': 'Przywróć domyślne ustawienia',
+  'set.resetAllConfirm': 'Na pewno? Dotknij jeszcze raz',
+  'set.resetAllWarn': 'Przywróci sterowanie, dostępność, dźwięk, wibracje, układ przycisków i baterię. Język, postać, mapa i ranking zostają.',
+  'set.resetAllDone': 'Przywrócono domyślne ustawienia.',
+  'board.endsDay': 'Ranking dnia zamyka się {when} ({left})',
+  'board.endsWeek': 'Ranking tygodnia zamyka się {when} ({left})',
 };
 
 const en = {
@@ -532,6 +542,16 @@ const en = {
   'sr.update': 'A new game version {v} is out – the U key loads it.',
   'sr.replay': 'Replay: rank {rank}, {name}, score {score}. Space – play and pause, S – stop, ← → – speed, Esc – exit.',
   'sr.recapSel': 'Selected rank {rank}: {name}.',
+  // bateria, przywracanie ustawień, zamknięcie rankingu
+  'pow.label': 'Battery saver',
+  'pow.auto': 'AUTO ({state})',
+  'pow.tip': 'Up to 30 frames per second and fewer pixels. AUTO – when the battery is at 20% or less and not charging.',
+  'set.resetAll': 'Restore default settings',
+  'set.resetAllConfirm': 'Sure? Tap again',
+  'set.resetAllWarn': 'Restores controls, accessibility, sound, vibration, button layout and battery saver. Language, character, map and ranking stay.',
+  'set.resetAllDone': 'Default settings restored.',
+  'board.endsDay': 'Today’s ranking closes {when} ({left})',
+  'board.endsWeek': 'This week’s ranking closes {when} ({left})',
 };
 
 const de = {
@@ -797,6 +817,16 @@ const de = {
   'sr.update': 'Es gibt eine neue Spielversion {v} – die Taste U lädt sie.',
   'sr.replay': 'Wiederholung: Platz {rank}, {name}, Punkte {score}. Leertaste – Start und Pause, S – Stopp, ← → – Tempo, Esc – Ende.',
   'sr.recapSel': 'Gewählt: Platz {rank}, {name}.',
+  // bateria, przywracanie ustawień, zamknięcie rankingu
+  'pow.label': 'Akku sparen',
+  'pow.auto': 'AUTO ({state})',
+  'pow.tip': 'Höchstens 30 Bilder pro Sekunde und weniger Pixel. AUTO – wenn der Akku bei 20% oder weniger ist und nicht lädt.',
+  'set.resetAll': 'Standardeinstellungen wiederherstellen',
+  'set.resetAllConfirm': 'Sicher? Noch einmal tippen',
+  'set.resetAllWarn': 'Setzt Steuerung, Barrierefreiheit, Ton, Vibration, Tastenanordnung und Akku sparen zurück. Sprache, Figur, Karte und Rangliste bleiben.',
+  'set.resetAllDone': 'Standardeinstellungen wiederhergestellt.',
+  'board.endsDay': 'Die Tagesrangliste schließt {when} ({left})',
+  'board.endsWeek': 'Die Wochenrangliste schließt {when} ({left})',
 };
 
 const fr = {
@@ -1062,6 +1092,16 @@ const fr = {
   'sr.update': 'Une nouvelle version du jeu {v} est sortie – la touche U la charge.',
   'sr.replay': 'Rediffusion : place {rank}, {name}, score {score}. Espace – lecture et pause, S – stop, ← → – vitesse, Échap – quitter.',
   'sr.recapSel': 'Sélection : place {rank}, {name}.',
+  // bateria, przywracanie ustawień, zamknięcie rankingu
+  'pow.label': 'Économie de batterie',
+  'pow.auto': 'AUTO ({state})',
+  'pow.tip': '30 images par seconde au plus et moins de pixels. AUTO – quand la batterie est à 20 % ou moins et ne charge pas.',
+  'set.resetAll': 'Rétablir les réglages par défaut',
+  'set.resetAllConfirm': 'Sûr ? Touchez encore',
+  'set.resetAllWarn': 'Rétablit commandes, accessibilité, son, vibrations, disposition des boutons et économie de batterie. Langue, personnage, carte et classement restent.',
+  'set.resetAllDone': 'Réglages par défaut rétablis.',
+  'board.endsDay': 'Le classement du jour se clôt {when} ({left})',
+  'board.endsWeek': 'Le classement de la semaine se clôt {when} ({left})',
 };
 
 const es = {
@@ -1327,6 +1367,16 @@ const es = {
   'sr.update': 'Hay una nueva versión del juego {v}: la tecla U la carga.',
   'sr.replay': 'Repetición: puesto {rank}, {name}, puntuación {score}. Espacio – reproducir y pausa, S – stop, ← → – velocidad, Esc – salir.',
   'sr.recapSel': 'Elegido el puesto {rank}: {name}.',
+  // bateria, przywracanie ustawień, zamknięcie rankingu
+  'pow.label': 'Ahorro de batería',
+  'pow.auto': 'AUTO ({state})',
+  'pow.tip': 'Hasta 30 imágenes por segundo y menos píxeles. AUTO: cuando la batería está al 20% o menos y no se carga.',
+  'set.resetAll': 'Restaurar ajustes predeterminados',
+  'set.resetAllConfirm': '¿Seguro? Toca otra vez',
+  'set.resetAllWarn': 'Restaura controles, accesibilidad, sonido, vibración, disposición de botones y ahorro de batería. Idioma, personaje, mapa y ranking se mantienen.',
+  'set.resetAllDone': 'Ajustes predeterminados restaurados.',
+  'board.endsDay': 'El ranking del día cierra {when} ({left})',
+  'board.endsWeek': 'El ranking de la semana cierra {when} ({left})',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

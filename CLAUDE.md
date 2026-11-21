@@ -58,6 +58,7 @@ podręczną.
 ```bash
 npm run dev          # serwer deweloperski
 npm test             # wszystkie testy (symulacja, serwer, lista zmian, tłumaczenia)
+npm run e2e          # testy E2E sterowania dotykiem w Chromium (Playwright, tests/e2e/*.e2e.ts)
 npm run typecheck
 npm run build        # dist/ z version.json
 ```

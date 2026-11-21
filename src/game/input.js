@@ -537,6 +537,9 @@ export function initInput(theGame) {
     inputSrc.last = e.pointerType === 'mouse' ? 'keys' : 'touch';
     onScreenDown(e);
   });
+  // gałka i machnięcie: surowe ruchy palca bez czekania na klatkę (pointerrawupdate – Chrome po HTTPS), a obok zwykłe
+  // pointermove, bo nie każda przeglądarka wysyła surowe zdarzenia dla dotyku. Ta sama pozycja dwa razy niczego nie psuje.
+  if ('onpointerrawupdate' in window) addEventListener('pointerrawupdate', onScreenMove);
   addEventListener('pointermove', onScreenMove);
   for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, onScreenUp);
   stickEl = document.getElementById('stick');

@@ -11,8 +11,11 @@ export const focusGame = () => { try { canvas.focus({ preventScroll: true }); } 
 export let ctx = mainCtx;                              // bieżący cel rysowania (ekran albo bufor niskiej rozdzielczości)
 export function setCtx(c) { ctx = c; }
 
+let dprCap = 3;                                        // najwyżej tyle pikseli płótna na piksel CSS (oszczędzanie baterii: 1,5)
+/** Zmienia limit ostrości płótna i od razu przelicza jego rozmiar. */
+export function setDprCap(cap) { if (cap !== dprCap) { dprCap = cap; resize(); } }
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
   const s = Math.min(stage.clientWidth / W, stage.clientHeight / H);
   const cw = Math.max(64, Math.floor(W * s)), ch = Math.max(48, Math.floor(H * s));
   canvas.style.width = cw + 'px';

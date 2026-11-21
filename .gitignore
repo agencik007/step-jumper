@@ -2,3 +2,5 @@ node_modules/
 dist/
 .wrangler/
 *.local
+test-results/
+playwright-report/
