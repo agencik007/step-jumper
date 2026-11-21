@@ -4,7 +4,15 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 
 - Canvas 2D, Web Audio, Pointer Events, Gamepad API – bez silnika i bez plików graficznych czy dźwiękowych.
 - 5 postaci, 5 map (stylów graficznych).
-- Sterowanie: klawiatura, gamepad, przyciski ekranowe albo **przechył telefonu + dotyk** (wymaga HTTPS).
+- Sterowanie: klawiatura i gamepad działają zawsze, a na telefonie do wyboru jest 5 trybów (OPCJE → STEROWANIE
+  albo dotknięcie „STEROWANIE: …” na ekranie tytułowym; `src/game/input.js`):
+  - **przyciski ekranowe** ◀ ▶ + ▲ (układ prawo- / leworęczny w opcjach),
+  - **połówki ekranu + przycisk skoku** – przytrzymana połowa ekranu = bieg w tę stronę, ▲ w obu dolnych rogach,
+  - **połówki ekranu + machnięcie w górę** – jak wyżej, a skok to przesunięcie palca w górę (przytrzymanie = skok przy każdym lądowaniu),
+  - **gałka (joystick)** – pływająca gałka pod jednym kciukiem daje płynną prędkość, dotknięcie drugiej połowy ekranu = skok,
+  - **przechył telefonu + dotyk** (wymaga HTTPS) z suwakiem czułości (9 stopni).
+
+  Każdy tryb podaje symulacji tylko oś −1…1 i skok, więc zapis biegu, powtórki i weryfikacja rankingu są dla wszystkich takie same.
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
 - Pauza: klawisz **P** albo przycisk ⏸ w prawym górnym rogu (widoczny w trakcie biegu); z pauzy przycisk MENU wraca do wyboru postaci i mapy.
 - **Piętra coraz węższe**: piętro to 4–9 klocków; co 100 pięter klocek traci 2 px (piętra 0–99: 128–288 px, od 800.: 64–144 px), a gra mówi o tym komunikatem „WĘŻSZE PIĘTRA!”. Co 50. piętro zostaje na całą szerokość. Stałe: `BLOCK`, `NARROW_EVERY`, `NARROW_BY`, `NARROW_MAX` w `src/sim/constants.ts`.

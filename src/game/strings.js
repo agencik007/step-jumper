@@ -10,11 +10,8 @@ const pl = {
 
   'title.opts': 'OPCJE', 'title.rank': 'RANKING', 'title.char': 'POSTAĆ', 'title.map': 'MAPA',
   'title.play': 'GRAJ', 'title.playKey': 'GRAJ  ·  SPACJA',
-  'title.ctrlTilt': 'STEROWANIE: PRZECHYŁ + DOTYK  ·  zmień',
   'title.ctrlTiltWant': 'STEROWANIE: PRZECHYŁ  ·  dotknij, aby włączyć',
-  'title.ctrlButtons': 'STEROWANIE: PRZYCISKI  ·  włącz przechył',
-  'title.tiltHelp': 'Przechylaj telefon, żeby biec  ·  dotknij ekranu, żeby skoczyć',
-  'title.buttonsHelp': 'Przyciski ◀ ▶ – bieg, ▲ – skok',
+  'title.ctrl': 'STEROWANIE: {mode}  ·  zmień',
   'title.tip': 'Im szybciej biegniesz, tym wyżej skaczesz. Odbijaj się od ścian!',
   'title.keys': 'bieg ← → / A D   ·   skok SPACJA / ↑ / W   ·   pauza P   ·   dźwięk M',
   'title.combo': 'Skoki o 2+ piętra z rzędu łączą się w COMBO.',
@@ -122,6 +119,21 @@ const pl = {
   'recap.none': 'W zeszłym tygodniu nie było cię w rankingu – powodzenia w tym!',
   'recap.board': 'PEŁNY RANKING', 'recap.next': 'DALEJ',
   'recap.keys': '1–3: powtórki  ·  R: pełny ranking  ·  Enter: dalej',
+
+  'set.controls': 'Sterowanie', 'ctrl.title': 'STEROWANIE',
+  'ctrl.buttons': 'PRZYCISKI', 'ctrl.buttons.name': 'Przyciski ekranowe',
+  'ctrl.buttons.desc': 'Przyciski ◀ ▶ – bieg, ▲ – skok',
+  'ctrl.halves': 'POŁÓWKI EKRANU', 'ctrl.halves.name': 'Połówki ekranu + przycisk skoku',
+  'ctrl.halves.desc': 'Trzymaj połowę ekranu, żeby biec  ·  ▲ w rogu – skok',
+  'ctrl.swipe': 'MACHNIĘCIE', 'ctrl.swipe.name': 'Połówki ekranu + machnięcie w górę',
+  'ctrl.swipe.desc': 'Trzymaj połowę ekranu, żeby biec  ·  przesuń palec w górę – skok',
+  'ctrl.joystick': 'GAŁKA', 'ctrl.joystick.name': 'Gałka (joystick)',
+  'ctrl.joystick.desc': 'Gałka pod kciukiem – płynna prędkość  ·  druga strona ekranu – skok',
+  'ctrl.tilt': 'PRZECHYŁ', 'ctrl.tilt.name': 'Przechył telefonu',
+  'ctrl.tilt.desc': 'Przechylaj telefon, żeby biec  ·  dotknij ekranu, żeby skoczyć',
+  'ctrl.sens': 'Czułość przechyłu', 'ctrl.sensLow': 'łagodnie', 'ctrl.sensHigh': 'czule', 'ctrl.sensOnly': 'dotyczy przechyłu',
+  'ctrl.always': 'Klawiatura i gamepad działają zawsze, w każdym trybie.',
+  'ctrl.keys': '↑ ↓ wybór   ·   SPACJA wybierz   ·   ← → czułość   ·   ESC wróć',
 };
 
 const en = {
@@ -130,11 +142,8 @@ const en = {
 
   'title.opts': 'OPTIONS', 'title.rank': 'RANKING', 'title.char': 'CHARACTER', 'title.map': 'MAP',
   'title.play': 'PLAY', 'title.playKey': 'PLAY  ·  SPACE',
-  'title.ctrlTilt': 'CONTROLS: TILT + TOUCH  ·  change',
   'title.ctrlTiltWant': 'CONTROLS: TILT  ·  tap to enable',
-  'title.ctrlButtons': 'CONTROLS: BUTTONS  ·  enable tilt',
-  'title.tiltHelp': 'Tilt the phone to run  ·  tap the screen to jump',
-  'title.buttonsHelp': 'Buttons ◀ ▶ – run, ▲ – jump',
+  'title.ctrl': 'CONTROLS: {mode}  ·  change',
   'title.tip': 'The faster you run, the higher you jump. Bounce off the walls!',
   'title.keys': 'run ← → / A D   ·   jump SPACE / ↑ / W   ·   pause P   ·   sound M',
   'title.combo': 'Jumps of 2+ floors in a row chain into a COMBO.',
@@ -242,6 +251,21 @@ const en = {
   'recap.none': 'You were not on the leaderboard last week – good luck this week!',
   'recap.board': 'FULL LEADERBOARD', 'recap.next': 'CONTINUE',
   'recap.keys': '1–3: replays  ·  R: full leaderboard  ·  Enter: continue',
+
+  'set.controls': 'Controls', 'ctrl.title': 'CONTROLS',
+  'ctrl.buttons': 'BUTTONS', 'ctrl.buttons.name': 'On-screen buttons',
+  'ctrl.buttons.desc': 'Buttons ◀ ▶ – run, ▲ – jump',
+  'ctrl.halves': 'SCREEN HALVES', 'ctrl.halves.name': 'Screen halves + jump button',
+  'ctrl.halves.desc': 'Hold a screen half to run  ·  ▲ in a corner – jump',
+  'ctrl.swipe': 'SWIPE UP', 'ctrl.swipe.name': 'Screen halves + swipe up',
+  'ctrl.swipe.desc': 'Hold a screen half to run  ·  swipe up – jump',
+  'ctrl.joystick': 'JOYSTICK', 'ctrl.joystick.name': 'Joystick',
+  'ctrl.joystick.desc': 'Thumb stick – smooth speed  ·  other side of the screen – jump',
+  'ctrl.tilt': 'TILT', 'ctrl.tilt.name': 'Tilt the phone',
+  'ctrl.tilt.desc': 'Tilt the phone to run  ·  tap the screen to jump',
+  'ctrl.sens': 'Tilt sensitivity', 'ctrl.sensLow': 'gentle', 'ctrl.sensHigh': 'sensitive', 'ctrl.sensOnly': 'applies to tilt',
+  'ctrl.always': 'Keyboard and gamepad always work, in every mode.',
+  'ctrl.keys': '↑ ↓ select   ·   SPACE choose   ·   ← → sensitivity   ·   ESC back',
 };
 
 const de = {
@@ -250,11 +274,8 @@ const de = {
 
   'title.opts': 'OPTIONEN', 'title.rank': 'RANGLISTE', 'title.char': 'FIGUR', 'title.map': 'KARTE',
   'title.play': 'SPIELEN', 'title.playKey': 'SPIELEN  ·  LEERTASTE',
-  'title.ctrlTilt': 'STEUERUNG: NEIGEN + TIPPEN  ·  ändern',
   'title.ctrlTiltWant': 'STEUERUNG: NEIGEN  ·  zum Aktivieren tippen',
-  'title.ctrlButtons': 'STEUERUNG: TASTEN  ·  Neigen aktivieren',
-  'title.tiltHelp': 'Neige das Handy zum Laufen  ·  tippe auf den Bildschirm zum Springen',
-  'title.buttonsHelp': 'Tasten ◀ ▶ – laufen, ▲ – springen',
+  'title.ctrl': 'STEUERUNG: {mode}  ·  ändern',
   'title.tip': 'Je schneller du läufst, desto höher springst du. Prall von den Wänden ab!',
   'title.keys': 'laufen ← → / A D   ·   springen LEERTASTE / ↑ / W   ·   Pause P   ·   Ton M',
   'title.combo': 'Sprünge über 2+ Etagen hintereinander ergeben eine COMBO.',
@@ -362,6 +383,21 @@ const de = {
   'recap.none': 'Letzte Woche warst du nicht in der Rangliste – viel Glück diese Woche!',
   'recap.board': 'GANZE RANGLISTE', 'recap.next': 'WEITER',
   'recap.keys': '1–3: Wiederholungen  ·  R: ganze Rangliste  ·  Enter: weiter',
+
+  'set.controls': 'Steuerung', 'ctrl.title': 'STEUERUNG',
+  'ctrl.buttons': 'TASTEN', 'ctrl.buttons.name': 'Bildschirmtasten',
+  'ctrl.buttons.desc': 'Tasten ◀ ▶ – laufen, ▲ – springen',
+  'ctrl.halves': 'BILDSCHIRMHÄLFTEN', 'ctrl.halves.name': 'Bildschirmhälften + Sprungtaste',
+  'ctrl.halves.desc': 'Halte eine Bildschirmhälfte zum Laufen  ·  ▲ in der Ecke – springen',
+  'ctrl.swipe': 'WISCHEN', 'ctrl.swipe.name': 'Bildschirmhälften + nach oben wischen',
+  'ctrl.swipe.desc': 'Halte eine Bildschirmhälfte zum Laufen  ·  nach oben wischen – springen',
+  'ctrl.joystick': 'JOYSTICK', 'ctrl.joystick.name': 'Joystick',
+  'ctrl.joystick.desc': 'Stick unter dem Daumen – stufenloses Tempo  ·  andere Seite – springen',
+  'ctrl.tilt': 'NEIGEN', 'ctrl.tilt.name': 'Handy neigen',
+  'ctrl.tilt.desc': 'Neige das Handy zum Laufen  ·  tippe auf den Bildschirm zum Springen',
+  'ctrl.sens': 'Neigungsempfindlichkeit', 'ctrl.sensLow': 'sanft', 'ctrl.sensHigh': 'empfindlich', 'ctrl.sensOnly': 'gilt für Neigen',
+  'ctrl.always': 'Tastatur und Gamepad funktionieren immer, in jedem Modus.',
+  'ctrl.keys': '↑ ↓ wählen   ·   LEERTASTE auswählen   ·   ← → Empfindlichkeit   ·   ESC zurück',
 };
 
 const fr = {
@@ -370,11 +406,8 @@ const fr = {
 
   'title.opts': 'OPTIONS', 'title.rank': 'CLASSEMENT', 'title.char': 'PERSONNAGE', 'title.map': 'CARTE',
   'title.play': 'JOUER', 'title.playKey': 'JOUER  ·  ESPACE',
-  'title.ctrlTilt': 'COMMANDES : INCLINAISON + TOUCHER  ·  changer',
   'title.ctrlTiltWant': 'COMMANDES : INCLINAISON  ·  touchez pour activer',
-  'title.ctrlButtons': 'COMMANDES : BOUTONS  ·  activer l’inclinaison',
-  'title.tiltHelp': 'Inclinez le téléphone pour courir  ·  touchez l’écran pour sauter',
-  'title.buttonsHelp': 'Boutons ◀ ▶ – courir, ▲ – sauter',
+  'title.ctrl': 'COMMANDES : {mode}  ·  changer',
   'title.tip': 'Plus vous courez vite, plus vous sautez haut. Rebondissez sur les murs !',
   'title.keys': 'courir ← → / A D   ·   sauter ESPACE / ↑ / W   ·   pause P   ·   son M',
   'title.combo': 'Des sauts de 2+ étages d’affilée forment un COMBO.',
@@ -482,6 +515,21 @@ const fr = {
   'recap.none': 'Tu n’étais pas au classement la semaine dernière – bonne chance cette semaine !',
   'recap.board': 'CLASSEMENT COMPLET', 'recap.next': 'CONTINUER',
   'recap.keys': '1–3 : rediffusions  ·  R : classement complet  ·  Entrée : continuer',
+
+  'set.controls': 'Commandes', 'ctrl.title': 'COMMANDES',
+  'ctrl.buttons': 'BOUTONS', 'ctrl.buttons.name': 'Boutons à l’écran',
+  'ctrl.buttons.desc': 'Boutons ◀ ▶ – courir, ▲ – sauter',
+  'ctrl.halves': 'MOITIÉS D’ÉCRAN', 'ctrl.halves.name': 'Moitiés d’écran + bouton de saut',
+  'ctrl.halves.desc': 'Maintenez une moitié d’écran pour courir  ·  ▲ dans un coin – sauter',
+  'ctrl.swipe': 'GLISSER', 'ctrl.swipe.name': 'Moitiés d’écran + glisser vers le haut',
+  'ctrl.swipe.desc': 'Maintenez une moitié d’écran pour courir  ·  glissez vers le haut – sauter',
+  'ctrl.joystick': 'JOYSTICK', 'ctrl.joystick.name': 'Joystick',
+  'ctrl.joystick.desc': 'Joystick sous le pouce – vitesse progressive  ·  autre côté – sauter',
+  'ctrl.tilt': 'INCLINAISON', 'ctrl.tilt.name': 'Incliner le téléphone',
+  'ctrl.tilt.desc': 'Inclinez le téléphone pour courir  ·  touchez l’écran pour sauter',
+  'ctrl.sens': 'Sensibilité de l’inclinaison', 'ctrl.sensLow': 'douce', 'ctrl.sensHigh': 'vive', 'ctrl.sensOnly': 'pour l’inclinaison',
+  'ctrl.always': 'Le clavier et la manette fonctionnent toujours, dans tous les modes.',
+  'ctrl.keys': '↑ ↓ choisir   ·   ESPACE valider   ·   ← → sensibilité   ·   ÉCHAP retour',
 };
 
 const es = {
@@ -490,11 +538,8 @@ const es = {
 
   'title.opts': 'OPCIONES', 'title.rank': 'RANKING', 'title.char': 'PERSONAJE', 'title.map': 'MAPA',
   'title.play': 'JUGAR', 'title.playKey': 'JUGAR  ·  ESPACIO',
-  'title.ctrlTilt': 'CONTROL: INCLINAR + TOCAR  ·  cambiar',
   'title.ctrlTiltWant': 'CONTROL: INCLINAR  ·  toca para activar',
-  'title.ctrlButtons': 'CONTROL: BOTONES  ·  activar inclinación',
-  'title.tiltHelp': 'Inclina el móvil para correr  ·  toca la pantalla para saltar',
-  'title.buttonsHelp': 'Botones ◀ ▶ – correr, ▲ – saltar',
+  'title.ctrl': 'CONTROL: {mode}  ·  cambiar',
   'title.tip': 'Cuanto más rápido corres, más alto saltas. ¡Rebota en las paredes!',
   'title.keys': 'correr ← → / A D   ·   saltar ESPACIO / ↑ / W   ·   pausa P   ·   sonido M',
   'title.combo': 'Los saltos de 2+ pisos seguidos forman un COMBO.',
@@ -602,6 +647,21 @@ const es = {
   'recap.none': 'La semana pasada no estabas en la clasificación – ¡suerte esta semana!',
   'recap.board': 'CLASIFICACIÓN', 'recap.next': 'CONTINUAR',
   'recap.keys': '1–3: repeticiones  ·  R: clasificación completa  ·  Intro: continuar',
+
+  'set.controls': 'Control', 'ctrl.title': 'CONTROL',
+  'ctrl.buttons': 'BOTONES', 'ctrl.buttons.name': 'Botones en pantalla',
+  'ctrl.buttons.desc': 'Botones ◀ ▶ – correr, ▲ – saltar',
+  'ctrl.halves': 'MITADES DE PANTALLA', 'ctrl.halves.name': 'Mitades de pantalla + botón de salto',
+  'ctrl.halves.desc': 'Mantén una mitad de la pantalla para correr  ·  ▲ en la esquina – saltar',
+  'ctrl.swipe': 'DESLIZAR', 'ctrl.swipe.name': 'Mitades de pantalla + deslizar arriba',
+  'ctrl.swipe.desc': 'Mantén una mitad de la pantalla para correr  ·  desliza hacia arriba – saltar',
+  'ctrl.joystick': 'JOYSTICK', 'ctrl.joystick.name': 'Joystick',
+  'ctrl.joystick.desc': 'Joystick bajo el pulgar – velocidad gradual  ·  el otro lado – saltar',
+  'ctrl.tilt': 'INCLINAR', 'ctrl.tilt.name': 'Inclinar el móvil',
+  'ctrl.tilt.desc': 'Inclina el móvil para correr  ·  toca la pantalla para saltar',
+  'ctrl.sens': 'Sensibilidad de inclinación', 'ctrl.sensLow': 'suave', 'ctrl.sensHigh': 'sensible', 'ctrl.sensOnly': 'para inclinar',
+  'ctrl.always': 'El teclado y el mando funcionan siempre, en cualquier modo.',
+  'ctrl.keys': '↑ ↓ elegir   ·   ESPACIO seleccionar   ·   ← → sensibilidad   ·   ESC volver',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

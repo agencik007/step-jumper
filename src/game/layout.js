@@ -20,8 +20,21 @@ export const UIBOX = {
   recapBoard: { x: 160, y: 418, w: 150, h: 32 }, recapNext: { x: 330, y: 418, w: 150, h: 32 },
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
   // opcje
-  row: (i) => ({ x: 140, y: 66 + i * 34, w: 360, h: 30 }),
+  row: (i) => ({ x: 140, y: 58 + i * 32, w: 360, h: 28 }),
+  // opcje → sterowanie: pięć trybów, suwak czułości przechyłu, „Wróć”
+  ctrlRow: (i) => ({ x: 120, y: 60 + i * 46, w: 400, h: 42 }),
+  sens: { x: 120, y: 294, w: 400, h: 56 }, sensBar: { x: 210, y: 334, w: 220 },
+  ctrlBack: { x: 250, y: 360, w: 140, h: 30 },
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
-export const SETTINGS = ['lang', 'sound', 'music', 'vibrate', 'hand', 'online', 'delete', 'back'];
+export const SETTINGS = ['lang', 'controls', 'hand', 'sound', 'music', 'vibrate', 'online', 'delete', 'back'];
+/** Strona „Sterowanie”: tryby w kolejności z input.js (CONTROLS), potem czułość i powrót. */
+export const CTRL_PAGE = ['buttons', 'halves', 'swipe', 'joystick', 'tilt', 'sens', 'back'];
+export const SENS_STEPS = 8;
+/** Pozycja dotknięcia na suwaku czułości → wartość 0…8 (null = poza suwakiem). */
+export function sensValueAt(x) {
+  const b = UIBOX.sensBar;
+  if (x < b.x - 24 || x > b.x + b.w + 24) return null;
+  return Math.max(0, Math.min(SENS_STEPS, Math.round((x - b.x) / b.w * SENS_STEPS)));
+}
 export const inBox = (x, y, b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
