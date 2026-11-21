@@ -74,8 +74,13 @@ function parse<T>(s: string | null, def: T): T { try { return s ? (JSON.parse(s)
 
 export class Online {
   enabled = true;
-  /** Serwer liczy już inną wersją symulacji – trzeba zaktualizować grę. */
+  /** Serwer liczy już nowszą wersją symulacji – trzeba zaktualizować grę (przeładować stronę). */
   outdated = false;
+  /**
+   * Serwer liczy jeszcze starszą wersją symulacji niż ta gra – zwykle to chwila między wdrożeniem gry a wdrożeniem
+   * serwera. Klient nie blokuje się na stałe: każde uzupełnianie biletów pyta serwer ponownie.
+   */
+  serverBehind = false;
   /** Wersja symulacji, którą deklaruje klient (pole, żeby testy mogły udawać starą aplikację). */
   simVersion = SIM_VERSION;
   /** Wywoływane dla każdego biegu, który opuścił kolejkę (także wysłanego później, po powrocie sieci). */
@@ -217,9 +222,11 @@ export class Online {
         if (!(await this.ensureAccount())) return;
         const r = await this.req('POST', '/v1/runs', { auth: true, json: { simVersion: this.simVersion } });
         if (r.status === 201) {
+          this.serverBehind = false;
           this.list.push({ runId: r.data.runId, seed: r.data.seed, simVersion: r.data.simVersion, chunkTicks: r.data.chunkTicks, issuedAt: this.now() });
           await this.saveTickets();
         } else if (r.status === 409 && r.data?.error === 'update_required') {
+          if (Number(r.data.simVersion) < this.simVersion) { this.serverBehind = true; return; }   // to serwer jest stary – spróbujemy później
           this.outdated = true; this.list = []; await this.saveTickets();
           return;
         } else if (r.status === 401) {

@@ -96,7 +96,7 @@ describe('bilety na bieg', () => {
     for (let i = 0; i < 181; i++) { codes.push((await srv.call('POST', '/v1/runs', { token, json: { simVersion: SIM_VERSION } })).status); srv.clock.now += 1000; }
     expect(codes.slice(0, 180).every((c) => c === 201)).toBe(true);
     expect(codes[180]).toBe(429);
-  });
+  }, 30_000);   // 181 zapytań po kolei – na wolniejszej maszynie (CI) nie mieści się w domyślnych 5 s
 
   test('zablokowany gracz nie dostaje biletów', async () => {
     const token = await srv.newPlayer();

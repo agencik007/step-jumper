@@ -13,6 +13,8 @@ initInstall(game);
 // ranking online: wczytaj konto, uzupełnij zapas biletów i dośli biegi, które czekały na sieć
 online.init().then(() => { online.refill(); online.flush(); });
 addEventListener('online', () => { online.refill(); online.flush(); });
+// serwer jeszcze na starszej wersji symulacji (trwa wdrożenie): co minutę sprawdzamy, czy już go zaktualizowano
+setInterval(() => { if (online.serverBehind) online.refill(); }, 60_000);
 if (import.meta.env.DEV) {             // suwaki fizyki lotu – tylko deweloperski podgląd, w buildzie produkcyjnym ich nie ma
   import('./game/tuning.js').then((m) => m.initTuning(game));
 }
