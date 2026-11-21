@@ -6,6 +6,8 @@ export const UIBOX = {
   pmenu: { x: 180, y: 306, w: 280, h: 34 },   // pauza: wyjście do menu
   // ekran tytułowy: rogi
   opts: { x: 10, y: 10, w: 92, h: 28 }, rank: { x: 538, y: 10, w: 92, h: 28 },
+  news: { x: 10, y: 44, w: 92, h: 28 },                   // NOWOŚCI (lista zmian)
+  update: { x: 538, y: 44, w: 92, h: 38 },                // PRZEŁADUJ – tylko gdy na serwerze jest nowa wersja
   // ranking
   tab: (i) => ({ x: 104 + i * 110, y: 64, w: 102, h: 28 }),
   list: { x: 110, y: 102, w: 420, h: 276 },
@@ -28,13 +30,15 @@ export const PERIODS = ['day', 'week', 'lastweek', 'all'];
 export const LIST = { x: 110, y: 50, w: 420, h: 330 };
 export const LIST_BACK = { x: 240, y: 388, w: 160, h: 28 };
 export const ROW_H = { head: 22, info: 24, mode: 42, slider: 48, row: 30, bind: 30 };
+export const NOTE_LINE = 17;
+export const NOTE_FONT = { size: 13, weight: 600 };   // czcionka punktów listy zmian (łamanie linijek i rysowanie)          // wysokość linijki punktu na liście zmian (wiersz 'note' ma tyle linijek, ile lines)
 const ROW_GAP = 4;
 /** Ustawia y (względem początku listy) i h każdego wiersza; zwraca wysokość całej listy. */
 export function listLayout(items) {
   let y = 0;
   for (const it of items) {
     if (it.type === 'back') continue;
-    it.y = y; it.h = ROW_H[it.type]; y += it.h + ROW_GAP;
+    it.y = y; it.h = it.type === 'note' ? it.lines.length * NOTE_LINE + 2 : ROW_H[it.type]; y += it.h + ROW_GAP;
   }
   return Math.max(0, y - ROW_GAP);
 }

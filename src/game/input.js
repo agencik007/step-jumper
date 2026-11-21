@@ -376,6 +376,8 @@ function handlePad(p, B) {
       if (A || START) game.start();
       else if (Y) game.openBoard();
       else if (X || SEL) game.openSettings();
+      else if (LB) game.openNews();
+      else if (RB) game.reloadGame();
       break;
     case 'pause':
       if (A || Bk || START || binds.pad.pause.some(edge)) game.togglePause();
@@ -442,7 +444,7 @@ function onKey(e) {
     return;
   }
   sfx.unlock();
-  const code = e.code, act = keyAct(code), free = !act;   // klawisz bez akcji może być skrótem (R, O, N, T, F, M)
+  const code = e.code, act = keyAct(code), free = !act;   // klawisz bez akcji może być skrótem (R, O, N, U, T, F, M)
   const left = code === 'ArrowLeft' || act === 'left', right = code === 'ArrowRight' || act === 'right';
   const up = code === 'ArrowUp' || (code === 'KeyW' && (free || act === 'jump'));
   const dn = code === 'ArrowDown' || (code === 'KeyS' && free);
@@ -455,6 +457,8 @@ function onKey(e) {
     if (up || dn) { game.pick('style', up ? -1 : 1); return; }
     if (free && code === 'KeyR') { game.openBoard(); return; }
     if (free && code === 'KeyO') { game.openSettings(); return; }
+    if (free && code === 'KeyN') { game.openNews(); return; }
+    if (free && code === 'KeyU') { game.reloadGame(); return; }
   } else if (s === 'board') {
     if (left || right) { game.boardTab(left ? -1 : 1); return; }
     if (up || dn) { game.boardMove(up ? -1 : 1); return; }
