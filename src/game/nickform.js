@@ -16,14 +16,15 @@ export const nickOpen = () => !form.hidden;
 
 /**
  * Otwiera formularz. onSave(nick) → { ok: true } albo { ok: false, error }; onClose(saved) po zamknięciu.
- * required: nick jest potrzebny, zanim zacznie się gra – nagłówek o tym mówi.
+ * required: nick jest potrzebny, zanim zacznie się gra – nagłówek o tym mówi. pad: gracz używa pada – podpowiedź „B = graj bez nicku”.
  */
-export function openNick(current, onSave, onClose, { required = false } = {}) {
+export function openNick(current, onSave, onClose, { required = false, pad = false } = {}) {
   pending = { onSave, onClose };
   field.value = current ?? '';
   err.textContent = '';
   label.dataset.i18n = required ? 'nick.required' : 'nick.label';
   label.textContent = t(label.dataset.i18n);
+  document.getElementById('nickPad').hidden = !pad;    // gra padem: jak zagrać bez pisania
   form.hidden = false;
   setTimeout(() => { field.focus(); field.select(); }, 0);
 }
@@ -48,3 +49,5 @@ document.getElementById('nickCancel').addEventListener('click', () => close());
 form.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); close(); } });
 // dotknięcia formularza nie trafiają do gry (w trybie przechyłu każde dotknięcie to skok)
 form.addEventListener('pointerdown', (e) => e.stopPropagation());
+/** Zamknięcie bez zapisu (przycisk B na padzie). */
+export function cancelNick() { if (!form.hidden) close(); }

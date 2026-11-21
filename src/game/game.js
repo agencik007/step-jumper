@@ -8,11 +8,16 @@ import { online } from '../net';
 import { sfx } from './audio.js';
 import { CHARS } from './characters.js';
 import { MEDALS, NEON, PENCILS, STYLES, applyStyle, cycle, style, themeOf } from './gfx.js';
-import { haptics } from './haptics.js';
+import { KIND_NAMES, gpad } from './gamepad.js';
+import { HAPTIC_LEVELS, haptics } from './haptics.js';
 import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
-import { CONTROLS, SENS_MAX, ctrl, input, isTouch, setControl, tilt, touchAxis } from './input.js';
-import { CTRL_PAGE, PERIODS, SETTINGS, UIBOX, inBox, sensValueAt, slotX } from './layout.js';
+import {
+  CONTROLS, DEAD_STEPS, JUMP_MODES, SENS_MAX, TILT_ZERO_MAX, binds, ctrl, hintMode, input, isTouch, loadBinds, opts, setBind, setControl, tilt, touchAxis,
+} from './input.js';
+import { ARROW_W, LIST, LIST_BACK, PERIODS, UIBOX, bindCell, inBox, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
+import { buildPages, selectable } from './options.js';
+import { loadPads, mirrorPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
 import { clamp, loadJSON, mod, rand, saveJSON } from './util.js';
 
@@ -31,15 +36,25 @@ const BOARD_TTL = 30;                    // s – tyle samo serwer trzyma rankin
 export class Game {
   constructor() {
     this.best = loadJSON(STORE, { score: 0, floor: 0, combo: 0 });
-    const prefs = loadJSON(PREFS, { char: 0, style: 0, control: null, tilt: false, tiltSens: SENS_MAX / 2, sound: true, music: true, vibrate: true, lefty: false, lang: null });
+    const prefs = loadJSON(PREFS, {
+      char: 0, style: 0, control: null, tilt: false, tiltSens: SENS_MAX / 2, tiltZero: 0, sound: true, music: true, vibrate: 2, lefty: false, lang: null,
+      jumpMode: 'hold', stickDead: opts.stickDead, padDead: opts.padDead, pads: null, keys: null, padKeys: null, keyNames: null,
+    });
     setLang(prefs.lang ?? detectLang());   // pierwsze uruchomienie: język przeglądarki
     this.charIdx = clamp(prefs.char | 0, 0, CHARS.length - 1);
     this.styleIdx = clamp(prefs.style | 0, 0, STYLES.length - 1);
     tilt.sens = clamp(Math.round(Number(prefs.tiltSens)) || 0, 0, SENS_MAX);
+    tilt.zero = clamp(Math.round(Number(prefs.tiltZero)) || 0, -TILT_ZERO_MAX, TILT_ZERO_MAX);
+    opts.jump = JUMP_MODES.includes(prefs.jumpMode) ? prefs.jumpMode : 'hold';
+    opts.stickDead = clamp(Math.round(Number(prefs.stickDead)) || 0, 0, DEAD_STEPS);
+    opts.padDead = clamp(Math.round(Number(prefs.padDead)) || 0, 0, DEAD_STEPS);
+    loadBinds(prefs.keys, prefs.padKeys, prefs.keyNames);
+    loadPads(prefs.pads);
     setControl(prefs.control ?? (prefs.tilt ? 'tilt' : 'buttons'));   // starsze zapisy znały tylko „przechył tak/nie”
     sfx.muted = !prefs.sound;
     sfx.musicOn = prefs.music !== false;
-    haptics.on = !!prefs.vibrate;
+    // wibracje: dawniej tak / nie, teraz siła 0…3
+    haptics.level = prefs.vibrate === true ? 2 : prefs.vibrate === false ? 0 : clamp(Math.round(Number(prefs.vibrate)) || 0, 0, HAPTIC_LEVELS.length - 1);
     this.setLefty(!!prefs.lefty);
     applyStyle(this.styleIdx);
     this.t = 0;
@@ -56,7 +71,9 @@ export class Game {
     this.recap = null;                   // wyniki zamkniętego tygodnia (stan 'recap')
     this.recapPending = false;           // podsumowanie czeka, aż gracz wróci na ekran tytułowy
     this.tier = null;                    // korona (1–3) bohatera w trwającym biegu albo w powtórce
-    this.settings = { sel: 0, confirmT: 0, note: '', page: 'main', from: 'title' };
+    this.settings = { sel: 0, slot: 0, confirmT: 0, confirmK: null, note: '', page: 'main', from: 'title', scroll: 0, scrollTo: 0, capture: null };
+    this.pages = buildPages(this);       // strony opcji (options.js)
+    this.recapSel = 0;                   // wybrane miejsce na podium (pad, strzałki)
     this.nickLater = false;              // bez sieci przy wyborze nicku: gramy, a o nick zapytamy przy następnym uruchomieniu
     this.reset();
     this.state = 'title';
@@ -68,9 +85,21 @@ export class Game {
     this.savePrefs();
     sfx.pick();
   }
-  savePrefs() { saveJSON(PREFS, { char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, sound: !sfx.muted, music: sfx.musicOn, vibrate: haptics.on, lefty: this.lefty, lang: lang() }); }
-  /** Układ przycisków ekranowych: leworęczny = skok pod lewym kciukiem, ◀ ▶ pod prawym. */
-  setLefty(on) { this.lefty = on; if (typeof document !== 'undefined') document.body.classList.toggle('lefty', on); }
+  savePrefs() {
+    saveJSON(PREFS, {
+      char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, tiltZero: tilt.zero, sound: !sfx.muted, music: sfx.musicOn,
+      vibrate: haptics.level, lefty: this.lefty, lang: lang(), jumpMode: opts.jump, stickDead: opts.stickDead, padDead: opts.padDead,
+      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names,
+    });
+  }
+  /** Układ przycisków ekranowych: leworęczny = skok pod lewym kciukiem, ◀ ▶ pod prawym. Własny układ odbija się wtedy w poziomie. */
+  setLefty(on, mirror = false) {
+    if (mirror && on !== this.lefty) mirrorPads();
+    this.lefty = on;
+    if (typeof document !== 'undefined') document.body.classList.toggle('lefty', on);
+  }
+  /** Rodzaj podpowiedzi na ekranie: 'touch' | 'keys' | 'pad' (ostatnio używane wejście). */
+  get hint() { return hintMode(); }
   cycleLang(d) { setLang(LANGS[mod(LANGS.indexOf(lang()) + d, LANGS.length)]); this.savePrefs(); sfx.pick(); }
 
   reset(seed = newSeed(), tune = this.tune) {
@@ -80,6 +109,8 @@ export class Game {
     this.fx = { angle: 0, squash: 0, runPhase: 0 };   // stan czysto wizualny bohatera
     this.shake = 0; this.parts = []; this.msgs = [];
     this.acc = 0; this.trailT = 0; this.rubT = 0; this.jumpLock = true; this.newBest = false; this.overT = 0;
+    this.jumpPrev = false; this.latch = false;   // skok „przełącznikiem”: włączony trwa do następnego wciśnięcia
+    this.autoDir = 1;                    // tryb jednego przycisku: kierunek biegu
     this.narrow = 0;                     // najwyższy stopień zwężenia pięter, o którym gracz już wie
   }
 
@@ -119,11 +150,24 @@ export class Game {
   }
 
   // ── ranking ──
-  openBoard() { sfx.pick(); this.state = 'board'; this.loadBoard(); }
+  openBoard() { sfx.pick(); this.state = 'board'; this.board.sel = -1; this.loadBoard(); }
   boardTab(d, abs = false) {
     const i = abs ? d : mod(PERIODS.indexOf(this.board.kind) + d, PERIODS.length);
     if (PERIODS[i] === this.board.kind) return;
-    this.board.kind = PERIODS[i]; sfx.pick(); this.loadBoard();
+    this.board.kind = PERIODS[i]; this.board.sel = -1; sfx.pick(); this.loadBoard();
+  }
+  /** Strzałki / pad w rankingu: wybór wiersza 1–3 z powtórką (−1 = żaden). */
+  boardMove(d) {
+    const rows = (this.board.data[this.board.kind]?.top?.entries ?? []).filter((e) => e.rank <= 3 && e.replay).map((e) => e.rank - 1);
+    if (!rows.length) { this.board.sel = -1; return; }
+    const opts2 = [-1, ...rows], i = opts2.indexOf(this.board.sel);
+    this.board.sel = opts2[clamp((i < 0 ? 0 : i) + d, 0, opts2.length - 1)];
+    sfx.pick();
+  }
+  /** Enter / A w rankingu: powtórka wybranego wiersza albo powrót do tytułu. */
+  boardConfirm() {
+    if (this.board.sel >= 0) this.boardReplay(this.board.sel + 1);
+    else { sfx.pick(); this.toTitle(); }
   }
   async loadBoard(force = false) {
     const b = this.board, kind = b.kind;
@@ -157,12 +201,18 @@ export class Game {
     this.recapPending = false;
     if (!this.recap) return;
     saveJSON(WEEK, { seen: this.recap.top.period });
-    this.state = 'recap';
+    this.state = 'recap'; this.recapSel = 0;
     sfx.combo(4);
   }
   closeRecap() { sfx.pick(); this.toTitle(); }
   /** Z podsumowania do pełnego rankingu zeszłego tygodnia. */
   recapBoard() { this.board.kind = 'lastweek'; this.openBoard(); }
+  /** Strzałki / pad na podium: wybór miejsca (kolejność na ekranie: 2. – 1. – 3.). */
+  recapMove(d) {
+    const order = [1, 0, 2], i = order.indexOf(this.recapSel);
+    this.recapSel = order[clamp(i + d, 0, 2)]; sfx.pick();
+  }
+  recapWatch() { this.recapReplay(this.recapSel + 1); }
   recapReplay(rank) {
     const e = this.recap?.top.entries.find((x) => x.rank === rank);
     if (e?.replay) this.openReplay(e, 'recap');
@@ -237,8 +287,10 @@ export class Game {
       return r;
     }, (saved) => {
       this.board.at = {};
-      if (saved && this.state === 'title') this.start();
-    }, { required: true });
+      // sam pad nie napisze nicku: B (anuluj) = gramy teraz bez nicku, a zapytamy przy następnym uruchomieniu
+      if (!saved && this.hint === 'pad') this.nickLater = true;
+      if ((saved || this.nickLater) && this.state === 'title') this.start();
+    }, { required: true, pad: this.hint === 'pad' });
   }
   editNick() {
     if (!online.enabled) return;
@@ -250,85 +302,157 @@ export class Game {
   /** page 'controls' = od razu wybór sterowania (z przełącznika na ekranie tytułowym; „Wróć” prowadzi wtedy do tytułu). */
   openSettings(page = 'main') {
     sfx.pick();
+    this.state = 'settings';
+    this.settings.from = page === 'main' ? 'title' : 'ctrl';
+    this.showPage(page, page === 'controls' ? ctrl.mode : null);
+  }
+  /** Pokazuje stronę opcji; focus – klucz wiersza, który ma być zaznaczony. */
+  showPage(page, focus = null) {
     const st = this.settings;
-    this.state = 'settings'; st.note = ''; st.confirmT = 0;
-    st.page = page; st.from = page === 'main' ? 'title' : 'ctrl';
-    st.sel = page === 'main' ? 0 : CONTROLS.indexOf(ctrl.mode);
+    st.page = page; st.note = ''; st.confirmT = 0; st.confirmK = null; st.capture = null; st.slot = 0;
+    st.sel = Math.max(0, focus ? this.settingsSel.findIndex((it) => it.k === focus) : 0);
+    st.scroll = st.scrollTo = 0;
+    this.revealSel(true);
   }
-  /** Wiersze otwartej strony opcji. */
-  get settingsRows() { return this.settings.page === 'controls' ? CTRL_PAGE : SETTINGS; }
-  settingsMove(d) { this.settings.sel = mod(this.settings.sel + d, this.settingsRows.length); sfx.pick(); }
-  /** ← → w opcjach: zmienia język, układ przycisków, tryb sterowania albo czułość przechyłu, gdy wybrany jest ich wiersz. */
+  openPage(page) { sfx.pick(); this.showPage(page); }
+  /** Wiersze otwartej strony opcji i te z nich, które da się wybrać. */
+  get settingsItems() { return this.pages[this.settings.page]; }
+  get settingsSel() { return selectable(this.settingsItems); }
+  get selItem() { return this.settingsSel[this.settings.sel] ?? null; }
+  /** Wiersz czeka na drugie dotknięcie (usuwanie danych, przywracanie ustawień). */
+  confirming(k) { return this.settings.confirmK === k && this.t < this.settings.confirmT; }
+  /** ↑ ↓ w opcjach; jump – o kilka wierszy naraz (PageUp / PageDown, LB / RB) bez zawijania. */
+  settingsMove(d, jump = false) {
+    const st = this.settings, n = this.settingsSel.length;
+    st.capture = null;
+    const sel = jump ? clamp(st.sel + d, 0, n - 1) : mod(st.sel + d, n);
+    if (sel === st.sel) return;
+    st.sel = sel; st.slot = 0;
+    sfx.pick(); this.revealSel();
+  }
+  /** ← → w opcjach: zmienia wartość wybranego wiersza (suwak, język, tryb…) albo pole przypisania. */
   settingsSide(d) {
-    const k = this.settingsRows[this.settings.sel];
-    if (k === 'lang') this.cycleLang(d);
-    else if (k === 'hand') this.activate(this.settings.sel);
-    else if (k === 'controls') this.pickControl(CONTROLS[mod(CONTROLS.indexOf(ctrl.mode) + d, CONTROLS.length)]);
-    else if (k === 'sens') this.setSens(tilt.sens + d);
+    const it = this.selItem, st = this.settings;
+    if (!it) return;
+    if (it.type === 'slider') it.set(it.get() + d);
+    else if (it.type === 'bind') { const s2 = clamp(st.slot + d, 0, it.slots - 1); if (s2 !== st.slot) { st.slot = s2; st.capture = null; sfx.pick(); } }
+    else if (it.type === 'mode') {
+      const m = CONTROLS[mod(CONTROLS.indexOf(ctrl.mode) + d, CONTROLS.length)];
+      this.pickControl(m);
+      st.sel = this.settingsSel.findIndex((x) => x.k === m); this.revealSel();
+    } else if (it.side) it.side(d);
+    else if (it.arrows) it.act();
   }
-  /** ESC w opcjach: ze strony sterowania wstecz, z głównej – do tytułu. */
+  /** ESC / B / „Wróć”: z przypisań do sterowania, ze sterowania do głównych opcji, z głównych – do tytułu. */
   settingsBack() {
     const st = this.settings;
-    if (st.page !== 'controls' || st.from === 'ctrl') { this.toTitle(); return; }
-    sfx.pick();
-    st.page = 'main'; st.sel = SETTINGS.indexOf('controls');
+    if (st.capture) { this.cancelCapture(); return; }
+    if (st.page === 'keys' || st.page === 'pad') { sfx.pick(); this.showPage('controls', st.page); return; }
+    if (st.page === 'controls' && st.from !== 'ctrl') { sfx.pick(); this.showPage('main', 'controls'); return; }
+    this.toTitle();
   }
   pickControl(mode) {
     if (mode === ctrl.mode && (mode !== 'tilt' || tilt.active)) { sfx.pick(); return; }
     setControl(mode); this.savePrefs(); sfx.pick();
   }
-  setSens(v) {
-    v = clamp(v, 0, SENS_MAX);
-    if (v === tilt.sens) return;
-    tilt.sens = v; this.savePrefs(); sfx.pick();
-  }
+  /** Enter / A / dotknięcie wybranego wiersza. */
   activate(i) {
-    const st = this.settings;
+    const st = this.settings, it = this.settingsSel[i];
+    if (!it) return;
     st.sel = i;
-    if (st.page === 'controls') {
-      const k = CTRL_PAGE[i];
-      if (CONTROLS.includes(k)) this.pickControl(k);
-      else if (k === 'sens') this.setSens(tilt.sens >= SENS_MAX ? 0 : tilt.sens + 1);
-      else if (k === 'back') this.settingsBack();
-      return;
-    }
-    switch (SETTINGS[i]) {
-      case 'controls': sfx.pick(); st.page = 'controls'; st.sel = CONTROLS.indexOf(ctrl.mode); break;
-      case 'lang': this.cycleLang(1); break;
-      case 'sound': sfx.muted = !sfx.muted; this.savePrefs(); sfx.pick(); break;
-      case 'music': sfx.musicOn = !sfx.musicOn; this.savePrefs(); sfx.pick(); break;
-      case 'hand': this.setLefty(!this.lefty); this.savePrefs(); sfx.pick(); break;
-      case 'vibrate':
-        if (!haptics.available) return;
-        haptics.on = !haptics.on; this.savePrefs(); haptics.buzz(40); sfx.pick(); break;
-      case 'online':
-        sfx.pick();
-        online.setEnabled(!online.enabled).then(() => { if (online.enabled) { online.refill(); online.flush(); } });
-        this.board.at = {};
-        break;
-      case 'delete':
-        if (this.t > st.confirmT) { st.confirmT = this.t + 4; st.note = ''; sfx.pick(); return; }   // pierwsze dotknięcie tylko pyta
-        st.confirmT = 0; st.note = 'set.deleting';
-        online.deleteData().then((ok) => {
-          st.note = ok ? 'set.deleted' : 'set.deleteFail';   // klucz tekstu – tłumaczony przy rysowaniu
-          this.board.at = {}; this.board.data = {};
-        });
-        break;
-      case 'back': this.toTitle(); break;
-    }
+    if (it.type === 'slider') it.set(it.get() >= (it.max ?? 8) ? 0 : it.get() + 1);
+    else if (it.type === 'bind') this.startCapture(it, st.slot);
+    else it.act?.();
   }
-  /** Dotknięcie strony sterowania: tryb, suwak czułości (w miejscu dotknięcia) albo „Wróć”. */
+  toggleOnline() {
+    sfx.pick();
+    online.setEnabled(!online.enabled).then(() => { if (online.enabled) { online.refill(); online.flush(); } });
+    this.board.at = {};
+  }
+  deleteData() {
+    const st = this.settings;
+    st.note = 'set.deleting';
+    online.deleteData().then((ok) => {
+      st.note = ok ? 'set.deleted' : 'set.deleteFail';   // klucz tekstu – tłumaczony przy rysowaniu
+      this.board.at = {}; this.board.data = {};
+    });
+  }
+
+  // przewijanie listy: scroll – rysowane, scrollTo – cel (lista dojeżdża płynnie)
+  settingsScroll(v, now = false) {
+    const st = this.settings, max = Math.max(0, this.settingsItems.contentH - LIST.h);
+    st.scrollTo = clamp(v, 0, max);
+    if (now) st.scroll = st.scrollTo;
+  }
+  /** Przewija tak, żeby wybrany wiersz (z nagłówkiem grupy nad nim) był widoczny. */
+  revealSel(now = false) {
+    const it = this.selItem, st = this.settings, items = this.settingsItems;
+    if (!it || it.type === 'back') return;
+    const prev = items[items.indexOf(it) - 1], head = prev && (prev.type === 'head' || prev.type === 'info') ? prev : it;
+    const top = head.y - 4, bottom = it.y + it.h + 4;
+    let s2 = st.scrollTo;
+    if (top < s2) s2 = top; else if (bottom > s2 + LIST.h) s2 = bottom - LIST.h;
+    this.settingsScroll(s2, now);
+  }
+
+  // przypisywanie klawiszy i przycisków pada
+  startCapture(it, slot) {
+    const st = this.settings;
+    sfx.pick();
+    st.slot = slot;
+    st.capture = { kind: it.kind, act: it.action, slot, armed: false, until: this.t + 8 };
+    st.note = it.kind === 'key' ? 'bind.pressKey' : 'bind.pressPad';
+  }
+  cancelCapture() { const st = this.settings; if (!st.capture) return; st.capture = null; st.note = ''; sfx.pick(); }
+  bindKey(code, name) {
+    const c = this.settings.capture;
+    if (c?.kind !== 'key') return;
+    setBind('key', c.act, c.slot, code, name); this.finishCapture();
+  }
+  bindPad(i) {
+    const c = this.settings.capture;
+    if (c?.kind !== 'pad') return;
+    setBind('pad', c.act, c.slot, i); this.finishCapture();
+  }
+  finishCapture() { const st = this.settings; st.capture = null; st.note = 'bind.saved'; this.savePrefs(); sfx.pick(); }
+  /** Backspace / Delete / X na padzie: usuwa przypisanie z wybranego pola. */
+  clearBind() {
+    const it = this.selItem, st = this.settings;
+    if (it?.type !== 'bind') return;
+    setBind(it.kind, it.action, st.slot, null);
+    st.capture = null; st.note = ''; this.savePrefs(); sfx.pick();
+  }
+  /** Linijka o padzie na stronie przypisań. */
+  padInfo() {
+    if (gpad.index < 0) return t('bind.noPad');
+    const name = KIND_NAMES[gpad.kind] ?? t('pad.generic');
+    return gpad.standard ? t('bind.padIs', { name }) : t('bind.padOdd', { name });
+  }
+
+  /** Dotknięcie / kliknięcie listy opcji. */
   settingsPointer(x, y) {
-    if (this.settings.page !== 'controls') {
-      for (let i = 0; i < SETTINGS.length; i++) if (inBox(x, y, UIBOX.row(i))) return this.activate(i);
+    const st = this.settings;
+    if (inBox(x, y, LIST_BACK)) { this.settingsBack(); return; }
+    if (!inBox(x, y, LIST)) return;
+    const sel = this.settingsSel;
+    for (const it of this.settingsItems) {
+      if (it.type === 'back') continue;
+      const r = rowBox(it, st.scroll);
+      if (!inBox(x, y, r)) continue;
+      const i = sel.indexOf(it);
+      if (i < 0) return;                                 // nagłówek, objaśnienie
+      if (i !== st.sel) { st.sel = i; st.slot = 0; st.capture = null; }
+      if (it.type === 'slider') {
+        const v = sliderValueAt(sliderBar(r, !!it.low), x);
+        if (v != null) it.set(v); else sfx.pick();
+      } else if (it.type === 'bind') {
+        for (let j = 0; j < it.slots; j++) if (inBox(x, y, bindCell(r, j, it.slots))) { this.startCapture(it, j); return; }
+        sfx.pick();
+      } else if (it.type === 'row' && it.side && x >= r.x + r.w - ARROW_W - 8 && x < r.x + r.w - ARROW_W + 40) it.side(-1);
+      else if (it.type === 'row' && it.side && x > r.x + r.w - 44) it.side(1);
+      else it.act?.();
       return;
     }
-    for (let i = 0; i < CONTROLS.length; i++) if (inBox(x, y, UIBOX.ctrlRow(i))) return this.activate(i);
-    if (inBox(x, y, UIBOX.sens)) {
-      this.settings.sel = CTRL_PAGE.indexOf('sens');
-      const v = sensValueAt(x);
-      if (v != null) this.setSens(v);
-    } else if (inBox(x, y, UIBOX.ctrlBack)) this.settingsBack();
   }
   pause() {
     if (this.state === 'play') this.state = 'pause';
@@ -337,7 +461,7 @@ export class Game {
   togglePause() {
     if (this.state === 'replay') this.replayToggle();
     else if (this.state === 'play') this.state = 'pause';
-    else if (this.state === 'pause') { this.state = 'play'; this.jumpLock = true; }
+    else if (this.state === 'pause') { this.state = 'play'; this.jumpLock = true; this.latch = false; }
   }
 
   pointer(x, y) {
@@ -431,7 +555,7 @@ export class Game {
     }
     this.net = { status: 'sending', runId: ticket.runId };
     // statystyka serwera: dawne „touch” to dzisiejsze przyciski ekranowe
-    const control = tilt.active ? 'tilt' : !isTouch ? 'keys' : ctrl.mode === 'buttons' ? 'touch' : ctrl.mode;
+    const control = tilt.active ? 'tilt' : ctrl.mode === 'one' ? 'one' : this.hint === 'pad' ? 'pad' : !isTouch ? 'keys' : ctrl.mode === 'buttons' ? 'touch' : ctrl.mode;
     online.submit({ ticket, ticks: ticks.slice(), score: this.score, char: CHARS[this.charIdx].id, style: STYLES[this.styleIdx].id, control })
       .catch(() => ({ status: 'queued' }))
       .then((r) => {
@@ -531,15 +655,35 @@ export class Game {
   // ── jeden krok fizyki + efekty, które idą z nim w parze ──
   tick() {
     // wejście: po starcie i po pauzie skok działa dopiero po puszczeniu przycisku
-    if (this.jumpLock && !input.jump) this.jumpLock = false;
-    const wantJump = input.jump && !this.jumpLock;
-    // klawisze/przyciski/połówki ekranu dają pełne ±1; przechył i gałka – wartość płynną, czyli słabsze lub mocniejsze przyspieszenie
+    const raw = input.jump;
+    if (this.jumpLock && !raw) this.jumpLock = false;
+    const press = raw && !this.jumpPrev && !this.jumpLock;
+    this.jumpPrev = raw;
+    // skok: przytrzymanie (trzymany = skok przy każdym lądowaniu), przełącznik (wciśnięcie włącza / wyłącza) albo automat
+    let wantJump;
+    if (opts.jump === 'auto') wantJump = true;
+    else if (opts.jump === 'toggle') { if (press) this.latch = !this.latch; wantJump = this.latch; }
+    else wantJump = raw && !this.jumpLock;
+    // klawisze/przyciski/połówki ekranu dają pełne ±1; przechył i gałki – wartość płynną, czyli słabsze lub mocniejsze przyspieszenie
     let axis = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    if (!axis) axis = touchAxis();
+    if (!axis) axis = input.padAxis || touchAxis();
+    if (ctrl.mode === 'one') axis = this.autoRun(axis);
     // symulacja dostaje dokładnie to, co trafia do zapisu biegu
     const packed = packInput(axis * AXIS_MAX, wantJump);
     this.rec.push(packed);
     this.advance(packed);
+  }
+
+  /**
+   * Tryb jednego przycisku: bohater biegnie sam i zawraca przy ścianie. Strzałka (gałka) przejmuje bieg na chwilę
+   * i ustawia kierunek, w którym bohater pobiegnie dalej. Wynik to zwykła oś – trafia do zapisu jak każde inne sterowanie.
+   */
+  autoRun(axis) {
+    if (axis) { this.autoDir = Math.sign(axis); return axis; }
+    const h = this.sim.hero;
+    if (h.x - HW <= LEFT + 0.5) this.autoDir = 1;
+    else if (h.x + HW >= RIGHT - 0.5) this.autoDir = -1;
+    return this.autoDir;
   }
 
   /** Krok symulacji z podanym wejściem (z gracza albo z zapisu powtórki) i efekty, które idą z nim w parze. */
@@ -584,8 +728,14 @@ export class Game {
     if (this.state === 'title') { if (edge) this.start(); }
     else if (this.state === 'pause') { if (edge) this.togglePause(); }
     else if (this.state === 'over') { this.overT += dt; if (edge && this.overT > 0.6) this.start(); }
-    else if (this.state === 'board') { if (edge) this.toTitle(); }
-    else if (this.state === 'settings') { if (edge) this.activate(this.settings.sel); }
+    else if (this.state === 'board') { if (edge) this.boardConfirm(); }
+    else if (this.state === 'settings') {
+      const st = this.settings;
+      if (edge) this.activate(st.sel);
+      if (st.capture && this.t > st.capture.until) { st.capture = null; st.note = ''; }   // nikt nic nie nacisnął
+      st.scroll += (st.scrollTo - st.scroll) * Math.min(1, dt * 14);
+      if (Math.abs(st.scrollTo - st.scroll) < 0.3) st.scroll = st.scrollTo;
+    }
     else if (this.state === 'recap') { if (edge) this.closeRecap(); }
     else if (this.state === 'replay') {
       const r = this.replay;

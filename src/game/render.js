@@ -8,10 +8,10 @@ import {
   FONT, MEDALS, NEON, PEN, PENCILS, STYLES, brickPattern, burst, canvas, ctx, cycle, ditherPattern, hatchPattern, lowCanvas, lowCtx, mainCtx,
   rr, setCtx, stonePattern, style, text, themeOf, ui, wobblyRect,
 } from './gfx.js';
-import { haptics } from './haptics.js';
-import { LANG_NAMES, lang, t } from './i18n.js';
-import { CONTROLS, ctrl, isTouch, tilt } from './input.js';
-import { CTRL_PAGE, PERIODS, SENS_STEPS, SETTINGS, UIBOX, slotX } from './layout.js';
+import { BTN, glyphOf } from './gamepad.js';
+import { t } from './i18n.js';
+import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
+import { ARROW_W, LIST, LIST_BACK, PERIODS, SLIDER_STEPS, UIBOX, bindCell, rowBox, sliderBar, slotX } from './layout.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
@@ -401,6 +401,13 @@ function drawHud(g) {
   text(String(Math.max(g.best.score, g.score)), rx, 141, { size: 15, color: ui.mint, sw: 3, maxW: 70 });
   if (sfx.muted) text('🔇', rx, 182, { size: 16, sw: 0 });
 
+  // skok przełącznikiem (włączony) albo automatyczny: bohater skacze sam przy każdym lądowaniu
+  if ((g.state === 'play' || g.state === 'pause') && (opts.jump === 'auto' || (opts.jump === 'toggle' && g.latch))) {
+    c.fillStyle = ui.panel; rr(cx - 38, 452, 76, 20, 10); c.fill();
+    c.strokeStyle = ui.gold; c.lineWidth = 1.5; c.stroke();
+    text(`▲ ${t('hud.autoJump')}`, cx, 462.5, { size: 10, color: ui.gold, sw: 0, maxW: 68 });
+  }
+
   // wskaźnik przechyłu: kropka pokazuje, jak mocno i w którą stronę gra „czyta” telefon
   if (tilt.active && g.state === 'play') {
     const bx = W / 2, by = H - 13;
@@ -477,19 +484,98 @@ function drawSwatch(i, x, y, w, h) {
   c.restore();
 }
 
-/** Przycisk-prostokąt z napisem; on = podświetlony (wybrany). */
-function button(b, label, { on = false, accent = false, size = 12 } = {}) {
+/** Przycisk-prostokąt z napisem; on = podświetlony (wybrany); glyph – ikonka przycisku pada przed napisem. */
+function button(b, label, { on = false, accent = false, size = 12, glyph = null } = {}) {
   const c = ctx;
   c.fillStyle = accent ? ui.btn : ui.panel; rr(b.x, b.y, b.w, b.h, 9); c.fill();
   c.strokeStyle = on ? ui.gold : accent ? ui.frame : ui.line; c.lineWidth = on ? 2.5 : 1.5; c.stroke();
-  text(label, b.x + b.w / 2, b.y + b.h / 2 + 1, { size, color: accent ? ui.btnText : ui.hint, sw: 0, maxW: b.w - 14 });
+  const gw = glyph != null ? padGlyph(glyph, b.x + 6, b.y + b.h / 2, 16) + 4 : 0;
+  text(label, b.x + b.w / 2 + gw / 2, b.y + b.h / 2 + 1, { size, color: accent ? ui.btnText : ui.hint, sw: 0, maxW: b.w - 14 - gw });
+}
+
+// ───────────────────────── przyciski pada ─────────────────────────
+
+/**
+ * Ikonka przycisku pada: i – numer przycisku albo 'dpad' (krzyżak). x – lewa krawędź, y – środek, s – wysokość.
+ * Wygląd zależy od rozpoznanego pada (gamepad.js): Xbox A B X Y w kolorach, PlayStation ✕ ○ □ △, Nintendo B A Y X.
+ * draw = false tylko mierzy. Zwraca szerokość.
+ */
+function padGlyph(i, x, y, s = 16, draw = true) {
+  const c = ctx, gl = i === 'dpad' ? { dpad: 'all' } : glyphOf(i);
+  if (!gl) return 0;
+  if (gl.pill) {
+    c.font = `800 ${Math.round(s * 0.52)}px ${FONT}`;
+    const w = Math.max(s, c.measureText(gl.pill).width + s * 0.7);
+    if (!draw) return w;
+    c.save();
+    c.fillStyle = '#1b2140'; rr(x, y - s / 2, w, s, s / 2); c.fill();
+    c.strokeStyle = '#cfd6e6'; c.lineWidth = 1.2; c.stroke();
+    c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(gl.pill, x + w / 2, y + 0.5);
+    c.restore();
+    return w;
+  }
+  if (!draw) return s;
+  c.save();
+  if (gl.dpad) {
+    const u = s / 3, x0 = x, y0 = y - s / 2;
+    c.beginPath();
+    c.moveTo(x0 + u, y0); c.lineTo(x0 + 2 * u, y0); c.lineTo(x0 + 2 * u, y0 + u); c.lineTo(x0 + 3 * u, y0 + u); c.lineTo(x0 + 3 * u, y0 + 2 * u);
+    c.lineTo(x0 + 2 * u, y0 + 2 * u); c.lineTo(x0 + 2 * u, y0 + 3 * u); c.lineTo(x0 + u, y0 + 3 * u); c.lineTo(x0 + u, y0 + 2 * u);
+    c.lineTo(x0, y0 + 2 * u); c.lineTo(x0, y0 + u); c.lineTo(x0 + u, y0 + u); c.closePath();
+    c.fillStyle = '#1b2140'; c.fill(); c.strokeStyle = '#cfd6e6'; c.lineWidth = 1.2; c.stroke();
+    const arm = { up: [1, 0], down: [1, 2], left: [0, 1], right: [2, 1] }[gl.dpad];
+    if (arm) { c.fillStyle = '#ffe066'; c.fillRect(x0 + arm[0] * u + 1, y0 + arm[1] * u + 1, u - 2, u - 2); }
+  } else {
+    const r = s / 2, cx = x + r, k = r * 0.44;
+    c.beginPath(); c.arc(cx, y, r, 0, 7); c.fillStyle = '#1b2140'; c.fill();
+    c.strokeStyle = gl.color; c.lineWidth = 1.5; c.stroke();
+    c.strokeStyle = gl.color; c.fillStyle = gl.color; c.lineWidth = 1.8; c.lineCap = 'round'; c.lineJoin = 'round';
+    if (gl.face === 'cross') { c.beginPath(); c.moveTo(cx - k, y - k); c.lineTo(cx + k, y + k); c.moveTo(cx + k, y - k); c.lineTo(cx - k, y + k); c.stroke(); }
+    else if (gl.face === 'circle') { c.beginPath(); c.arc(cx, y, k * 1.05, 0, 7); c.stroke(); }
+    else if (gl.face === 'square') c.strokeRect(cx - k, y - k, 2 * k, 2 * k);
+    else if (gl.face === 'triangle') { c.beginPath(); c.moveTo(cx, y - k * 1.15); c.lineTo(cx + k * 1.1, y + k * 0.8); c.lineTo(cx - k * 1.1, y + k * 0.8); c.closePath(); c.stroke(); }
+    else { c.font = `800 ${Math.round(s * 0.62)}px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(gl.face, cx, y + 0.5); }
+  }
+  c.restore();
+  return s;
+}
+
+/** Wiersz podpowiedzi dla pada: [[przycisk albo lista przycisków, klucz tekstu], …], wyśrodkowany na y. */
+function padHints(items, y, { size = 11, color = ui.hint } = {}) {
+  const c = ctx, s = 16, gap = 5, sep = 16;
+  c.font = `700 ${size}px ${FONT}`;
+  const parts = items.map(([b, k]) => {
+    const bs = Array.isArray(b) ? b : [b], label = t(k);
+    return { bs, label, gw: bs.reduce((a, x) => a + padGlyph(x, 0, 0, s, false) + 3, -3), tw: c.measureText(label).width };
+  });
+  const total = parts.reduce((a, p) => a + p.gw + gap + p.tw, 0) + sep * (parts.length - 1);
+  const k = Math.min(1, 600 / total);
+  c.save();
+  c.translate(W / 2, y); c.scale(k, k);
+  let x = -total / 2;
+  for (const p of parts) {
+    for (const b of p.bs) x += padGlyph(b, x, 0, s) + 3;
+    x += gap - 3;
+    text(p.label, x, 0.5, { size, color, sw: 3, align: 'left', weight: 700 });
+    x += p.tw + sep;
+  }
+  c.restore();
+}
+
+/** Klawisze z przypisań do podpowiedzi „bieg ← → / A D · skok …”. */
+function keysHint() {
+  const lab = (a) => binds.key[a].filter(Boolean).map(keyLabel);
+  const L = lab('left'), R = lab('right');
+  const run = Array.from({ length: Math.max(L.length, R.length) }, (_, i) => `${L[i] ?? ''} ${R[i] ?? ''}`.trim()).join(' / ');
+  return { run: run || '—', jump: lab('jump').join(' / ') || '—', pause: lab('pause').join(' / ') || '—' };
 }
 
 function drawTitle(g) {
   const c = ctx, time = g.t;
   dim(0.5);
-  button(UIBOX.opts, isTouch ? t('title.opts') : `${t('title.opts')} · O`, { size: 11 });
-  button(UIBOX.rank, isTouch ? t('title.rank') : `${t('title.rank')} · R`, { size: 11 });
+  const hm = g.hint;
+  button(UIBOX.opts, hm === 'keys' ? `${t('title.opts')} · O` : t('title.opts'), { size: 11, glyph: hm === 'pad' ? BTN.X : null });
+  button(UIBOX.rank, hm === 'keys' ? `${t('title.rank')} · R` : t('title.rank'), { size: 11, glyph: hm === 'pad' ? BTN.Y : null });
   c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(1 + Math.sin(time * 2) * 0.02, 1 + Math.sin(time * 2) * 0.02);
   text('STEP JUMPER', 0, 4, { size: 54, maxW: 430, color: ui.frame, sw: 14, stroke: ui.frame });
   const grad = c.createLinearGradient(0, -30, 0, 30);
@@ -530,7 +616,8 @@ function drawTitle(g) {
   c.save(); c.translate(b.x + b.w / 2, b.y + b.h / 2); c.scale(pulse, pulse);
   c.fillStyle = ui.btn; rr(-b.w / 2, -b.h / 2, b.w, b.h, 12); c.fill();
   c.strokeStyle = ui.frame; c.lineWidth = 2.5; c.stroke();
-  text(t(isTouch ? 'title.play' : 'title.playKey'), 0, 1, { size: 18, color: ui.btnText, sw: 0, maxW: b.w - 24 });
+  if (hm === 'pad') padGlyph(BTN.A, -b.w / 2 + 12, 0, 20);
+  text(t(hm === 'keys' ? 'title.playKey' : 'title.play'), hm === 'pad' ? 10 : 0, 1, { size: 18, color: ui.btnText, sw: 0, maxW: b.w - 24 - (hm === 'pad' ? 28 : 0) });
   c.restore();
 
   const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 436 };
@@ -540,21 +627,30 @@ function drawTitle(g) {
     c.strokeStyle = ui.gold; c.lineWidth = 2; c.stroke();
     text(waiting ? t('title.ctrlTiltWant') : t('title.ctrl', { mode: t(`ctrl.${ctrl.mode}`) }), W / 2, k.y + k.h / 2 + 1,
       { size: 12, color: ui.gold, sw: 0, maxW: k.w - 24 });
-    text(t(`ctrl.${ctrl.mode}.desc`), W / 2, 429, { ...hint, color: ui.hint });
+    if (hm === 'pad') padHints(TITLE_PAD, 431);
+    else text(t(`ctrl.${ctrl.mode}.desc`), W / 2, 429, { ...hint, color: ui.hint });
     text(t('title.tip'), W / 2, 444, hint);
+  } else if (hm === 'pad') {
+    padHints(TITLE_PAD, 402);
+    text(t('title.tip'), W / 2, 420, hint);
+    text(t('title.combo'), W / 2, 437, hint);
   } else {
-    text(t('title.keys'), W / 2, 402, { ...hint, color: ui.hint });
+    text(t('title.keys', keysHint()), W / 2, 402, { ...hint, color: ui.hint });
     text(t('title.tip'), W / 2, 420, hint);
     text(t('title.combo'), W / 2, 437, hint);
   }
   if (g.best.score > 0) text(t('title.best', { score: g.best.score, floor: g.best.floor, combo: g.best.combo }), W / 2, 460, { size: 12, color: ui.mint, sw: 3, maxW: 436 });
 }
 
+const TITLE_PAD = [['dpad', 'hint.pick'], [BTN.A, 'hint.play'], [BTN.Y, 'hint.rank'], [BTN.X, 'hint.opts']];
+
 function drawPause(g) {
   dim(0.55);
   text(t('pause.title'), W / 2, 205, { size: 54, sw: 8, maxW: 430 });
-  text(t(isTouch ? 'pause.tap' : 'pause.resume'), W / 2, 258, { size: 15, color: ui.hint, sw: 4, maxW: 430 });
-  if (!isTouch) text(t('pause.menu'), W / 2, 284, { size: 13, color: ui.label, sw: 4, maxW: 430 });
+  const hm = g.hint;
+  if (hm === 'pad') padHints([[BTN.A, 'hint.resume'], [BTN.Y, 'hint.menu']], 262, { size: 14 });
+  else text(t(hm === 'touch' ? 'pause.tap' : 'pause.resume', { key: keysHint().pause }), W / 2, 258, { size: 15, color: ui.hint, sw: 4, maxW: 430 });
+  if (hm === 'keys') text(t('pause.menu'), W / 2, 284, { size: 13, color: ui.label, sw: 4, maxW: 430 });
   button(UIBOX.pmenu, t('pause.menuBtn'), { size: 13 });
 }
 
@@ -578,7 +674,8 @@ function drawOver(g) {
   const net = netLine(g.net);
   if (net) text(net[0], W / 2, 328, { size: 13, color: net[1], sw: 3, maxW: 440 });
   if (g.overT > 0.6) {
-    if (Math.sin(g.t * 5) > -0.3) text(t('over.again'), W / 2, 352, { size: 18, sw: 5, maxW: 430 });
+    if (g.hint === 'pad') padHints([[BTN.A, 'hint.again'], [BTN.Y, 'hint.menu']], 354, { size: 14, color: ui.text });
+    else if (Math.sin(g.t * 5) > -0.3) text(t('over.again'), W / 2, 352, { size: 18, sw: 5, maxW: 430 });
     const b = UIBOX.menu;
     c.fillStyle = ui.panel; rr(b.x, b.y, b.w, b.h, 10); c.fill(); c.strokeStyle = ui.line; c.lineWidth = 1.5; c.stroke();
     text(t('over.menu'), W / 2, b.y + b.h / 2 + 1, { size: 12, color: ui.hint, sw: 0, maxW: b.w - 20 });
@@ -630,6 +727,7 @@ function drawBoard(g) {
         c.strokeStyle = `${medal.mid}aa`; c.lineWidth = mine ? 2 : 1; c.stroke();
         drawCrown(L.x + 27, y + 5, e.rank, g.t + e.rank * 0.4, 0.72);
       } else if (mine) { c.fillStyle = ui.sel; rr(box.x, box.y, box.w, box.h, 6); c.fill(); }
+      if (b.sel === i && g.hint !== 'touch') { c.strokeStyle = ui.gold; c.lineWidth = 2.5; rr(box.x - 1, box.y - 1, box.w + 2, box.h + 2, 7); c.stroke(); }
       const row = { size: 13, sw: 0 };
       if (!medal) text(String(e.rank), L.x + 36, y, { ...row, align: 'right', color: ui.label });
       const nameCol = mine ? ui.gold : medal && style.world !== 'sketch' ? medal.hi : ui.text;
@@ -655,92 +753,132 @@ function drawBoard(g) {
   else if (g.replay?.loading) text(t('replay.loading'), W / 2, 410, { size: 11, color: ui.hint, sw: 0 });
 
   const name = o.nick ?? (o.tag ? t('board.player', { tag: o.tag }) : '—');
-  button(UIBOX.nick, t(isTouch ? 'board.nick' : 'board.nickKey', { name: o.enabled ? name : '—' }), { size: 12 });
-  button(UIBOX.back, t(isTouch ? 'board.back' : 'board.backKey'), { size: 12 });
+  button(UIBOX.nick, t(g.hint === 'keys' ? 'board.nickKey' : 'board.nick', { name: o.enabled ? name : '—' }), { size: 12 });
+  button(UIBOX.back, t(g.hint === 'keys' ? 'board.backKey' : 'board.back'), { size: 12, glyph: g.hint === 'pad' ? BTN.B : null });
+  if (g.hint === 'pad') padHints([['dpad', 'hint.pick'], [BTN.A, b.sel >= 0 ? 'hint.watch' : 'hint.back'], [BTN.B, 'hint.back']], 468, { size: 10 });
 }
 
+const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', keys: 'bind.keysTitle', pad: 'bind.padTitle' };
+const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', keys: 'bind.keysHint', pad: 'bind.keysHint' };
+
+/** Opcje: przewijana lista wierszy (options.js), „Wróć” pod nią, na dole objaśnienie i podpowiedzi. */
 function drawSettings(g) {
-  if (g.settings.page === 'controls') { drawControls(g); return; }
-  const o = g.online, st = g.settings, confirming = g.t < st.confirmT;
-  dim(0.66);
-  text(t('set.title'), W / 2, 44, { size: 30, color: ui.gold, sw: 6, maxW: 420 });
-  const onOff = (v) => t(v ? 'set.on' : 'set.off');
-  const rows = {
-    lang: [lang() === 'en' ? t('set.lang') : `${t('set.lang')} / Language`, `◀  ${LANG_NAMES[lang()]}  ▶`],
-    controls: [t('set.controls'), `${t(`ctrl.${ctrl.mode}`)}  ›`],
-    sound: [t('set.sound'), onOff(!sfx.muted)],
-    music: [t('set.music'), onOff(sfx.musicOn)],
-    vibrate: [t('set.vibrate'), haptics.available ? onOff(haptics.on) : t('set.na')],
-    hand: [t('set.hand'), `◀  ${t(g.lefty ? 'set.handLeft' : 'set.handRight')}  ▶`],
-    online: [t('set.online'), onOff(o.enabled)],
-    delete: [t(confirming ? 'set.deleteConfirm' : 'set.delete'), ''],
-    back: [t(isTouch ? 'set.back' : 'set.backKey'), ''],
-  };
-  SETTINGS.forEach((k, i) => {
-    const r = UIBOX.row(i), sel = i === st.sel && !isTouch, [label, value] = rows[k];
-    panel(r.x, r.y, r.w, r.h);
-    if (sel || (k === 'delete' && confirming)) { ctx.strokeStyle = k === 'delete' ? ui.warn : ui.gold; ctx.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); ctx.stroke(); }
-    const col = k === 'delete' ? ui.warn : ui.text;
-    text(label, value ? r.x + 20 : r.x + r.w / 2, r.y + r.h / 2 + 1, { size: 14, color: col, sw: 0, align: value ? 'left' : 'center', weight: 700, maxW: value ? r.w - 200 : r.w - 40 });
-    if (value) text(value, r.x + r.w - 20, r.y + r.h / 2 + 1, { size: 14, color: value === t('set.on') || k === 'lang' || k === 'hand' || k === 'controls' ? ui.gold : ui.label, sw: 0, align: 'right', maxW: 170 });
-  });
-  const note = st.note ? t(st.note) : confirming ? t('set.deleteWarn') : '';
-  if (note) text(note, W / 2, 366, { size: 13, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 440 });
-  const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 440 };
-  text(t('set.privacy'), W / 2, 410, hint);
-  if (!isTouch) text(t('set.keys'), W / 2, 430, { ...hint, color: ui.hint });
+  const c = ctx, st = g.settings, items = g.settingsItems, hm = g.hint, cur = g.selItem, sel = hm === 'touch' ? null : cur;
+  dim(0.7);
+  text(t(PAGE_TITLES[st.page]), W / 2, 27, { size: 26, color: ui.gold, sw: 6, maxW: 420 });
+  const L = LIST, total = items.contentH, scroll = st.scroll;
+  c.save(); c.beginPath(); c.rect(L.x - 6, L.y - 3, L.w + 12, L.h + 6); c.clip();
+  for (const it of items) {
+    if (it.type === 'back') continue;
+    const r = rowBox(it, scroll);
+    if (r.y + r.h < L.y - 3 || r.y > L.y + L.h + 3) continue;
+    drawItem(g, it, r, it === sel);
+  }
+  c.restore();
+  if (total > L.h) {                                   // pasek przewijania, strzałki „jest więcej”
+    const x = L.x + L.w + 12, h = Math.max(24, L.h * L.h / total), y = L.y + (L.h - h) * (scroll / (total - L.h));
+    c.fillStyle = ui.meterBg; rr(x - 2.5, L.y, 5, L.h, 2.5); c.fill();
+    c.fillStyle = ui.gold; rr(x - 2.5, y, 5, h, 2.5); c.fill();
+    const more = { size: 10, color: ui.gold, sw: 3 };
+    if (scroll > 1) text('▲', x, L.y - 9, more);
+    if (scroll < total - L.h - 1) text('▼', x, L.y + L.h + 9, more);
+  }
+  const back = items.find((it) => it.type === 'back');
+  button(LIST_BACK, back.label(), { on: sel === back, size: 12, glyph: hm === 'pad' ? BTN.B : null });
+
+  const confirming = g.confirming('delete') || g.confirming('reset') || g.confirming('bind.key') || g.confirming('bind.pad');
+  const note = st.note ? t(st.note) : g.confirming('delete') ? t('set.deleteWarn') : g.confirming('reset') ? t('ctrl.resetWarn')
+    : cur?.off?.() ? t(cur.off()) : '';
+  if (note) text(note, W / 2, 432, { size: 12, color: confirming ? ui.warn : ui.mint, sw: 3, maxW: 470 });
+  const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 470 };
+  if (st.page === 'main') text(t('set.privacy'), W / 2, 450, hint);
+  else if (st.page === 'controls') text(t('ctrl.always'), W / 2, 450, hint);
+  if (hm === 'pad') {
+    const bind = st.page === 'keys' || st.page === 'pad';
+    padHints([['dpad', 'hint.pick'], [BTN.A, bind ? 'hint.assign' : 'hint.ok'], ...(bind ? [[BTN.X, 'hint.clear']] : []), [BTN.B, 'hint.back']], 468, { size: 10 });
+  } else if (hm === 'keys') text(t(KEY_HINTS[st.page]), W / 2, 468, { ...hint, color: ui.hint });
 }
 
-/** Opcje → sterowanie: lista trybów (jak przełączniki radiowe), suwak czułości przechyłu i „Wróć”. */
-function drawControls(g) {
-  const c = ctx, st = g.settings, sel = isTouch ? -1 : st.sel;
-  dim(0.66);
-  text(t('ctrl.title'), W / 2, 32, { size: 26, color: ui.gold, sw: 6, maxW: 420 });
-  CONTROLS.forEach((m, i) => {
-    const r = UIBOX.ctrlRow(i), on = m === ctrl.mode;
-    c.fillStyle = on ? ui.sel : ui.panel; rr(r.x, r.y, r.w, r.h, 12); c.fill();
-    c.strokeStyle = on || i === sel ? ui.gold : ui.line; c.lineWidth = on || i === sel ? 2.5 : 1.5; c.stroke();
-    ctrlIcon(m, r.x + 24, r.y + r.h / 2, on);
-    text(t(`ctrl.${m}.name`), r.x + 48, r.y + 14, { size: 14, color: on ? ui.gold : ui.text, sw: 0, align: 'left', weight: 800, maxW: r.w - 90 });
-    text(t(`ctrl.${m}.desc`), r.x + 48, r.y + 30, { size: 10, color: ui.hint, sw: 0, align: 'left', weight: 700, maxW: r.w - 90 });
-    // przełącznik radiowy
-    const cx = r.x + r.w - 22, cy = r.y + r.h / 2;
-    c.beginPath(); c.arc(cx, cy, 9, 0, 7);
-    if (on) {
-      c.fillStyle = ui.gold; c.fill();
-      c.strokeStyle = ui.frame; c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round';
-      c.beginPath(); c.moveTo(cx - 4.5, cy + 0.5); c.lineTo(cx - 1.2, cy + 3.8); c.lineTo(cx + 4.5, cy - 3.5); c.stroke();
-    } else { c.strokeStyle = ui.line; c.lineWidth = 2; c.stroke(); }
-  });
-
-  // czułość przechyłu – przyciemniona, gdy wybrany jest inny tryb
-  const r = UIBOX.sens, b = UIBOX.sensBar, tiltOn = ctrl.mode === 'tilt', isSel = CTRL_PAGE[sel] === 'sens';
-  panel(r.x, r.y, r.w, r.h);
-  if (isSel) { c.strokeStyle = ui.gold; c.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); c.stroke(); }
-  c.save();
-  if (!tiltOn) c.globalAlpha = 0.45;
-  text(t('ctrl.sens'), r.x + 18, r.y + 15, { size: 13, color: ui.text, sw: 0, align: 'left', weight: 800, maxW: 200 });
-  if (!tiltOn) text(t('ctrl.sensOnly'), r.x + r.w - 18, r.y + 15, { size: 10, color: ui.label, sw: 0, align: 'right', weight: 700, maxW: 160 });
-  else if (tilt.active) {                                // podgląd: jak gra „czyta” telefon przy tej czułości
-    const mx = r.x + r.w - 78, my = r.y + 15;
-    c.fillStyle = ui.meterBg; rr(mx - 60, my - 4, 120, 8, 4); c.fill();
-    c.fillStyle = ui.line; c.fillRect(mx - 0.75, my - 5, 1.5, 10);
-    c.fillStyle = ui.gold; c.beginPath(); c.arc(mx + tilt.axis * 54, my, 5, 0, 7); c.fill();
+/** Jeden wiersz listy opcji w prostokącie r. */
+function drawItem(g, it, r, isSel) {
+  const c = ctx, st = g.settings, cy = r.y + r.h / 2 + 1;
+  if (it.type === 'head') {
+    text(it.label().toUpperCase(), r.x + 6, r.y + r.h / 2 + 3, { size: 11, color: ui.label, sw: 0, align: 'left', weight: 800, maxW: r.w - 12 });
+    c.fillStyle = ui.line; c.fillRect(r.x + 4, r.y + r.h - 1, r.w - 8, 1);
+    return;
   }
-  text(t('ctrl.sensLow'), b.x - 14, b.y, { size: 10, color: ui.label, sw: 0, align: 'right', weight: 700, maxW: 70 });
-  text(t('ctrl.sensHigh'), b.x + b.w + 14, b.y, { size: 10, color: ui.label, sw: 0, align: 'left', weight: 700, maxW: 70 });
-  const kx = b.x + b.w * tilt.sens / SENS_STEPS;
-  c.fillStyle = ui.meterBg; rr(b.x, b.y - 3, b.w, 6, 3); c.fill();
-  c.fillStyle = ui.gold; rr(b.x, b.y - 3, kx - b.x, 6, 3); c.fill();
-  for (let i = 0; i <= SENS_STEPS; i++) { c.fillStyle = ui.line; c.fillRect(b.x + b.w * i / SENS_STEPS - 0.5, b.y + 6, 1, 3); }
-  c.beginPath(); c.arc(kx, b.y, 8, 0, 7); c.fillStyle = ui.text; c.fill();
-  c.strokeStyle = ui.frame; c.lineWidth = 2; c.stroke();
-  c.restore();
+  if (it.type === 'info') { text(it.label(), r.x + r.w / 2, cy, { size: 11, color: ui.hint, sw: 0, weight: 700, maxW: r.w - 10 }); return; }
+  if (it.type === 'mode') { drawModeRow(it, r, isSel); return; }
 
-  button(UIBOX.ctrlBack, t(isTouch ? 'set.back' : 'set.backKey'), { on: CTRL_PAGE[sel] === 'back', size: 12 });
-  const hint = { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 440 };
-  text(t('ctrl.always'), W / 2, 412, hint);
-  if (!isTouch) text(t('ctrl.keys'), W / 2, 432, { ...hint, color: ui.hint });
+  const off = it.off?.(), warnOn = it.ck && g.confirming(it.ck);
+  panel(r.x, r.y, r.w, r.h);
+  if (isSel || warnOn) { c.strokeStyle = it.warn ? ui.warn : ui.gold; c.lineWidth = 2.5; rr(r.x, r.y, r.w, r.h, 14); c.stroke(); }
+  c.save();
+  if (off) c.globalAlpha = 0.45;
+  if (it.type === 'row') {
+    const v = it.value?.(), col = it.warn ? ui.warn : ui.text;
+    text(it.label(), v != null ? r.x + 18 : r.x + r.w / 2, cy, { size: 14, color: col, sw: 0, align: v != null ? 'left' : 'center', weight: 700, maxW: v != null ? r.w - ARROW_W - 26 : r.w - 40 });
+    if (v != null) {
+      const gold = it.arrows || it.gold || v === t('set.on');
+      if (it.arrows) {
+        const a = { size: 11, color: ui.gold, sw: 0 };
+        text('◀', r.x + r.w - ARROW_W + 4, cy, a); text('▶', r.x + r.w - 18, cy, a);
+        text(v, r.x + r.w - ARROW_W / 2 - 7, cy, { size: 14, color: ui.gold, sw: 0, maxW: ARROW_W - 46 });
+      } else text(v, r.x + r.w - 20, cy, { size: 14, color: gold ? ui.gold : ui.label, sw: 0, align: 'right', maxW: ARROW_W });
+    }
+  } else if (it.type === 'slider') {
+    text(it.label(), r.x + 18, r.y + 14, { size: 13, color: ui.text, sw: 0, align: 'left', weight: 800, maxW: 220 });
+    text(it.show(), r.x + r.w - 18, r.y + 14, { size: 13, color: ui.gold, sw: 0, align: 'right', maxW: 80 });
+    if (it.meter && tilt.active) {                     // podgląd: jak gra „czyta” telefon przy tej czułości
+      const mx = r.x + r.w - 150, my = r.y + 14;
+      c.fillStyle = ui.meterBg; rr(mx - 50, my - 4, 100, 8, 4); c.fill();
+      c.fillStyle = ui.line; c.fillRect(mx - 0.75, my - 5, 1.5, 10);
+      c.fillStyle = ui.gold; c.beginPath(); c.arc(mx + tilt.axis * 45, my, 5, 0, 7); c.fill();
+    }
+    const b = sliderBar(r, !!it.low), steps = it.max ?? SLIDER_STEPS, kx = b.x + b.w * it.get() / steps;
+    if (it.low) {
+      text(t(it.low), b.x - 14, b.y, { size: 10, color: ui.label, sw: 0, align: 'right', weight: 700, maxW: 70 });
+      text(t(it.high), b.x + b.w + 14, b.y, { size: 10, color: ui.label, sw: 0, align: 'left', weight: 700, maxW: 70 });
+    }
+    c.fillStyle = ui.meterBg; rr(b.x, b.y - 3, b.w, 6, 3); c.fill();
+    c.fillStyle = ui.gold; rr(b.x, b.y - 3, Math.max(6, kx - b.x), 6, 3); c.fill();
+    for (let i = 0; i <= steps; i++) { c.fillStyle = ui.line; c.fillRect(b.x + b.w * i / steps - 0.5, b.y + 6, 1, 3); }
+    c.beginPath(); c.arc(kx, b.y, 7.5, 0, 7); c.fillStyle = ui.text; c.fill();
+    c.strokeStyle = ui.frame; c.lineWidth = 2; c.stroke();
+  } else if (it.type === 'bind') {
+    text(it.label(), r.x + 18, cy, { size: 14, color: ui.text, sw: 0, align: 'left', weight: 700, maxW: r.w - it.slots * 76 - 30 });
+    const list = binds[it.kind][it.action], cap = st.capture;
+    for (let j = 0; j < it.slots; j++) {
+      const b = bindCell(r, j, it.slots), v = list[j];
+      const waiting = cap && cap.kind === it.kind && cap.act === it.action && cap.slot === j;
+      const picked = waiting || (isSel && st.slot === j);
+      c.fillStyle = waiting ? ui.sel : 'rgba(0,0,0,.16)'; rr(b.x, b.y, b.w, b.h, 7); c.fill();
+      c.strokeStyle = picked ? ui.gold : ui.line; c.lineWidth = picked ? 2 : 1; c.stroke();
+      const mx = b.x + b.w / 2, my = b.y + b.h / 2;
+      if (waiting) text(Math.sin(g.t * 8) > 0 ? '…' : '', mx, my, { size: 14, color: ui.gold, sw: 0 });
+      else if (v == null) text('—', mx, my + 0.5, { size: 12, color: ui.label, sw: 0 });
+      else if (it.kind === 'key') text(keyLabel(v), mx, my + 0.5, { size: 12, color: ui.text, sw: 0, maxW: b.w - 8 });
+      else { const w = padGlyph(v, 0, 0, 17, false); padGlyph(v, mx - w / 2, my, 17); }
+    }
+  }
+  c.restore();
+}
+
+/** Tryb sterowania: ikonka, nazwa, opis i przełącznik radiowy. */
+function drawModeRow(it, r, isSel) {
+  const c = ctx, m = it.k, on = m === ctrl.mode;
+  c.fillStyle = on ? ui.sel : ui.panel; rr(r.x, r.y, r.w, r.h, 12); c.fill();
+  c.strokeStyle = on || isSel ? ui.gold : ui.line; c.lineWidth = on || isSel ? 2.5 : 1.5; c.stroke();
+  ctrlIcon(m, r.x + 24, r.y + r.h / 2, on);
+  text(it.label(), r.x + 48, r.y + 14, { size: 14, color: on ? ui.gold : ui.text, sw: 0, align: 'left', weight: 800, maxW: r.w - 90 });
+  text(it.desc(), r.x + 48, r.y + 30, { size: 10, color: ui.hint, sw: 0, align: 'left', weight: 700, maxW: r.w - 90 });
+  const cx = r.x + r.w - 22, cy = r.y + r.h / 2;
+  c.beginPath(); c.arc(cx, cy, 9, 0, 7);
+  if (on) {
+    c.fillStyle = ui.gold; c.fill();
+    c.strokeStyle = ui.frame; c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(cx - 4.5, cy + 0.5); c.lineTo(cx - 1.2, cy + 3.8); c.lineTo(cx + 4.5, cy - 3.5); c.stroke();
+  } else { c.strokeStyle = ui.line; c.lineWidth = 2; c.stroke(); }
 }
 
 /** Mała ikonka trybu sterowania (rysowana – gra nie ma plików graficznych). */
@@ -762,6 +900,9 @@ function ctrlIcon(m, x, y, on) {
   } else if (m === 'joystick') {
     c.beginPath(); c.arc(x, y, 10, 0, 7); c.stroke();
     c.beginPath(); c.arc(x + 3, y - 1, 5, 0, 7); c.fill();
+  } else if (m === 'one') {
+    c.beginPath(); c.arc(x, y, 10, 0, 7); c.stroke();
+    tri(x, y + 1, 0, -1, 5);
   } else if (m === 'tilt') {
     c.translate(x, y); c.rotate(-0.45);
     rr(-6, -10, 12, 20, 3); c.stroke();
@@ -809,7 +950,8 @@ function drawReplay(g) {
     c.strokeStyle = ui.gold; c.lineWidth = 2.5; c.stroke();
     c.save(); c.translate(W / 2 + 3, 220); c.scale(2, 2); c.fillStyle = ui.gold; playIcon(c); c.restore();
     text(t(r.i === 0 ? 'replay.stopped' : 'replay.paused'), W / 2, 276, { size: 18, sw: 5, maxW: 300 });
-    if (!isTouch) text(t('replay.keys'), W / 2, 418, { size: 11, color: ui.hint, sw: 3, weight: 700, maxW: 440 });
+    if (g.hint === 'pad') padHints([[BTN.A, 'hint.playPause'], [BTN.X, 'hint.stop'], ['dpad', 'hint.speed'], [BTN.B, 'hint.exit']], 418);
+    else if (g.hint === 'keys') text(t('replay.keys'), W / 2, 418, { size: 11, color: ui.hint, sw: 3, weight: 700, maxW: 440 });
   }
   // pasek sterowania
   iconBtn(UIBOX.rPlay, r.playing ? pauseIcon : playIcon, { on: !r.playing });
@@ -858,7 +1000,7 @@ function drawRecap(g) {
     text(e.nick ?? t('board.player', { tag: e.tag }), x, UIBOX.podBase + 14, { size: 13, color: e.me ? ui.gold : ui.text, sw: 3, maxW: 104 });
     text(`${e.score}`, x, UIBOX.podBase + 31, { size: 12, color: ui.gold, sw: 3, maxW: 104 });
     const b = UIBOX.podWatch(i), loading = g.replay?.loading && g.replay.entry === e;
-    if (e.replay) button(b, loading ? '…' : isTouch ? t('recap.watch') : `${t('recap.watch')} · ${i + 1}`, { accent: true, size: 10 });
+    if (e.replay) button(b, loading ? '…' : g.hint === 'keys' ? `${t('recap.watch')} · ${i + 1}` : t('recap.watch'), { accent: true, size: 10, on: g.hint === 'pad' && g.recapSel === i });
     else text(t('recap.noReplay'), x, b.y + b.h / 2, { size: 10, color: ui.label, sw: 0, maxW: 100 });
   }
   // moje miejsce
@@ -868,6 +1010,7 @@ function drawRecap(g) {
   text(line, W / 2, 392, { size: 14, color: me?.rank && me.rank <= 3 ? ui.gold : ui.mint, sw: 4, maxW: 460 });
   button(UIBOX.recapBoard, t('recap.board'), { size: 12 });
   button(UIBOX.recapNext, t('recap.next'), { accent: true, size: 13 });
-  if (!isTouch) text(t('recap.keys'), W / 2, 466, { size: 10, color: ui.note, sw: 3, weight: 700, maxW: 440 });
+  if (g.hint === 'pad') padHints([['dpad', 'hint.pick'], [BTN.A, 'hint.watch'], [BTN.Y, 'hint.rank'], [BTN.B, 'hint.next']], 466, { size: 10 });
+  else if (g.hint === 'keys') text(t('recap.keys'), W / 2, 466, { size: 10, color: ui.note, sw: 3, weight: 700, maxW: 440 });
   else if (g.replay?.loading) text(t('replay.loading'), W / 2, 466, { size: 11, color: ui.hint, sw: 3 });
 }
