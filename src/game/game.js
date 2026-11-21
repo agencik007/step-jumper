@@ -1,7 +1,7 @@
 // Gra: maszyna stanów (tytuł / gra / pauza / koniec / ranking / opcje) i wszystko, co widać i słychać wokół symulacji.
 // Reguły rozgrywki są w src/sim – tutaj tylko podajemy im wejście i reagujemy na zdarzenia.
 import {
-  AXIS_MAX, COMBO_TIME, DEFAULT_TUNE, H, HURRY_EVERY, HW, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs,
+  AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, HW, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs,
   narrowLevel, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
 } from '../sim';
 import { online } from '../net';
@@ -77,7 +77,7 @@ export class Game {
     this.rec.reset();
     this.retuned = false;                // suwak ruszony w trakcie biegu – takiego biegu nie da się odtworzyć z zapisu
     this.fx = { angle: 0, squash: 0, runPhase: 0 };   // stan czysto wizualny bohatera
-    this.shake = 0; this.parts = []; this.msgs = []; this.waves = [];
+    this.shake = 0; this.parts = []; this.msgs = [];
     this.acc = 0; this.trailT = 0; this.rubT = 0; this.jumpLock = true; this.newBest = false; this.overT = 0;
     this.narrow = 0;                     // najwyższy stopień zwężenia pięter, o którym gracz już wie
   }
@@ -157,7 +157,7 @@ export class Game {
     if (!this.recap) return;
     saveJSON(WEEK, { seen: this.recap.top.period });
     this.state = 'recap';
-    sfx.wow(1, true);
+    sfx.combo(4);
   }
   closeRecap() { sfx.pick(); this.toTitle(); }
   /** Z podsumowania do pełnego rankingu zeszłego tygodnia. */
@@ -402,8 +402,6 @@ export class Game {
         fx.squash = 0.9; fx.angle = 0;
         this.puff(h.x, h.y, 6, { color: this.dustColor(e.floor), sx: 110, sy: 20, up: 50, life: 0.35 });
         sfx.land();
-        // nagroda: lądowanie, które przedłuża combo (licznik combo właśnie odnowiony), puszcza falę uderzeniową
-        if (this.tier && this.sim.combo.jumps > 0 && this.sim.combo.timer > COMBO_TIME - 2 * STEP) this.shockwave(this.sim.combo.floors, false);
         if (narrowLevel(e.floor) > this.narrow) {      // nowa setka pięter: od teraz piętra są węższe
           this.narrow = narrowLevel(e.floor);
           this.say(t('msg.narrow'), t(this.narrow >= NARROW_MAX ? 'msg.narrowMax' : 'msg.narrowSub'), 'warn', 1.8);
@@ -419,10 +417,6 @@ export class Game {
         const label = ti >= 0 ? t(`tier.${TIERS[ti]}`) : t('msg.combo');
         this.say(label, t('msg.comboSub', { floors: e.floors, points: e.points }), 'gold', 1.8);
         sfx.combo(TIERS.length - 1 - ti);
-        if (this.tier) {                                   // nagroda: „WOW!”, a combo zakończone lądowaniem – duża fala
-          sfx.wow(this.tier, e.floors >= 25);
-          if (h.onFloor >= 0) this.shockwave(e.floors, true);
-        }
         this.buzz(30);
         break;
       }
@@ -472,14 +466,6 @@ export class Game {
         life: rand(0.2, 0.38), max: 0.38, size: rand(1.6, 2.6), color: Math.random() < 0.5 ? m.spark : m.mid, g: 700, spark: true, rot: 0,
       });
     }
-  }
-  /** Fala uderzeniowa pod stopami bohatera; floors – długość combo, big – combo właśnie zaliczone. */
-  shockwave(floors, big) {
-    const h = this.sim.hero, m = MEDALS[this.tier];
-    const r = clamp(46 + floors * (big ? 4 : 2.5), 46, big ? 220 : 150);
-    this.waves.push({ x: h.x, y: h.y, t: 0, dur: big ? 0.7 : 0.5, r, color: m.mid, hi: m.hi, big });
-    this.shake = Math.max(this.shake, big ? 0.35 : 0.18);
-    this.puff(h.x, h.y, big ? 16 : 8, { color: m.dust[0], sx: r * 1.6, sy: 30, up: 60, life: 0.45, size: 2.6, g: 200, star: true });
   }
   /** Co krok: czy bohater ociera się o ścianę (stoi przy niej i się porusza). */
   rubWalls(dt) {
@@ -538,11 +524,6 @@ export class Game {
       const p = this.parts[i];
       p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; p.rot += dt * 6;
       if (p.life <= 0) this.parts.splice(i, 1);
-    }
-    for (let i = this.waves.length - 1; i >= 0; i--) {
-      const w = this.waves[i];
-      w.t += dt;
-      if (w.t >= w.dur) this.waves.splice(i, 1);
     }
   }
 
