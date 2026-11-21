@@ -100,6 +100,29 @@ function drawWorld(g) {
   const danger = c.createLinearGradient(0, H - 70, 0, H);   // strefa zagrożenia na dole
   danger.addColorStop(0, `rgba(${ui.dim},0)`); danger.addColorStop(1, `rgba(${ui.dim},.78)`);
   c.fillStyle = danger; c.fillRect(LEFT, H - 70, FIELD, 70);
+  if (access.warn) drawDangerWarn(g);
+  c.restore();
+}
+
+/**
+ * Wizualny odpowiednik tykania w muzyce: gdy bohater zjeżdża ku dolnej krawędzi, dół pola gry pulsuje na czerwono
+ * (spokojnie, ~1 raz na sekundę – daleko od progu 3 błysków na sekundę), a pasek i strzałki pokazują zagrożenie nie tylko kolorem.
+ * Ten sam próg co tykanie w music.js (danger > 0,35). Bez ruchu (OPCJE → DOSTĘPNOŚĆ) – stała jasność.
+ */
+function drawDangerWarn(g) {
+  const live = g.state === 'play' || (g.state === 'replay' && g.replay?.playing);
+  if (!live) return;
+  const d = g.musicParams().danger;
+  if (d <= 0.35) return;
+  const c = ctx, k = (d - 0.35) / 0.65, beat = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(g.t * Math.PI * 2 * 1.1);
+  const col = style.world === 'sketch' ? '200,30,30' : '255,70,50', a = 0.25 + k * 0.4 + beat * 0.2 * (0.5 + k);
+  const grad = c.createLinearGradient(0, H - 110, 0, H);
+  grad.addColorStop(0, `rgba(${col},0)`); grad.addColorStop(1, `rgba(${col},${clamp(a, 0, 0.85)})`);
+  c.fillStyle = grad; c.fillRect(LEFT, H - 110, FIELD, 110);
+  c.fillStyle = `rgba(${col},${clamp(0.6 + k * 0.4, 0, 1)})`; c.fillRect(LEFT, H - 5, FIELD, 5);
+  c.save();
+  c.globalAlpha = clamp(0.45 + k * 0.55, 0, 1);
+  for (const x of [LEFT + FIELD * 0.2, W / 2, RIGHT - FIELD * 0.2]) text('▼', x, H - 18, { size: 14, color: '#fff', stroke: `rgb(${col})`, sw: 4 });
   c.restore();
 }
 
@@ -827,8 +850,8 @@ function drawBoard(g) {
   if (g.hint === 'pad') padHints([['dpad', 'hint.pick'], [BTN.A, b.sel >= 0 ? 'hint.watch' : 'hint.back'], [BTN.B, 'hint.back']], 468, { size: 10 });
 }
 
-const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news' };
-const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', access: 'set.keys', keys: 'bind.keysHint', pad: 'bind.keysHint', news: 'news.keys' };
+const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news' };
+const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', access: 'set.keys', sound: 'set.keys', keys: 'bind.keysHint', pad: 'bind.keysHint', news: 'news.keys' };
 
 /** Opcje: przewijana lista wierszy (options.js), „Wróć” pod nią, na dole objaśnienie i podpowiedzi. */
 function drawSettings(g) {

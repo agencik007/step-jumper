@@ -5,8 +5,11 @@ import { setReduceMotion } from './util.js';
 export const TEXT_SIZES = ['small', 'medium', 'large'];
 const TEXT_K = [0.88, 1, 1.25];
 export const MOTION_MODES = ['auto', 'on', 'off'];     // auto – jak w systemie (prefers-reduced-motion)
-/** text: indeks w TEXT_SIZES; contrast, fx (filtry i efekty map), assist: tak / nie; motion: z MOTION_MODES. */
-export const ACCESS_DEFAULT = { text: 1, contrast: false, fx: true, motion: 'auto', assist: false };
+/**
+ * text: indeks w TEXT_SIZES; contrast, fx (filtry i efekty map), assist: tak / nie; motion: z MOTION_MODES;
+ * warn: pulsujący pasek u dołu ekranu, gdy bohater zjeżdża ku przegranej (to, co słychać w tykaniu muzyki).
+ */
+export const ACCESS_DEFAULT = { text: 1, contrast: false, fx: true, motion: 'auto', assist: false, warn: true };
 export const access = { ...ACCESS_DEFAULT };
 
 const sysMotion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
@@ -31,7 +34,7 @@ export function loadAccess(p) {
   if (p && typeof p === 'object') {
     if (Number.isInteger(p.text) && p.text >= 0 && p.text < TEXT_SIZES.length) access.text = p.text;
     if (MOTION_MODES.includes(p.motion)) access.motion = p.motion;
-    for (const k of ['contrast', 'fx', 'assist']) if (typeof p[k] === 'boolean') access[k] = p[k];
+    for (const k of ['contrast', 'fx', 'assist', 'warn']) if (typeof p[k] === 'boolean') access[k] = p[k];
   }
   applyAccess();
 }

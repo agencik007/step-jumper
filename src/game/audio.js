@@ -2,9 +2,15 @@
 import { Music } from './music.js';
 import { clamp } from './util.js';
 
+export const VOL_STEPS = 10;                 // głośność efektów i muzyki: 0 (cisza) … 10 (100%)
+/** Krok suwaka → wzmocnienie; kwadrat, bo ucho słyszy głośność mniej więcej logarytmicznie (50% ≈ −12 dB). */
+const gainOf = (v) => (v / VOL_STEPS) ** 2;
+
 class Sfx {
-  ctx = null; out = null; muted = false;
-  music = new Music(); musicOn = true;   // muzyka biegu (src/game/music.js) – osobny przełącznik w OPCJACH
+  ctx = null; out = null; fxOut = null; musicOut = null; muted = false;
+  fxVol = VOL_STEPS; musicVol = VOL_STEPS;     // OPCJE → DŹWIĘK: osobne suwaki efektów i muzyki
+  music = new Music();                         // muzyka biegu (src/game/music.js)
+  get musicOn() { return this.musicVol > 0; }
   unlock() {
     if (!this.ctx) {
       try {
@@ -13,13 +19,22 @@ class Sfx {
         this.out = this.ctx.createGain();
         this.out.gain.value = 0.2;
         this.out.connect(this.ctx.destination);
-        this.music.attach(this.ctx, this.out);
+        this.fxOut = this.ctx.createGain(); this.fxOut.connect(this.out);
+        this.musicOut = this.ctx.createGain(); this.musicOut.connect(this.out);
+        this.applyVolume();
+        this.music.attach(this.ctx, this.musicOut);
       } catch { this.ctx = null; }
     }
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
   }
+  /** Głośności z suwaków na wzmacniacze (wywoływane po każdej zmianie). */
+  applyVolume() {
+    if (!this.ctx) return;
+    this.fxOut.gain.value = gainOf(this.fxVol);
+    this.musicOut.gain.value = gainOf(this.musicVol);
+  }
   tone(f0, f1, dur, { type = 'square', vol = 0.5, at = 0 } = {}) {
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx || this.muted || !this.fxVol) return;
     const t = this.ctx.currentTime + at;
     const o = this.ctx.createOscillator(), g = this.ctx.createGain();
     o.type = type;
@@ -27,11 +42,11 @@ class Sfx {
     o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g).connect(this.out);
+    o.connect(g).connect(this.fxOut);
     o.start(t); o.stop(t + dur + 0.02);
   }
   noise(dur, { vol = 0.4, freq = 900 } = {}) {
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx || this.muted || !this.fxVol) return;
     const n = Math.floor(this.ctx.sampleRate * dur);
     const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const d = buf.getChannelData(0);
@@ -39,7 +54,7 @@ class Sfx {
     const src = this.ctx.createBufferSource(); src.buffer = buf;
     const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
     const g = this.ctx.createGain(); g.gain.value = vol;
-    src.connect(f).connect(g).connect(this.out);
+    src.connect(f).connect(g).connect(this.fxOut);
     src.start();
   }
   /** Co klatkę z pętli gry: params biegu albo null (cisza – menu, pauza, koniec gry, dźwięk wyłączony). */

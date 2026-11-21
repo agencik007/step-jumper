@@ -11,7 +11,7 @@
 //   back   – „Wróć” pod listą.
 // off() → klucz tekstu, gdy wiersz nie dotyczy obecnego trybu (jest przygaszony, ale da się go ustawić na zapas).
 import { ACCESS_DEFAULT, MOTION_MODES, TEXT_SIZES, access, applyAccess, systemReducesMotion } from './access.js';
-import { sfx } from './audio.js';
+import { VOL_STEPS, sfx } from './audio.js';
 import { HAPTIC_LEVELS, haptics } from './haptics.js';
 import { LANG_NAMES, lang, t } from './i18n.js';
 import {
@@ -43,8 +43,7 @@ export function buildPages(g) {
     { k: 'access', type: 'row', gold: true, label: () => t('set.access'), value: () => '›', act: () => g.openPage('access') },
     { k: 'hand', type: 'row', arrows: true, label: () => t('set.hand'), value: () => t(g.lefty ? 'set.handLeft' : 'set.handRight'),
       act: () => { g.setLefty(!g.lefty, true); save(); } },
-    { k: 'sound', type: 'row', label: () => t('set.sound'), value: () => onOff(!sfx.muted), act: () => { sfx.muted = !sfx.muted; save(); } },
-    { k: 'music', type: 'row', label: () => t('set.music'), value: () => onOff(sfx.musicOn), act: () => { sfx.musicOn = !sfx.musicOn; save(); } },
+    { k: 'sound', type: 'row', gold: true, label: () => t('set.sound'), value: () => `${onOff(!sfx.muted)}  ›`, act: () => g.openPage('sound') },
     { k: 'vibrate', type: 'row', arrows: true, label: () => t('set.vibrate'),
       value: () => (haptics.available ? t(`vib.${HAPTIC_LEVELS[haptics.level]}`) : t('set.na')),
       act: () => setVibe(1), side: (d) => setVibe(d) },
@@ -131,7 +130,19 @@ export function buildPages(g) {
     back,
   ];
 
-  const pages = { main, controls, access: accessPage, keys: bindPage('key'), pad: bindPage('pad') };
+  // dźwięk: wyciszenie całości (klawisz M), osobne głośności efektów i muzyki, wizualne ostrzeżenie zamiast samego tykania
+  const muted = () => (sfx.muted ? 'snd.offMuted' : null);
+  const vol = (k, label) => slider(k, () => sfx[k], (v) => { sfx[k] = v; sfx.applyVolume(); }, () => (sfx[k] ? pct(sfx[k] / VOL_STEPS) : onOff(false)),
+    { label: () => t(label), tip: `${label}.tip`, off: muted, max: VOL_STEPS });
+  const soundPage = [
+    { k: 'mute', type: 'row', label: () => t('set.sound'), tip: 'snd.mute.tip', value: () => onOff(!sfx.muted), act: () => { sfx.muted = !sfx.muted; save(); } },
+    vol('fxVol', 'snd.fx'),
+    vol('musicVol', 'snd.music'),
+    accRow('warn', { label: () => t('snd.warn'), tip: 'snd.warn.tip', value: () => onOff(access.warn), act: () => setAcc('warn', !access.warn) }),
+    back,
+  ];
+
+  const pages = { main, controls, access: accessPage, sound: soundPage, keys: bindPage('key'), pad: bindPage('pad') };
   for (const items of Object.values(pages)) items.contentH = listLayout(items);
   return pages;
 }

@@ -37,6 +37,10 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
     napisów i gwiazdek za bohaterem; przyciemnienie taśmy w „Starym kinie” najwyżej raz na sekundę,
   - asysta wzroku: poświata wokół bohatera i znacznik piętra, na które spada (rzut w pionie z układu pięter),
   - miejsca 1–3 w rankingu mają numer obok korony, a wybrany wiersz opcji – znacznik ▸ (nie tylko kolor).
+- **Dźwięk** (OPCJE → DŹWIĘK): wyciszenie całości (też klawisz M), osobne suwaki głośności efektów i muzyki (0–100%, krok 10%,
+  wzmocnienie w kwadracie – `src/game/audio.js`) oraz **ostrzeżenie przy dole ekranu** – wizualny odpowiednik tykania w muzyce:
+  dół planszy pulsuje na czerwono (~1 raz na sekundę), z paskiem i strzałkami, przy tym samym progu co tykanie (`drawDangerWarn`
+  w `render.js`). Pozostałe dźwięki mają już swój obraz (komunikaty, kurz, zegar, HUD).
 - Ekran NOWOŚCI rysuje sam tekst na jednolitym tle, bez mapy i efektów pod spodem.
 - Wibracje w 4 stopniach (wył. / słabe / średnie / mocne) – telefon i pad (`vibrationActuator`).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
