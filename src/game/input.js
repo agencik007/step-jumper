@@ -15,7 +15,7 @@ import { sfx } from './audio.js';
 import { BTN, KIND_NAMES, padKind, readPad } from './gamepad.js';
 import { canvas, focusGame } from './gfx.js';
 import { t } from './i18n.js';
-import { toggleFullscreen } from './fullscreen.js';
+import { setEscExitHandler, toggleFullscreen } from './fullscreen.js';
 import { hideInstall, installOpen } from './install.js';
 import { cancelNick, nickOpen } from './nickform.js';
 import { closePadEditor, initPadEditor, padEditing, padScale, restStick, stickHome } from './padlayout.js';
@@ -506,6 +506,11 @@ export function initInput(theGame) {
   game = theGame;
 
   addEventListener('keydown', onKey);
+  // Firefox / Safari: ESC w pełnym ekranie zabiera przeglądarka – po wyjściu z pełnego ekranu udajemy naciśnięcie ESC
+  setEscExitHandler(() => {
+    if (nickOpen() || document.activeElement instanceof HTMLInputElement) return;   // ESC zamknął już pole nicku
+    onKey({ code: 'Escape', key: 'Escape', repeat: false, target: document.body, preventDefault() {} });
+  });
   addEventListener('keyup', (e) => { down.delete(e.code); });
   addEventListener('blur', () => { down.clear(); releaseAll(); game.pause(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) game.pause(); });
