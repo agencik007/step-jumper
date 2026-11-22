@@ -5,6 +5,14 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.18.3', date: '2026-11-22',
+    pl: ['W trybie pełnoekranowym na komputerze ESC wraca do poprzedniego menu, zamiast wyłączać pełny ekran. Pełny ekran zamkniesz klawiszem F, przyciskiem w rogu albo przytrzymując ESC.'],
+    en: ['In full screen on a computer, ESC now goes back to the previous menu instead of leaving full screen. To leave full screen, press F, use the button in the corner or hold ESC.'],
+    de: ['Im Vollbild am Computer bringt dich ESC jetzt ins vorherige Menü zurück, statt das Vollbild zu beenden. Das Vollbild beendest du mit F, dem Knopf in der Ecke oder indem du ESC gedrückt hältst.'],
+    fr: ['En plein écran sur ordinateur, ÉCHAP revient maintenant au menu précédent au lieu de quitter le plein écran. Pour quitter le plein écran, appuyez sur F, utilisez le bouton dans le coin ou maintenez ÉCHAP.'],
+    es: ['En pantalla completa en el ordenador, ESC ahora vuelve al menú anterior en lugar de salir de la pantalla completa. Para salir, pulsa F, usa el botón de la esquina o mantén pulsado ESC.'],
+  },
+  {
     v: '0.18.2', date: '2026-11-22',
     pl: ['Kursor myszy znika w trakcie biegu i nie zasłania wieży. Wystarczy poruszyć myszą, żeby na chwilę wrócił.'],
     en: ['The mouse cursor now hides during a run so it doesn’t cover the tower. Just move the mouse to bring it back for a moment.'],
