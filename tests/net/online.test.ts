@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { MemoryStore, Online, TICKET_RESERVE } from '../../src/net/online';
 import type { Ticket } from '../../src/net/online';
 import { SIM_VERSION } from '../../src/sim';
+import { sha256hex } from '../../server/src/auth';
 import { idleThen, momentumPilot } from '../helpers';
 import { playRun, startServer } from '../server/harness';
 
@@ -279,5 +280,39 @@ describe('korony i powtórki', () => {
     expect(await o.replay('nie-ma')).toBeNull();
     net.down = true;
     expect(await o.replay(id)).toBeNull();
+  });
+});
+
+describe('własne postacie w najlepszej trójce', () => {
+  const pack = new Uint8Array([0x50, 0x4b, 3, 4, 20, 0, 7, 7, 7]);
+
+  test('bieg w trójce: klient dosyła paczkę postaci, a każdy może ją pobrać', async () => {
+    const hash = await sha256hex(pack);
+    const o = await ready();
+    const asked: string[] = [];
+    o.skinSource = async (h) => { asked.push(h); return h === hash ? pack : null; };
+    const r = await o.submit({ ...play(o.takeTicket()!), char: 'custom', skin: hash });
+    expect(r).toMatchObject({ status: 'verified', needSkin: true });
+    expect(asked).toEqual([hash]);
+    expect((await rows('SELECT hash FROM skins')).map((x) => x.hash)).toEqual([hash]);
+    const board = await o.leaderboard('week');
+    expect(board!.entries[0]).toMatchObject({ char: 'custom', skin: hash });
+    expect(await client().skinPack(hash)).toEqual(pack);
+    expect(await client().skinPack('0'.repeat(64))).toBeNull();
+    expect((await o.replay(board!.entries[0].replay!))!.skin).toBe(hash);
+  });
+
+  test('bez sieci przy wysyłce paczki – klient wyśle ją przy następnej okazji', async () => {
+    const hash = await sha256hex(pack);
+    const store = new MemoryStore();
+    const o = client(store); await o.init(); await o.refill();
+    o.skinSource = async () => { net.down = true; return pack; };   // bieg zatwierdzony, a sieć pada tuż przed wysłaniem paczki
+    expect((await o.submit({ ...play(o.takeTicket()!), char: 'custom', skin: hash })).status).toBe('verified');
+    expect(await rows('SELECT hash FROM skins')).toEqual([]);
+    net.down = false;
+    const again = client(store); await again.init();     // także po ponownym uruchomieniu gry
+    again.skinSource = async () => pack;
+    await again.flush();
+    expect((await rows('SELECT hash FROM skins')).map((x) => x.hash)).toEqual([hash]);
   });
 });

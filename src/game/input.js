@@ -18,6 +18,7 @@ import { t } from './i18n.js';
 import { setEscExitHandler, toggleFullscreen } from './fullscreen.js';
 import { hideInstall, installOpen } from './install.js';
 import { cancelNick, nickOpen } from './nickform.js';
+import { creatorBack, creatorOpen } from './creator.js';
 import { closePadEditor, initPadEditor, padEditing, padScale, restStick, stickHome } from './padlayout.js';
 import { clamp, mod } from './util.js';
 
@@ -348,6 +349,7 @@ function handlePad(p, B) {
   if (padEditing()) { if (edge(BTN.A) || edge(BTN.B) || edge(BTN.START)) closePadEditor(); return; }
   if (installOpen()) { if (edge(BTN.A) || edge(BTN.B)) hideInstall(); return; }
   if (nickOpen()) { if (edge(BTN.B)) cancelNick(); return; }
+  if (creatorOpen()) { if (edge(BTN.B)) creatorBack(); return; }   // KREATOR to okienko HTML: pad tylko je zamyka
 
   // bieg i skok: przypisane przyciski + lewa gałka (płynnie, z martwą strefą)
   const dz = padDeadValue(), m = Math.abs(p.ax);
@@ -369,7 +371,7 @@ function handlePad(p, B) {
   if (dir !== navHeld) { navHeld = dir; nav = dir; navNext = now + NAV_DELAY; }
   else if (dir && now >= navNext) { nav = dir; navNext = now + NAV_REPEAT; }
   const A = edge(BTN.A), Bk = edge(BTN.B), X = edge(BTN.X), Y = edge(BTN.Y);
-  const START = edge(BTN.START), SEL = edge(BTN.SELECT), LB = edge(BTN.LB), RB = edge(BTN.RB), LT = edge(BTN.LT);
+  const START = edge(BTN.START), SEL = edge(BTN.SELECT), LB = edge(BTN.LB), RB = edge(BTN.RB), LT = edge(BTN.LT), RT = edge(BTN.RT);
 
   switch (s) {
     case 'title':
@@ -380,6 +382,7 @@ function handlePad(p, B) {
       else if (X || SEL) game.openSettings();
       else if (LB) game.openNews();
       else if (LT) game.openRules();
+      else if (RT) game.openCreator();
       else if (RB) game.reloadGame();
       break;
     case 'pause':
@@ -396,6 +399,7 @@ function handlePad(p, B) {
       else if (nav === 'right' || RB) game.boardTab(1);
       else if (nav === 'up' || nav === 'down') game.boardMove(nav === 'up' ? -1 : 1);
       if (A) game.boardConfirm();
+      else if (X) game.boardLoadChar();
       else if (Bk) { sfx.pick(); game.toTitle(); }
       break;
     case 'recap':
@@ -425,6 +429,7 @@ function handlePad(p, B) {
 
 // ───────────────────────── klawiatura ─────────────────────────
 function onKey(e) {
+  if (creatorOpen()) return;                           // KREATOR (okienko HTML) obsługuje klawisze sam
   if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;   // pisanie nicku – klawisze należą do pola tekstowego
   // przycisk z fokusem (Tab): Enter i spacja go naciskają, a nie startują gry pod spodem
   if (e.target instanceof HTMLButtonElement && ['Enter', 'NumpadEnter', 'Space'].includes(e.code)) return;
@@ -464,11 +469,13 @@ function onKey(e) {
     if (free && code === 'KeyO') { game.openSettings(); return; }
     if (free && code === 'KeyN') { game.openNews(); return; }
     if (free && code === 'KeyH') { game.openRules(); return; }
+    if (free && code === 'KeyK') { game.openCreator(); return; }
     if (free && code === 'KeyU') { game.reloadGame(); return; }
   } else if (s === 'board') {
     if (left || right) { game.boardTab(left ? -1 : 1); return; }
     if (up || dn) { game.boardMove(up ? -1 : 1); return; }
     if (free && code === 'KeyN') { game.editNick(); return; }
+    if (free && code === 'KeyL') { game.boardLoadChar(); return; }
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.boardReplay(Number(code.slice(-1))); return; }
   } else if (s === 'recap') {
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.recapReplay(Number(code.slice(-1))); return; }
@@ -508,7 +515,7 @@ export function initInput(theGame) {
   addEventListener('keydown', onKey);
   // Firefox / Safari: ESC w pełnym ekranie zabiera przeglądarka – po wyjściu z pełnego ekranu udajemy naciśnięcie ESC
   setEscExitHandler(() => {
-    if (nickOpen() || document.activeElement instanceof HTMLInputElement) return;   // ESC zamknął już pole nicku
+    if (nickOpen() || creatorOpen() || document.activeElement instanceof HTMLInputElement) return;   // ESC zamknął już pole nicku / kreator
     onKey({ code: 'Escape', key: 'Escape', repeat: false, target: document.body, preventDefault() {} });
   });
   addEventListener('keyup', (e) => { down.delete(e.code); });

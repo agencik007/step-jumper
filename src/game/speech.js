@@ -44,7 +44,10 @@ function flush() {
 /** Łączy zdania kropką, ale bez podwójnej, gdy zdanie już kończy się znakiem interpunkcyjnym. */
 const joinSentences = (list) => list.filter(Boolean).map((x, i, a) => (i < a.length - 1 && !/[.!?…:]$/.test(x.trim()) ? `${x}.` : x)).join(' ');
 const clean = (s) => String(s ?? '').replace(/[›◀▶]/g, '').replace(/\s+/g, ' ').trim();
-const charLine = (g) => { const ch = CHARS[g.charIdx]; return `${t('title.char')}: ${ch.name} – ${t(`char.${ch.id}`)}`; };
+const charLine = (g) => {
+  const ch = CHARS[g.charIdx];
+  return `${t('title.char')}: ${ch ? `${ch.name} – ${t(`char.${ch.id}`)}` : `${g.custom?.name ?? ''} – ${t('char.custom')}`}`;
+};
 const mapLine = (g) => { const id = STYLES[g.styleIdx].id; return `${t('title.map')}: ${t(`style.${id}.name`)} – ${t(`style.${id}.desc`)}`; };
 const name = (e) => e.nick ?? t('board.player', { tag: e.tag });
 
@@ -99,7 +102,7 @@ function describe(g) {
     const end = periodEnd(b.kind), tab = t(`period.${PERIODS.includes(b.kind) ? b.kind : 'week'}`);
     const ends = end && g.online.enabled ? t(b.kind === 'day' ? 'board.endsDay' : 'board.endsWeek', { when: fmtWhen(end), left: fmtLeft(end) }) : '';
     return [['screen', t('board.title')], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
-      ['sel', sel ? t('sr.boardSel', { rank: sel.rank, name: name(sel) }) : '']];
+      ['sel', sel ? `${t('sr.boardSel', { rank: sel.rank, name: name(sel) })}${sel.skin ? ` ${t('sr.boardChar')}` : ''}` : '']];
   }
   if (s === 'settings') {
     const st = g.settings, titles = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news', rules: 'title.rules' };

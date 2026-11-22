@@ -36,7 +36,7 @@
   canvas:focus-visible { outline: 3px solid #ffe066; outline-offset: 3px; }
   /* rozmiar (--pad-scale) i widoczność (--pad-alpha) przycisków ekranowych ustawia src/game/padlayout.js */
   :root { --pad-scale: 1; --pad-alpha: 1; --text-k: 1; }
-  /* OPCJE → DOSTĘPNOŚĆ: rozmiar tekstu skaluje też okienka HTML (nick, instalacja, edytor układu) */
+  /* OPCJE → DOSTĘPNOŚĆ: rozmiar tekstu skaluje też okienka HTML (nick, instalacja, kreator postaci, edytor układu) */
   .sheet .card, #nick, #padEdit { zoom: var(--text-k); }
   /* wysoki kontrast: przyciski ekranowe i gałka z wyraźną krawędzią na ciemnym tle */
   body.hi-contrast .pad button, body.hi-contrast #stick { border: 3px solid #fff; background: rgba(0,0,0,.55); box-shadow: 0 0 0 2px #000; }
@@ -186,6 +186,73 @@
     .sheet button { padding: 6px 16px; }
   }
 
+  /* KREATOR POSTACI (src/game/creator.js): lista postaci, edycja, zasady tworzenia */
+  #creator .card { width: min(760px, 100%); }
+  #creator h3 { margin: 12px 0 4px; color: #ffd24a; font: 800 14px/1.3 system-ui, sans-serif; }
+  #creator section[hidden] { display: none; }
+  #creator .row.wrap { flex-wrap: wrap; }
+  #creator button { cursor: pointer; }
+  #creator button.small { padding: 5px 10px; font-size: 12px; }
+  #creator button[aria-pressed=true] { background: #ffd24a; color: #12173a; border-color: #12173a; }
+  .cr-list { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 7px; }
+  #creator .cr-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 8px; border-radius: 10px; background: rgba(29,37,82,.7); border: 1.5px solid rgba(159,216,255,.25); }
+  #creator .cr-list li.on { border-color: #ffd24a; }
+  #creator .cr-list li::before, #creator .cr-files li::before { content: none; }
+  .cr-list canvas { width: 48px; height: 64px; flex: none; border-radius: 8px; background: #141a36; }
+  .cr-list .who { flex: 1 1 120px; min-width: 0; }
+  .cr-list .who b { display: block; color: #fff; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cr-list .who span { color: #9fb4ee; font-size: 12px; }
+  .cr-list .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cr-empty { color: #9fb4ee; margin: 10px 0; }
+  .cr-example { margin: 0 0 8px; color: #9fb4ee; font-size: 12.5px; }
+  .cr-example a { color: #ffe066; font-weight: 800; }
+  .cr-example a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .cr-check { display: flex; align-items: flex-start; gap: 8px; color: #fff; font-size: 12.5px; line-height: 1.35; cursor: pointer; }
+  .cr-check input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: #ffd24a; }
+  .cr-check input:focus-visible { outline: 2px solid #ffe066; outline-offset: 2px; }
+  .cr-empty[hidden] { display: none; }
+  .cr-msg { min-height: 1.3em; margin: 8px 0 0; color: #7ef0c0; font-size: 13px; white-space: pre-line; }
+  .cr-msg.err { color: #ff9a7f; }
+  .cr-top { display: grid; grid-template-columns: 240px 1fr; gap: 12px; align-items: start; }
+  #crPreview { width: 240px; height: 200px; border-radius: 10px; background: #141a36; display: block; }
+  .cr-side { display: grid; gap: 8px; }
+  .cr-field { display: grid; gap: 4px; color: #9fb4ee; font-size: 12.5px; }
+  .cr-field input { width: 100%; padding: 8px 10px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45); background: #141a36; color: #fff; font: 700 16px/1.2 system-ui, sans-serif; -webkit-user-select: text; user-select: text; }
+  .cr-field input:focus { outline: 2px solid #ffe066; outline-offset: 1px; }
+  .cr-seg { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cr-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
+  .cr-grid.one { grid-template-columns: minmax(0, 120px); }
+  #creator .cr-cell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 3px 5px; border-radius: 9px;
+    background: #141a36; border: 1.5px solid rgba(159,216,255,.35); color: #fff; font: 700 11px/1.15 system-ui, sans-serif; min-width: 0; }
+  #creator .cr-cell.empty { border-style: dashed; color: #9fb4ee; }
+  #creator .cr-cell.sel, #creator .cr-cell[aria-pressed=true] { background: #1d2552; color: #fff; border-color: #ffd24a; box-shadow: 0 0 0 2px #ffd24a; }
+  #creator .cr-cell.drop { border-color: #7ef0c0; box-shadow: 0 0 0 2px #7ef0c0; }
+  .cr-cell canvas { width: 100%; aspect-ratio: 4 / 5; height: auto; display: block; }
+  .cr-cell small { color: #9fb4ee; font: 600 10px/1.1 ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .cr-panel { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(29,37,82,.7); border: 1.5px solid rgba(159,216,255,.25); }
+  .cr-panel[hidden] { display: none; }
+  .cr-panel p { margin: 0 0 6px; color: #9fb4ee; font-size: 12.5px; }
+  .cr-panel b { color: #ffe066; }
+  .cr-ranges { display: flex; gap: 6px 14px; flex-wrap: wrap; }
+  .cr-ranges label { flex: 1 1 160px; display: flex; align-items: center; gap: 8px; color: #ffe066; font-weight: 700; font-size: 12.5px; }
+  .cr-ranges input[type=range] { flex: 1; min-width: 80px; accent-color: #ffd24a; }
+  .cr-ranges output { min-width: 3.2em; text-align: right; color: #fff; font-size: 12px; }
+  .cr-colors { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 6px; }
+  .cr-colors label { display: flex; align-items: center; gap: 6px; color: #fff; font-size: 12.5px; }
+  .cr-colors input { width: 38px; height: 28px; padding: 0; border: 1.5px solid rgba(159,216,255,.45); border-radius: 6px; background: #141a36; }
+  .cr-files { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 12px; }
+  #creator .cr-files li { display: block; counter-increment: none; font-size: 12.5px; color: #9fb4ee; }
+  .cr-files code { color: #ffe066; font: 700 12.5px ui-monospace, monospace; }
+  #creator textarea { width: 100%; height: 150px; margin-top: 4px; padding: 8px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45);
+    background: #141a36; color: #fff; font: 12px/1.4 ui-monospace, monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
+  #creator.dropping .card { box-shadow: 0 0 0 3px #7ef0c0, 0 20px 60px rgba(0,0,0,.6); }
+  @media (max-width: 600px) {
+    .cr-top { grid-template-columns: 1fr; }
+    #crPreview { width: 100%; max-width: 300px; height: auto; aspect-ratio: 6 / 5; margin: 0 auto; }
+    .cr-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-height: 520px) { #crPreview { width: 200px; height: 166px; } .cr-top { grid-template-columns: 200px 1fr; } }
+
   /* okienko nicku (zwykły formularz nad canvasem) */
   #nick[hidden] { display: none; }
   #nick {
@@ -295,6 +362,79 @@
       <button type="button" id="andInstall" class="only-auto" data-i18n="and.install">Zainstaluj</button>
       <button type="button" id="andOk" class="only-manual" data-i18n="ios.ok">Rozumiem</button>
     </div>
+  </div>
+</div>
+
+<!-- KREATOR POSTACI (src/game/creator.js) -->
+<div id="creator" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="crTitle">
+  <div class="card">
+    <section id="crListView">
+      <h2 id="crTitle" data-i18n="cr.title">KREATOR POSTACI</h2>
+      <p class="lead" data-i18n="cr.lead"></p>
+      <p class="cr-example"><a href="postac-test.zip" download="postac-test.zip" data-i18n="cr.exampleLink">Pobierz przykładową postać (ZIP)</a> <span data-i18n="cr.exampleHint"></span></p>
+      <ul id="crList" class="cr-list"></ul>
+      <p id="crEmpty" class="cr-empty" data-i18n="cr.empty" hidden></p>
+      <p id="crMsg" class="cr-msg" role="status"></p>
+      <div class="row wrap">
+        <button type="button" id="crRules" class="alt" data-i18n="cr.rulesBtn">Zasady tworzenia</button>
+        <button type="button" id="crImport" class="alt" data-i18n="cr.import">Wczytaj ZIP / PNG</button>
+        <button type="button" id="crNew" class="alt" data-i18n="cr.new">Nowa postać</button>
+        <button type="button" id="crClose" data-i18n="cr.close">Zamknij</button>
+      </div>
+      <input type="file" id="crFile" accept=".zip,application/zip,image/png,image/webp" multiple hidden>
+    </section>
+    <section id="crEditView" hidden>
+      <h2 data-i18n="cr.editTitle">EDYCJA POSTACI</h2>
+      <div class="cr-top">
+        <canvas id="crPreview" aria-hidden="true"></canvas>
+        <div class="cr-side">
+          <label class="cr-field"><span data-i18n="cr.name">Nazwa</span><input id="crName" maxlength="16" spellcheck="false" autocomplete="off" enterkeyhint="done"></label>
+          <label class="cr-check"><input type="checkbox" id="crShare"><span data-i18n="cr.share"></span></label>
+          <div class="cr-seg" id="crType" role="group">
+            <button type="button" class="alt small" data-type="frames" data-i18n="cr.type.frames">12 klatek</button>
+            <button type="button" class="alt small" data-type="head" data-i18n="cr.type.head">Sama głowa</button>
+          </div>
+          <div class="cr-seg" id="crAnim" role="group"></div>
+        </div>
+      </div>
+      <div id="crFrames" class="cr-grid"></div>
+      <div id="crAdjust" class="cr-panel" hidden>
+        <p id="crAdjLabel"></p>
+        <div class="cr-ranges">
+          <label><span data-i18n="cr.scale">Wielkość</span><input type="range" id="crK" min="40" max="250" step="1"><output id="crKOut"></output></label>
+          <label><span data-i18n="cr.dx">W bok</span><input type="range" id="crDx" min="-30" max="30" step="0.5"><output id="crDxOut"></output></label>
+          <label><span data-i18n="cr.dy">W górę</span><input type="range" id="crDy" min="-30" max="30" step="0.5"><output id="crDyOut"></output></label>
+        </div>
+        <p id="crGhost" data-i18n="cr.ghost"></p>
+        <div class="row wrap"><button type="button" class="alt small" id="crRemove" data-i18n="cr.remove">Usuń obrazek</button><button type="button" class="alt small" id="crReplace" data-i18n="cr.replace">Zmień obrazek</button></div>
+      </div>
+      <div id="crHeadOpts" class="cr-panel" hidden>
+        <div class="cr-ranges"><label><span data-i18n="cr.headSize">Wielkość głowy</span><input type="range" id="crHeadK" min="40" max="250" step="1"><output id="crHeadKOut"></output></label></div>
+        <p style="margin-top:8px" data-i18n="cr.colors">Kolory ciała</p>
+        <div class="cr-colors" id="crColors"></div>
+      </div>
+      <p id="crEditMsg" class="cr-msg" role="status"></p>
+      <div class="row wrap">
+        <button type="button" class="alt" id="crEditRules" data-i18n="cr.rulesBtn">Zasady tworzenia</button>
+        <button type="button" class="alt" id="crEditZip" data-i18n="cr.export">ZIP</button>
+        <button type="button" class="alt" id="crCancel" data-i18n="cr.cancel">Anuluj</button>
+        <button type="button" id="crSave" data-i18n="cr.save">Zapisz</button>
+      </div>
+      <input type="file" id="crFrameFile" accept="image/png,image/webp" hidden>
+    </section>
+    <section id="crRulesView" hidden>
+      <h2 data-i18n="cr.rules.title">ZASADY TWORZENIA POSTACI</h2>
+      <ol id="crRulesList"></ol>
+      <p class="cr-example"><a href="postac-test.zip" download="postac-test.zip" data-i18n="cr.exampleLink">Pobierz przykładową postać (ZIP)</a> <span data-i18n="cr.exampleHint"></span></p>
+      <h3 data-i18n="cr.prompt.frames"></h3>
+      <textarea id="crAiFrames" readonly></textarea>
+      <div class="row"><button type="button" class="alt small" data-copy="crAiFrames" data-i18n="cr.copy">Kopiuj</button></div>
+      <h3 data-i18n="cr.prompt.head"></h3>
+      <textarea id="crAiHead" readonly style="height:100px"></textarea>
+      <div class="row"><button type="button" class="alt small" data-copy="crAiHead" data-i18n="cr.copy">Kopiuj</button></div>
+      <p id="crRulesMsg" class="cr-msg" role="status"></p>
+      <div class="row"><button type="button" id="crRulesBack" data-i18n="cr.back">Wróć</button></div>
+    </section>
   </div>
 </div>
 

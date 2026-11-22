@@ -42,10 +42,12 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | `DELETE /v1/me` | usuwa konto, biegi i wyniki | `204` |
 | `POST /v1/runs` `{simVersion}` | bilet: ziarno wieży; maks. 180/h, nadmiar ponad 5 niewykorzystanych przepada | `201 {runId, seed, simVersion, chunkTicks}` · `409 update_required` · `403 banned` · `429 too_many_runs` |
 | `PUT /v1/runs/:id/chunks/:seq` (binarnie, `encodeInputs`) | porcja zapisu: dokładnie `chunkTicks` kroków, krótsza tylko ostatnia (kończąca grę) | `{nextSeq, ticks, over}` · powtórka: `{nextSeq, duplicate: true}` · `409 seq` · `413` · `422 rejected` |
-| `POST /v1/runs/:id/finish` `{score, char, style?, control?, appVersion?}` | zatwierdzenie | `{status: "verified", score, floor, combo, ticks, improved, ranks}` · `422 rejected` |
-| `GET /v1/leaderboards/:okres?limit=50` | `all` / `week` / `day` / `lastweek` (zamknięty poprzedni tydzień), cache 30 s | `{period, entries: [{rank, nick, tag, score, floor, combo, char, country, replay?}]}` (bez nicku gra pokazuje „Gracz {tag}”; `replay` – identyfikator powtórki, tylko miejsca 1–3) |
+| `POST /v1/runs/:id/finish` `{score, char, skin?, style?, control?, appVersion?}` | zatwierdzenie; `skin` – skrót SHA-256 paczki własnej postaci (tylko z `char: "custom"`) | `{status: "verified", score, floor, combo, ticks, improved, ranks, needSkin?}` (`needSkin` – bieg wszedł do trójki, a serwer nie ma tej paczki) · `422 rejected` |
+| `GET /v1/leaderboards/:okres?limit=50` | `all` / `week` / `day` / `lastweek` (zamknięty poprzedni tydzień), cache 30 s | `{period, entries: [{rank, nick, tag, score, floor, combo, char, country, replay?, skin?}]}` (bez nicku gra pokazuje „Gracz {tag}”; `replay` – identyfikator powtórki, `skin` – skrót paczki własnej postaci, oba tylko miejsca 1–3) |
 | `GET /v1/leaderboards/:okres/me` | moje miejsce ± 5 sąsiadów | `{period, rank, entries: [... , me]}` |
-| `GET /v1/replays/:id` | powtórka biegu z rankingu, cache 1 dzień | `{runId, seed, simVersion, ticks, score, floor, combo, char, style, nick, tag, finishedAt, chunks: [base64 encodeInputs]}` · `404` |
+| `GET /v1/replays/:id` | powtórka biegu z rankingu, cache 1 dzień | `{runId, seed, simVersion, ticks, score, floor, combo, char, style, nick, tag, finishedAt, skin?, chunks: [base64 encodeInputs]}` · `404` |
+| `PUT /v1/skins/:hash` (binarnie, ZIP do 1,5 MB) | paczka własnej postaci; tylko gdy skrót SHA-256 zgadza się z zawartością, a wynik gracza w rankingu jest rozegrany tą postacią | `201 {hash}` · `400 bad_skin/hash_mismatch` · `403 not_needed` · `413` |
+| `GET /v1/skins/:hash` | pobranie paczki postaci (ZIP), cache na zawsze (zawartość pod skrótem się nie zmienia) | `200 application/zip` · `404` |
 
 Powody odrzucenia biegu (`reason`): `corrupt`, `empty_chunk`, `chunk_too_long`, `short_chunk`, `inputs_after_end`,
 `not_over`, `score_mismatch`, `too_fast` (bieg krótszy w czasie rzeczywistym niż liczba kroków / 120), `sim_version`, `too_long`.
@@ -54,6 +56,11 @@ Tydzień i dzień liczone są w UTC (tydzień ISO, od poniedziałku). Remis rozs
 
 Najlepsza trójka zamkniętego tygodnia (`lastweek`) dostaje w grze korony na cały następny tydzień – gra sprawdza swoje
 miejsce przez `GET /v1/leaderboards/lastweek/me`.
+
+Własne postacie (KREATOR w grze, `docs/POSTACIE.md`): bieg postacią z kreatora ma `char: "custom"` i skrót paczki (`skin`).
+Gdy wejdzie do najlepszej trójki któregoś okresu, serwer prosi o paczkę (`needSkin`), a gra wysyła ją `PUT /v1/skins/:hash`.
+Serwer nie rozpakowuje paczki – sprawdza tylko nagłówek ZIP, rozmiar i skrót; obrazki sprawdza i koduje od nowa gra przy wczytaniu.
+Paczki trzyma tabela `skins`; sprzątanie usuwa te, których nie używa już żaden wynik w `bests`.
 
 Powtórki: przyjęte porcje zapisu trafiają do tabeli `run_chunks`. Zostają tylko dla biegów, które są czyimś najlepszym
 wynikiem w którymś okresie (`bests`); zatwierdzenie biegu od razu usuwa porcje biegów gracza, które rekordem nie są.
@@ -70,4 +77,4 @@ porcja 6000 kroków kosztowała 4–15 ms CPU (lokalnie w Node ok. 1 ms – serw
 Schemat: `migrations/`. Serwer nie zapisuje adresu IP (służy tylko jako klucz limitu) ani tokenu (tylko jego skrót
 SHA-256). Cron raz na dobę (`src/cleanup.ts`) usuwa bilety starsze niż 7 dni, przerwane wysyłki starsze niż dzień,
 biegi starsze niż 90 dni (poza biegami, które są czyimś rekordem – potrzebne do powtórek), rankingi tygodniowe i dzienne
-starsze niż poprzedni okres oraz powtórki, które nie są już niczyim rekordem.
+starsze niż poprzedni okres, powtórki, które nie są już niczyim rekordem, oraz paczki postaci, których nie używa żaden wynik.
