@@ -5,6 +5,14 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.18.1', date: '2026-11-22',
+    pl: ['W OPCJACH na urządzeniu z ekranem dotykowym klawiatura znów pokazuje, która opcja jest wybrana – strzałką i ramką, jak na padzie.'],
+    en: ['In OPTIONS on a touchscreen device, the keyboard now shows which option is selected – with an arrow and a frame, just like on a gamepad.'],
+    de: ['In den OPTIONEN zeigt die Tastatur auf Geräten mit Touchscreen jetzt, welche Option gewählt ist – mit Pfeil und Rahmen, wie am Gamepad.'],
+    fr: ['Dans OPTIONS sur un appareil à écran tactile, le clavier indique maintenant l’option sélectionnée – avec une flèche et un cadre, comme à la manette.'],
+    es: ['En OPCIONES, en un dispositivo con pantalla táctil, el teclado ahora muestra qué opción está seleccionada, con una flecha y un marco, como con el mando.'],
+  },
+  {
     v: '0.18.0', date: '2026-11-22',
     pl: [
       'Nowy przycisk ZASADY GRY pod NOWOŚCIAMI: dokładnie opisuje bieg, skok, piętra, punkty, combo, przedmioty i ranking.',

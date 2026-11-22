@@ -98,7 +98,9 @@ export const padDeadValue = (s = opts.padDead) => 0.05 + s * 0.05;       // 5% �
 
 /** Ostatnio używane wejście – od niego zależą podpowiedzi na ekranie: 'touch' | 'keys' | 'pad'. */
 export const inputSrc = { last: isTouch ? 'touch' : 'keys' };
-export const hintMode = () => (inputSrc.last === 'pad' ? 'pad' : isTouch ? 'touch' : 'keys');
+// liczy się ostatnie wejście, a nie samo „urządzenie ma dotyk” – na laptopie z ekranem dotykowym klawiatura też
+// pokazuje zaznaczenie (strzałkę przy wybranej opcji) i podpowiedzi klawiszy
+export const hintMode = () => inputSrc.last;
 
 // ───────────────────────── stan wejścia ─────────────────────────
 const down = new Set();
