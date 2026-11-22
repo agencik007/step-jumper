@@ -151,7 +151,8 @@
     background: rgba(5,7,20,.6); touch-action: auto;
   }
   .sheet .card {
-    width: min(440px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 18px 18px 14px; border-radius: 14px;
+    /* zoom (rozmiar tekstu) powiększa też max-height – dzielimy, żeby karta zawsze mieściła się w oknie */
+    width: min(440px, 100%); max-height: calc((100dvh - 32px) / var(--text-k)); overflow: auto; padding: 18px 18px 14px; border-radius: 14px;
     background: rgba(12,16,44,.97); border: 1.5px solid rgba(159,216,255,.45); color: #fff;
     box-shadow: 0 20px 60px rgba(0,0,0,.6); font: 600 14px/1.45 system-ui, sans-serif;
   }
@@ -251,7 +252,17 @@
     #crPreview { width: 100%; max-width: 300px; height: auto; aspect-ratio: 6 / 5; margin: 0 auto; }
     .cr-grid { grid-template-columns: repeat(4, 1fr); }
   }
-  @media (max-height: 520px) { #crPreview { width: 200px; height: 166px; } .cr-top { grid-template-columns: 200px 1fr; } }
+  /* przyciski na dole (Zapisz, Anuluj…) przyklejone do dolnej krawędzi karty – widać je nawet, gdy treść się przewija */
+  #creator .cr-foot { position: sticky; bottom: -14px; z-index: 1; margin: 8px -18px -14px; padding: 8px 18px 14px;
+    background: #0c102c; border-top: 1.5px solid rgba(159,216,255,.25); }
+  /* niski ekran (telefon w poziomie): mniejszy podgląd i niższe klatki, żeby więcej weszło bez przewijania */
+  @media (max-height: 520px) {
+    #crPreview { width: 150px; height: 125px; }
+    .cr-top { grid-template-columns: 150px 1fr; }
+    .cr-grid { margin-top: 6px; gap: 4px; }
+    .cr-cell canvas { aspect-ratio: auto; height: 52px; }
+    #creator .cr-foot { bottom: -10px; margin: 6px -16px -10px; padding: 6px 16px 10px; }
+  }
 
   /* okienko nicku (zwykły formularz nad canvasem) */
   #nick[hidden] { display: none; }
@@ -375,7 +386,7 @@
       <ul id="crList" class="cr-list"></ul>
       <p id="crEmpty" class="cr-empty" data-i18n="cr.empty" hidden></p>
       <p id="crMsg" class="cr-msg" role="status"></p>
-      <div class="row wrap">
+      <div class="row wrap cr-foot">
         <button type="button" id="crRules" class="alt" data-i18n="cr.rulesBtn">Zasady tworzenia</button>
         <button type="button" id="crImport" class="alt" data-i18n="cr.import">Wczytaj ZIP / PNG</button>
         <button type="button" id="crNew" class="alt" data-i18n="cr.new">Nowa postać</button>
@@ -414,7 +425,7 @@
         <div class="cr-colors" id="crColors"></div>
       </div>
       <p id="crEditMsg" class="cr-msg" role="status"></p>
-      <div class="row wrap">
+      <div class="row wrap cr-foot">
         <button type="button" class="alt" id="crEditRules" data-i18n="cr.rulesBtn">Zasady tworzenia</button>
         <button type="button" class="alt" id="crEditZip" data-i18n="cr.export">ZIP</button>
         <button type="button" class="alt" id="crCancel" data-i18n="cr.cancel">Anuluj</button>
@@ -433,7 +444,7 @@
       <textarea id="crAiHead" readonly style="height:100px"></textarea>
       <div class="row"><button type="button" class="alt small" data-copy="crAiHead" data-i18n="cr.copy">Kopiuj</button></div>
       <p id="crRulesMsg" class="cr-msg" role="status"></p>
-      <div class="row"><button type="button" id="crRulesBack" data-i18n="cr.back">Wróć</button></div>
+      <div class="row cr-foot"><button type="button" id="crRulesBack" data-i18n="cr.back">Wróć</button></div>
     </section>
   </div>
 </div>

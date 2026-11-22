@@ -5,6 +5,29 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.19.1', date: '2026-11-22',
+    pl: [
+      'KREATOR mieści się teraz na małych ekranach: przyciski Zapisz, Anuluj i ZIP zawsze widać na dole okna, także przy dużym tekście (OPCJE → DOSTĘPNOŚĆ → Rozmiar tekstu), a resztę przewiniesz palcem.',
+      'Na telefonie w poziomie klatki postaci i podgląd w KREATORZE są mniejsze, więc więcej wchodzi na ekran naraz.',
+    ],
+    en: [
+      'The CREATOR now fits on small screens: the Save, Cancel and ZIP buttons always stay visible at the bottom of the window, even with large text (OPTIONS → ACCESSIBILITY → Text size), and you can scroll the rest with your finger.',
+      'On a phone held sideways, the character frames and preview in the CREATOR are smaller, so more fits on the screen at once.',
+    ],
+    de: [
+      'Der EDITOR passt jetzt auf kleine Bildschirme: Die Knöpfe Speichern, Abbrechen und ZIP bleiben immer unten im Fenster sichtbar, auch bei großem Text (OPTIONEN → BARRIEREFREIHEIT → Textgröße), und den Rest scrollst du mit dem Finger.',
+      'Auf dem Handy im Querformat sind die Bilder der Figur und die Vorschau im EDITOR kleiner, so passt mehr auf einmal auf den Bildschirm.',
+    ],
+    fr: [
+      'Le CRÉATEUR tient maintenant sur les petits écrans : les boutons Enregistrer, Annuler et ZIP restent toujours visibles en bas de la fenêtre, même avec un grand texte (OPTIONS → ACCESSIBILITÉ → Taille du texte), et vous faites défiler le reste du doigt.',
+      'Sur un téléphone à l’horizontale, les images du personnage et l’aperçu du CRÉATEUR sont plus petits, pour en voir davantage à la fois.',
+    ],
+    es: [
+      'El CREADOR ahora cabe en pantallas pequeñas: los botones Guardar, Cancelar y ZIP siempre se ven abajo de la ventana, también con texto grande (OPCIONES → ACCESIBILIDAD → Tamaño del texto), y el resto lo desplazas con el dedo.',
+      'En el móvil en horizontal, las imágenes del personaje y la vista previa del CREADOR son más pequeñas, así cabe más en la pantalla a la vez.',
+    ],
+  },
+  {
     v: '0.19.0', date: '2026-11-22',
     pl: [
       'Nowość: KREATOR postaci (przycisk na ekranie tytułowym, klawisz K). Wczytaj 12 obrazków PNG – każdy ruch osobno (idle.png, run1.png…) – albo samą głowę, a gra zrobi z nich postać do biegu. W podglądzie obejrzysz animację i poprawisz wielkość klatek.',
