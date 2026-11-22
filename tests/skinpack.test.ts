@@ -1,7 +1,7 @@
 // Własne postacie z obrazków: przypisanie plików do klatek, wybór klatki w grze, skala i plik character.json.
 import { describe, expect, test } from 'vitest';
 import {
-  FRAMES, TARGET_H, assignFiles, biggestCircle, cleanName, layoutFrames, packJson, parsePackJson, pickFrame, resolveFrame, zipName,
+  FRAMES, IDLE_OVER_RUN, TARGET_H, assignFiles, biggestCircle, cleanName, layoutFrames, packJson, parsePackJson, pickFrame, resolveFrame, zipName,
 } from '../src/game/skinpack.js';
 
 describe('przypisanie plików do klatek', () => {
@@ -89,20 +89,36 @@ describe('skala klatek', () => {
     expect(Math.abs(c.y - f.cy)).toBeLessThanOrEqual(2);
   });
 
-  test('„stoi” narysowane 2× większe niż reszta wyrównuje się do reszty, a „stoi” ma TARGET_H wysokości', () => {
+  test('„stoi” narysowane 2× większe niż reszta: dopasowane wysokością do biegu, reszta w jednej skali', () => {
     const m = {
-      idle: { w: 240, h: 600, r: 104, hx: 120 },
-      run1: { w: 140, h: 240, r: 52, hx: 82 },
-      run2: { w: 150, h: 236, r: 53, hx: 90 },
-      dead: { w: 306, h: 128, r: 56, hx: 236 },        // ±20% od mediany – ta sama skala co reszta
+      idle: { w: 240, h: 590, r: 103, hx: 120 },      // inne proporcje niż w biegu (dłuższe nogi)
+      run1: { w: 140, h: 229, r: 52, hx: 82 },
+      run2: { w: 150, h: 227, r: 52, hx: 90 },
+      run3: { w: 150, h: 228, r: 51, hx: 92 },
+      run4: { w: 151, h: 229, r: 51, hx: 92 },
+      dead: { w: 306, h: 121, r: 56, hx: 236 },        // ±20% od mediany – ta sama skala co reszta
     };
     const l = layoutFrames(m);
     expect(l.idle.s * m.idle.h).toBeCloseTo(TARGET_H, 5);
     expect(l.run1.s).toBeCloseTo(l.run2.s, 9);
     expect(l.run1.s).toBeCloseTo(l.dead.s, 9);
-    expect(l.idle.s * m.idle.r).toBeCloseTo(l.run1.s * 54.5, 5);   // głowa „stoi” = mediana głów pozostałych klatek (54,5 px)
+    expect(l.idle.s * m.idle.h).toBeCloseTo(IDLE_OVER_RUN * l.run1.s * 228.5, 5);   // stoi = 110% mediany wysokości biegu
+    expect(l.run1.s * m.run1.h).toBeGreaterThan(54);    // bieg prawie tak wysoki jak stojąca postać, nie ~46 jak przy równych głowach
     expect(l.run1.ax).toBe(82);                          // zaczepienie: środek głowy w poziomie, stopy (dół obrazka) w pionie
-    expect(l.run1.ay).toBe(240);
+    expect(l.run1.ay).toBe(229);
+  });
+
+  test('„stoi” w tej samej skali co reszta: liczy się głowa, wysokości zostają jak narysowane', () => {
+    const m = { idle: { w: 120, h: 280, r: 52, hx: 60 }, run1: { w: 140, h: 229, r: 52, hx: 82 } };
+    const l = layoutFrames(m);
+    expect(l.idle.s).toBeCloseTo(l.run1.s, 9);
+    expect(l.idle.s * 280).toBeCloseTo(TARGET_H, 5);
+  });
+
+  test('inna klatka w innej skali: wyrównana głową do mediany', () => {
+    const m = { idle: { w: 120, h: 280, r: 52, hx: 60 }, run1: { w: 140, h: 229, r: 52, hx: 82 }, cheer: { w: 400, h: 520, r: 104, hx: 200 } };
+    const l = layoutFrames(m);
+    expect(l.cheer.s * 104).toBeCloseTo(l.idle.s * 52, 9);
   });
 
   test('poprawki z kreatora: wielkość i przesunięcie', () => {

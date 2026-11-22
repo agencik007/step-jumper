@@ -18,6 +18,9 @@ export const NAME_MAX = 16;
 
 /** Wysokość klatki „stoi” w grze (jednostki planszy, jak wbudowane postacie). */
 export const TARGET_H = 60;
+/** „Stoi” narysowane w innej skali niż reszta: tyle razy wyższe od biegu (bieg jest lekko pochylony). */
+export const IDLE_OVER_RUN = 1.1;
+const RUN_FRAMES = ['run1', 'run2', 'run3', 'run4'];
 /** Promień głowy (jednostki) w postaci „sama głowa” przy wielkości 100%. */
 export const HEAD_R = 11.5;
 /** Klatki, których brakuje, zastępują podobne (aż do „stoi”). */
@@ -141,8 +144,10 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 
 /**
  * Skala i punkt zaczepienia każdej klatki. measures[klatka] = { w, h, r, hx } – wymiary przyciętego obrazka (px),
  * promień głowy i jej środek w poziomie. Klatki o głowie podobnej do mediany (±20%) są w tej samej skali co reszta,
- * a wyraźnie inne (np. „stoi” narysowane 2× większe) kreator przeskalowuje do mediany. Potem całość tak, żeby
- * „stoi” miało TARGET_H jednostek wysokości. Zaczepienie: środek głowy w poziomie, dół obrazka (stopy) w pionie.
+ * a wyraźnie inne kreator przeskalowuje do mediany głów. Wyjątek: „stoi” narysowane w innej skali niż reszta (np. 2×
+ * większe) ma zwykle też inne proporcje – dłuższe nogi – więc przy równej głowie bieg wyglądałby na dużo mniejszy.
+ * Takie „stoi” kreator dopasowuje wysokością: IDLE_OVER_RUN × wysokość biegu. Potem całość tak, żeby „stoi” miało
+ * TARGET_H jednostek wysokości. Zaczepienie: środek głowy w poziomie, dół obrazka (stopy) w pionie.
  * @returns {Record<string, { s: number, ax: number, ay: number }>} s – jednostki planszy na piksel, ax/ay – piksele
  */
 export function layoutFrames(measures, adjust = {}) {
@@ -150,13 +155,18 @@ export function layoutFrames(measures, adjust = {}) {
   if (!roles.length) return {};
   const rs = roles.map((k) => measures[k].r).filter((r) => r > 0);
   const med = rs.length ? median(rs) : 1;
-  const norm = (k) => { const r = measures[k].r; return r > 0 && Math.abs(r / med - 1) > 0.2 ? med / r : 1; };
+  const odd = (k) => { const r = measures[k].r; return r > 0 && Math.abs(r / med - 1) > 0.2; };
+  const scale = Object.fromEntries(roles.map((k) => [k, odd(k) ? med / measures[k].r : 1]));
+  if (measures.idle && odd('idle')) {
+    const runs = RUN_FRAMES.filter((k) => measures[k] && !odd(k)).map((k) => measures[k].h);
+    if (runs.length) scale.idle = (IDLE_OVER_RUN * median(runs)) / measures.idle.h;
+  }
   const ref = measures.idle ? 'idle' : roles[0];
-  const u = TARGET_H / Math.max(1, measures[ref].h * norm(ref));
+  const u = TARGET_H / Math.max(1, measures[ref].h * scale[ref]);
   const out = {};
   for (const k of roles) {
     const m = measures[k], a = cleanAdjust(adjust[k]);
-    const s = u * norm(k) * a.k;
+    const s = u * scale[k] * a.k;
     const hx = m.r > 0 ? m.hx : m.w / 2;
     out[k] = { s, ax: hx - a.dx / s, ay: m.h + a.dy / s };
   }

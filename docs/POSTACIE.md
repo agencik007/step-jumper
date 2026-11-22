@@ -52,7 +52,9 @@ w kolejności z tabeli. Jeden obrazek o dowolnej nazwie to głowa.
 
 Jak kreator ustawia klatki (`layoutFrames` w `skinpack.js`): w każdej klatce szuka największego koła mieszczącego się
 w sylwetce – u postaci z dużą głową to głowa. Klatki o głowie podobnej do mediany (±20%) zostają w tej samej skali,
-a wyraźnie inne (np. `idle.png` narysowane 2× większe niż reszta) są przeskalowane do mediany. Całość jest
+a wyraźnie inne są przeskalowane do mediany głów. Wyjątek: `idle.png` narysowane w innej skali niż reszta (np. 2×
+większe) ma zwykle też inne proporcje (dłuższe nogi), więc przy równej głowie bieg wyglądałby na dużo mniejszy –
+takie `idle` kreator dopasowuje wysokością: stojąca postać = 110% wysokości biegu (`IDLE_OVER_RUN`). Całość jest
 dopasowana tak, żeby `idle` miało 60 jednostek wysokości (jak wbudowane postacie). Punkt zaczepienia: środek głowy
 w poziomie, dół obrazka (stopy) w pionie. W kreatorze można każdą klatkę poprawić ręcznie: wielkość
 i przesunięcie, z bladą klatką „stoi” pod spodem do porównania.
