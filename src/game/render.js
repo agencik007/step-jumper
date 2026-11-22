@@ -13,14 +13,14 @@ import { fmt, fmtLeft, fmtWhen, periodEnd } from './format.js';
 import { BTN, glyphOf } from './gamepad.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
-import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, noteLine, rowBox, sliderBar, slotX } from './layout.js';
+import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, isTextPage, noteLine, rowBox, sliderBar, slotX } from './layout.js';
 import { VERSION, update } from './update.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
   const mw = canvas.width, mh = canvas.height;
-  // NOWOŚCI: sam tekst na jednolitym tle – bez mapy, filtrów i efektów pod spodem
-  const plain = g.state === 'settings' && g.settings.page === 'news';
+  // NOWOŚCI i ZASADY GRY: sam tekst na jednolitym tle – bez mapy, filtrów i efektów pod spodem
+  const plain = g.state === 'settings' && isTextPage(g.settings.page);
   setMapFilter(!plain);
   if (plain) {
     setCtx(mainCtx);
@@ -651,6 +651,7 @@ function drawTitle(g) {
   button(UIBOX.opts, hm === 'keys' ? `${t('title.opts')} · O` : t('title.opts'), { size: 11, glyph: hm === 'pad' ? BTN.X : null });
   button(UIBOX.rank, hm === 'keys' ? `${t('title.rank')} · R` : t('title.rank'), { size: 11, glyph: hm === 'pad' ? BTN.Y : null });
   button(UIBOX.news, hm === 'keys' ? `${t('title.news')} · N` : t('title.news'), { size: 11, glyph: hm === 'pad' ? BTN.LB : null });
+  button(UIBOX.rules, hm === 'keys' ? `${t('title.rules')} · H` : t('title.rules'), { size: 11, glyph: hm === 'pad' ? BTN.LT : null });
   text(`v${VERSION}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
   if (update.available) drawUpdateButton(time, hm);
   const wob = reduceMotion ? 1 : 1 + Math.sin(time * 2) * 0.02;
@@ -854,8 +855,8 @@ function drawBoard(g) {
   if (g.hint === 'pad') padHints([['dpad', 'hint.pick'], [BTN.A, b.sel >= 0 ? 'hint.watch' : 'hint.back'], [BTN.B, 'hint.back']], 468, { size: 10 });
 }
 
-const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news' };
-const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', access: 'set.keys', sound: 'set.keys', keys: 'bind.keysHint', pad: 'bind.keysHint', news: 'news.keys' };
+const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news', rules: 'title.rules' };
+const KEY_HINTS = { main: 'set.keys', controls: 'ctrl.keys', access: 'set.keys', sound: 'set.keys', keys: 'bind.keysHint', pad: 'bind.keysHint', news: 'news.keys', rules: 'news.keys' };
 
 /** Opcje: przewijana lista wierszy (options.js), „Wróć” pod nią, na dole objaśnienie i podpowiedzi. */
 function drawSettings(g) {
@@ -890,7 +891,7 @@ function drawSettings(g) {
   if (st.page === 'main') text(t('set.privacy'), W / 2, 450, hint);
   else if (st.page === 'controls') text(t('ctrl.always'), W / 2, 450, hint);
   else if (st.page === 'news') text(t('news.foot', { v: VERSION }), W / 2, 450, hint);
-  if (hm === 'pad' && st.page === 'news') padHints([['dpad', 'hint.scroll'], [BTN.B, 'hint.back']], 468, { size: 10 });
+  if (hm === 'pad' && isTextPage(st.page)) padHints([['dpad', 'hint.scroll'], [BTN.B, 'hint.back']], 468, { size: 10 });
   else if (hm === 'pad') {
     const bind = st.page === 'keys' || st.page === 'pad';
     padHints([['dpad', 'hint.pick'], [BTN.A, bind ? 'hint.assign' : 'hint.ok'], ...(bind ? [[BTN.X, 'hint.clear']] : []), [BTN.B, 'hint.back']], 468, { size: 10 });

@@ -5,6 +5,29 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.18.0', date: '2026-11-22',
+    pl: [
+      'Nowy przycisk ZASADY GRY pod NOWOŚCIAMI: dokładnie opisuje bieg, skok, piętra, punkty, combo, przedmioty i ranking.',
+      'Zasady otworzysz też klawiszem H albo przyciskiem LT na padzie.',
+    ],
+    en: [
+      'New HOW TO PLAY button under WHAT’S NEW: it explains running, jumping, floors, score, combos, items and the leaderboard in detail.',
+      'You can also open it with the H key or LT on a gamepad.',
+    ],
+    de: [
+      'Neuer Knopf SPIELREGELN unter NEUIGKEITEN: Er erklärt genau Laufen, Springen, Etagen, Punkte, Combos, Gegenstände und die Rangliste.',
+      'Du öffnest die Regeln auch mit der Taste H oder mit LT am Gamepad.',
+    ],
+    fr: [
+      'Nouveau bouton RÈGLES DU JEU sous NOUVEAUTÉS : il explique en détail la course, le saut, les étages, le score, les combos, les objets et le classement.',
+      'Vous pouvez aussi les ouvrir avec la touche H ou LT sur la manette.',
+    ],
+    es: [
+      'Nuevo botón REGLAS bajo NOVEDADES: explica con detalle la carrera, el salto, los pisos, los puntos, los combos, los objetos y el ranking.',
+      'También puedes abrirlas con la tecla H o con LT en el mando.',
+    ],
+  },
+  {
     v: '0.17.0', date: '2026-11-21',
     pl: [
       'Ekran nie gaśnie w trakcie biegu – w każdym trybie sterowania, także przy grze padem albo klawiaturą.',

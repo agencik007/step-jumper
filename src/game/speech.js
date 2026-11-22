@@ -6,6 +6,7 @@
 // a nie powtarza ciągle tego samego. Komunikaty z gry (game.say) i stan biegu (klawisz I) idą osobno.
 import { PERIODS } from './layout.js';
 import { CHANGELOG } from './changelog.js';
+import { rulesText } from './rules.js';
 import { CHARS } from './characters.js';
 import { STYLES } from './gfx.js';
 import { fmt, fmtLeft, fmtWhen, periodEnd } from './format.js';
@@ -101,11 +102,13 @@ function describe(g) {
       ['sel', sel ? t('sr.boardSel', { rank: sel.rank, name: name(sel) }) : '']];
   }
   if (s === 'settings') {
-    const st = g.settings, titles = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news' };
+    const st = g.settings, titles = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news', rules: 'title.rules' };
     const parts = [['screen', t(titles[st.page] ?? 'set.title')]];
     if (st.page === 'news') {
       const e = CHANGELOG[0];
       parts.push(['news', `${e.v}: ${(e[lang()] ?? e.en).join(' ')}`]);
+    } else if (st.page === 'rules') {
+      parts.push(['news', rulesText().map(([head, notes]) => `${head}. ${notes.join(' ')}`).join(' ')]);
     }
     const it = g.selItem;
     parts.push(['row', itemSpeech(g, it)]);

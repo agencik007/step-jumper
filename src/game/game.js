@@ -15,9 +15,9 @@ import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
 import {
   CONTROLS, DEAD_STEPS, JUMP_MODES, OPTS_DEFAULT, SENS_MAX, TILT_ZERO_MAX, binds, ctrl, hintMode, input, isTouch, loadBinds, opts, resetBinds, setBind, setControl, tilt, touchAxis,
 } from './input.js';
-import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, inBox, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
+import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
-import { buildNews, buildPages, selectable } from './options.js';
+import { buildNews, buildPages, buildRules, selectable } from './options.js';
 import { loadPads, mirrorPads, resetPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
 import { announce, speakFrame, speakStatus } from './speech.js';
@@ -325,13 +325,17 @@ export class Game {
   }
   openPage(page) { sfx.pick(); this.showPage(page); }
   /** NOWOŚCI: lista zmian w każdej wersji (changelog.js) jako strona opcji tylko do przewijania. */
-  openNews() {
-    const font = `${NOTE_FONT.weight} ${fontSize(NOTE_FONT.size)}px ${FONT}`;   // łamanie linijek przy obecnym rozmiarze tekstu
-    this.pages.news = buildNews(this, (s) => { ctx.font = font; return ctx.measureText(s).width; });
+  openNews() { this.openText('news', buildNews); }
+  /** ZASADY GRY: dokładny opis mechaniki (strings.js, klucze rules.*) – tak samo jak NOWOŚCI, tylko do przewijania. */
+  openRules() { this.openText('rules', buildRules); }
+  /** Strona z samym tekstem; build(g, measure) łamie linijki przy obecnym rozmiarze tekstu i języku. */
+  openText(page, build) {
+    const font = `${NOTE_FONT.weight} ${fontSize(NOTE_FONT.size)}px ${FONT}`;
+    this.pages[page] = build(this, (s) => { ctx.font = font; return ctx.measureText(s).width; });
     sfx.pick();
     this.state = 'settings';
     this.settings.from = 'title';
-    this.showPage('news');
+    this.showPage(page);
   }
   /** PRZEŁADUJ na ekranie tytułowym: wczytuje nową wersję gry. */
   reloadGame() {
@@ -349,7 +353,7 @@ export class Game {
   settingsMove(d, jump = false) {
     const st = this.settings, n = this.settingsSel.length;
     st.capture = null;
-    if (st.page === 'news') { this.settingsScroll(st.scrollTo + d * (jump ? LIST.h / 5 : 40)); return; }   // tu nie ma czego wybierać – tylko przewijanie
+    if (isTextPage(st.page)) { this.settingsScroll(st.scrollTo + d * (jump ? LIST.h / 5 : 40)); return; }   // tu nie ma czego wybierać – tylko przewijanie
     const sel = jump ? clamp(st.sel + d, 0, n - 1) : mod(st.sel + d, n);
     if (sel === st.sel) return;
     st.sel = sel; st.slot = 0;
@@ -502,6 +506,7 @@ export class Game {
       else if (inBox(x, y, UIBOX.rank)) this.openBoard();
       else if (inBox(x, y, UIBOX.opts)) this.openSettings();
       else if (inBox(x, y, UIBOX.news)) this.openNews();
+      else if (inBox(x, y, UIBOX.rules)) this.openRules();
       else if (update.available && inBox(x, y, UIBOX.update)) this.reloadGame();
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
