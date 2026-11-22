@@ -9,6 +9,7 @@ import { VOL_STEPS, sfx } from './audio.js';
 import { access, fontSize, loadAccess } from './access.js';
 import { CHARS } from './characters.js';
 import { creatorOpen, openCreator } from './creator.js';
+import { drinkAt, drinkSay } from './drinks.js';
 import { bakeSkin, buildSkin, loadSkin, packBytes, previewPack, saveFromPack, sharePack } from './skins.js';
 import { FONT, MEDALS, NEON, PENCILS, STYLES, applyStyle, ctx, cycle, style, themeOf } from './gfx.js';
 import { KIND_NAMES, gpad } from './gamepad.js';
@@ -38,6 +39,7 @@ const REPLAY_SPEEDS = [1, 2, 4];
 const TIERS = [200, 140, 100, 70, 50, 35, 25, 15, 7, 4];
 
 const newSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
+const CHAR_ARM = 3;                      // s – „⬇ POSTAĆ”: tyle czeka na drugie dotknięcie (potwierdzenie)
 const BOARD_TTL = 30;                    // s – tyle samo serwer trzyma ranking w cache
 /** Numer miejsca własnej postaci na ekranie tytułowym (za pięcioma wbudowanymi). */
 export const CUSTOM = CHARS.length;
@@ -57,6 +59,7 @@ export class Game {
     this.customHash = null;              // skrót paczki własnej postaci – idzie z biegiem do rankingu (serwer poprosi o paczkę, gdy bieg wejdzie do trójki)
     this.remote = new Map();             // postacie z najlepszej trójki pobrane do obejrzenia (powtórki, podium): skrót → { skin, wait }
     this.charLoad = null;                // „⬇ POSTAĆ” w rankingu: pobieranie w toku
+    this.charArm = null;                 // „⬇ POSTAĆ” dotknięte raz: { hash, until } – drugie dotknięcie do until wczytuje
     online.skinSource = packBytes;
     if (this.customId) this.loadCustom(this.customId);
     else if (this.charIdx === CUSTOM) this.charIdx = 0;
@@ -151,11 +154,20 @@ export class Game {
   remoteReady(hash) { return this.remote.get(hash)?.skin ?? null; }
   /**
    * „⬇ POSTAĆ” w rankingu: postać gracza z trójki trafia do KREATORA (własne postacie) i od razu jest wybrana na ekranie
-   * tytułowym. Ta sama postać drugi raz się nie dubluje.
+   * tytułowym. Pierwsze dotknięcie tylko pyta („NA PEWNO?”), wczytuje dopiero drugie w ciągu CHAR_ARM s – przycisk leży
+   * w wierszu rankingu i łatwo go trafić niechcący. Ta sama postać drugi raz się nie dubluje, a własna postać gracza
+   * (jego bieg w trójce) wraca jako ona sama. Poprzednio wybrana postać zostaje w KREATORZE – komunikat o tym mówi.
    */
   async loadBoardChar(e) {
     if (!e?.skin || this.charLoad) return;
     sfx.pick();
+    if (!this.charArmed(e.skin)) {
+      this.charArm = { hash: e.skin, until: this.t + CHAR_ARM };
+      announce(t('sr.charAsk', { nick: e.nick ?? t('board.player', { tag: e.tag }) }));   // na ekranie: przycisk „NA PEWNO?”
+      return;
+    }
+    this.charArm = null;
+    const prev = this.custom;
     this.charLoad = { hash: e.skin };
     try {
       const bytes = await online.skinPack(e.skin);
@@ -166,12 +178,15 @@ export class Game {
       this.charLoad = null;
       this.setCustom(sk);
       if (this.state === 'board') this.toTitle();
-      this.say(t('msg.charLoaded'), t('msg.charLoadedSub', { name: rec.name }), 'mint', 2.4);
+      const kept = prev && prev.id !== rec.id ? prev.name : '';
+      this.say(t('msg.charLoaded'), t(kept ? 'msg.charLoadedPrev' : 'msg.charLoadedSub', { name: rec.name, prev: kept }), 'mint', kept ? 3.6 : 2.4);
     } catch (err) {
       this.charLoad = null;
       this.say(t('msg.charFail'), err?.key ? t(err.key, err.vars) : t('msg.charFailSub'), 'warn', 2.8);
     }
   }
+  /** „⬇ POSTAĆ” tej postaci czeka na potwierdzenie (drugie dotknięcie). */
+  charArmed(hash) { return this.charArm?.hash === hash && this.t < this.charArm.until; }
   /** Wiersz rankingu z miejscem 1–3 i postacią do wczytania: wybrany (pad, strzałki) albo pierwszy taki. */
   boardLoadChar() {
     const rows = this.board.data[this.board.kind]?.top?.entries ?? [];
@@ -205,6 +220,7 @@ export class Game {
     this.jumpPrev = false; this.latch = false;   // skok „przełącznikiem”: włączony trwa do następnego wciśnięcia
     this.autoDir = 1;                    // tryb jednego przycisku: kierunek biegu
     this.narrow = 0;                     // najwyższy stopień zwężenia pięter, o którym gracz już wie
+    this.drinks = { beer: 0, vodka: 0 }; // ile piw i wódek (boosterów) złapano w biegu – od tego zależy tekst (drinks.js)
   }
 
   get score() { return score(this.sim); }
@@ -747,11 +763,13 @@ export class Game {
         this.buzz(30);
         break;
       }
-      case 'boost':
-        this.say(t('msg.boost'), t('msg.boostSub'), 'gold', 1.8);
+      case 'boost': {                    // booster to piwo, od VODKA_FROM piętra wódka (drinks.js) – teksty coraz bardziej zatroskane
+        const kind = drinkAt(e.floor), m = drinkSay(kind, ++this.drinks[kind]);
+        this.say(m.title, m.sub, 'gold', 2.2);
         this.shake = 0.35; sfx.boost(); this.buzz(80);
-        this.puff(h.x, h.y - 20, 18, { color: '#ffb52e', sx: 160, sy: 120, up: 0, life: 0.5, size: 4, g: 200, star: true });
+        this.puff(h.x, h.y - 20, 18, { color: kind === 'beer' ? '#ffc02e' : '#e6f6ff', sx: 160, sy: 120, up: 0, life: 0.5, size: 4, g: 200, star: true });
         break;
+      }
       case 'boostEnd':
         sfx.boostEnd();
         break;

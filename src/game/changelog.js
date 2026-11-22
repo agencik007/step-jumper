@@ -5,26 +5,31 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
-    v: '0.19.1', date: '2026-11-22',
+    v: '0.20.0', date: '2026-11-22',
     pl: [
-      'KREATOR mieści się teraz na małych ekranach: przyciski Zapisz, Anuluj i ZIP zawsze widać na dole okna, także przy dużym tekście (OPCJE → DOSTĘPNOŚĆ → Rozmiar tekstu), a resztę przewiniesz palcem.',
-      'Na telefonie w poziomie klatki postaci i podgląd w KREATORZE są mniejsze, więc więcej wchodzi na ekran naraz.',
+      'Booster wyrzutu to teraz piwo, a od 200. piętra – wódka. Działają tak samo jak dawniej, za to po każdym łyku gra komentuje: „Ale dzisiaj lecisz!”, „Nie za dużo tego?”, „Przestań tyle pić!”…',
+      'Przycisk ⬇ POSTAĆ w RANKINGU najpierw pyta NA PEWNO? – postać wczyta się dopiero po drugim dotknięciu. Twoja poprzednia postać zostaje w KREATORZE i gra powie, gdzie jej szukać, a twój własny bieg z trójki nie robi już kopii postaci.',
+      'KREATOR mieści się na małych ekranach: przyciski Zapisz, Anuluj i ZIP zawsze widać na dole okna, także przy dużym tekście (OPCJE → DOSTĘPNOŚĆ → Rozmiar tekstu). Na telefonie w poziomie klatki i podgląd są mniejsze.',
     ],
     en: [
-      'The CREATOR now fits on small screens: the Save, Cancel and ZIP buttons always stay visible at the bottom of the window, even with large text (OPTIONS → ACCESSIBILITY → Text size), and you can scroll the rest with your finger.',
-      'On a phone held sideways, the character frames and preview in the CREATOR are smaller, so more fits on the screen at once.',
+      'The launch booster is now a beer, and from floor 200 – a vodka. They work just like before, but after every sip the game comments: “You’re flying today!”, “Isn’t that a bit much?”, “Stop drinking so much!”…',
+      'The ⬇ CHARACTER button on the LEADERBOARD now asks SURE? first – the character loads only on the second tap. Your previous character stays in the CREATOR and the game tells you where to find it, and your own run in the top three no longer makes a copy of your character.',
+      'The CREATOR fits on small screens: the Save, Cancel and ZIP buttons always stay visible at the bottom of the window, even with large text (OPTIONS → ACCESSIBILITY → Text size). On a phone held sideways, the frames and preview are smaller.',
     ],
     de: [
-      'Der EDITOR passt jetzt auf kleine Bildschirme: Die Knöpfe Speichern, Abbrechen und ZIP bleiben immer unten im Fenster sichtbar, auch bei großem Text (OPTIONEN → BARRIEREFREIHEIT → Textgröße), und den Rest scrollst du mit dem Finger.',
-      'Auf dem Handy im Querformat sind die Bilder der Figur und die Vorschau im EDITOR kleiner, so passt mehr auf einmal auf den Bildschirm.',
+      'Der Abschuss-Booster ist jetzt ein Bier und ab Etage 200 ein Wodka. Sie wirken wie bisher, aber nach jedem Schluck kommentiert das Spiel: „Du fliegst ja heute!“, „Ist das nicht ein bisschen viel?“, „Hör auf, so viel zu trinken!“…',
+      'Der Knopf ⬇ FIGUR in der RANGLISTE fragt jetzt zuerst SICHER? – die Figur wird erst beim zweiten Tippen geladen. Deine bisherige Figur bleibt im EDITOR, das Spiel sagt dir, wo du sie findest, und dein eigener Lauf unter den besten drei legt keine Kopie deiner Figur mehr an.',
+      'Der EDITOR passt auf kleine Bildschirme: Die Knöpfe Speichern, Abbrechen und ZIP bleiben immer unten im Fenster sichtbar, auch bei großem Text (OPTIONEN → BARRIEREFREIHEIT → Textgröße). Auf dem Handy im Querformat sind Bilder und Vorschau kleiner.',
     ],
     fr: [
-      'Le CRÉATEUR tient maintenant sur les petits écrans : les boutons Enregistrer, Annuler et ZIP restent toujours visibles en bas de la fenêtre, même avec un grand texte (OPTIONS → ACCESSIBILITÉ → Taille du texte), et vous faites défiler le reste du doigt.',
-      'Sur un téléphone à l’horizontale, les images du personnage et l’aperçu du CRÉATEUR sont plus petits, pour en voir davantage à la fois.',
+      'Le propulseur est maintenant une bière, et à partir de l’étage 200 – une vodka. Ils marchent comme avant, mais après chaque gorgée le jeu commente : « Vous planez aujourd’hui ! », « Ce n’est pas un peu trop ? », « Arrêtez de boire autant ! »…',
+      'Le bouton ⬇ PERSO du CLASSEMENT demande d’abord SÛR ? – le personnage ne se charge qu’au deuxième appui. Votre personnage précédent reste dans le CRÉATEUR et le jeu vous dit où le trouver, et votre propre partie dans le top 3 ne crée plus de copie de votre personnage.',
+      'Le CRÉATEUR tient sur les petits écrans : les boutons Enregistrer, Annuler et ZIP restent toujours visibles en bas de la fenêtre, même avec un grand texte (OPTIONS → ACCESSIBILITÉ → Taille du texte). Sur un téléphone à l’horizontale, les images et l’aperçu sont plus petits.',
     ],
     es: [
-      'El CREADOR ahora cabe en pantallas pequeñas: los botones Guardar, Cancelar y ZIP siempre se ven abajo de la ventana, también con texto grande (OPCIONES → ACCESIBILIDAD → Tamaño del texto), y el resto lo desplazas con el dedo.',
-      'En el móvil en horizontal, las imágenes del personaje y la vista previa del CREADOR son más pequeñas, así cabe más en la pantalla a la vez.',
+      'El impulsor ahora es una cerveza y, desde el piso 200, un vodka. Funcionan igual que antes, pero después de cada trago el juego comenta: «¡Hoy vas volando!», «¿No es un poco demasiado?», «¡Deja de beber tanto!»…',
+      'El botón ⬇ PERSONAJE del RANKING ahora pregunta primero ¿SEGURO? y el personaje se carga solo al segundo toque. Tu personaje anterior se queda en el CREADOR y el juego te dice dónde encontrarlo, y tu propia partida entre los tres primeros ya no crea una copia de tu personaje.',
+      'El CREADOR cabe en pantallas pequeñas: los botones Guardar, Cancelar y ZIP siempre se ven abajo de la ventana, también con texto grande (OPCIONES → ACCESIBILIDAD → Tamaño del texto). En el móvil en horizontal, las imágenes y la vista previa son más pequeñas.',
     ],
   },
   {
