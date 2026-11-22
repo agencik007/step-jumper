@@ -38,6 +38,14 @@ export const CHANGELOG = [
     ],
   },
   {
+    v: '0.18.4', date: '2026-11-22',
+    pl: ['Drobne poprawki techniczne przy RANKINGU. Rozgrywka i wyniki bez zmian.'],
+    en: ['Minor technical fixes in RANKING. Gameplay and scores are unchanged.'],
+    de: ['Kleine technische Korrekturen bei der RANGLISTE. Spiel und Ergebnisse bleiben unverändert.'],
+    fr: ['Petites corrections techniques autour du CLASSEMENT. Le jeu et les scores ne changent pas.'],
+    es: ['Pequeños ajustes técnicos en el RANKING. El juego y las puntuaciones no cambian.'],
+  },
+  {
     v: '0.18.3', date: '2026-11-22',
     pl: ['W trybie pełnoekranowym na komputerze ESC wraca do poprzedniego menu, zamiast wyłączać pełny ekran. Pełny ekran zamkniesz klawiszem F, przyciskiem w rogu albo przytrzymując ESC.'],
     en: ['In full screen on a computer, ESC now goes back to the previous menu instead of leaving full screen. To leave full screen, press F, use the button in the corner or hold ESC.'],

@@ -212,7 +212,7 @@ describe('rankingi', () => {
     const { runId, run } = await ticketAndPlay(token, pilotSeed);
     const r = await srv.submit(token, runId, run);
     expect(r.data.status).toBe('verified');
-    return { token, score: run.score };
+    return { token, nick, score: run.score };
   }
 
   test('top: kolejność wyników, nick albo nazwa zastępcza, nagłówek cache', async () => {
@@ -223,7 +223,13 @@ describe('rankingi', () => {
     const scores = r.data.entries.map((e: any) => e.score);
     expect(scores).toEqual([...ps.map((p) => p.score)].sort((x, y) => y - x));
     expect(r.data.entries.map((e: any) => e.rank)).toEqual([1, 2, 3]);
-    expect(r.data.entries.find((e: any) => e.score === ps[2].score)).toMatchObject({ nick: null, tag: expect.stringMatching(/^[0-9A-F]{4}$/) });
+    // Wiersz każdego gracza rozpoznajemy po komplecie (nick, znacznik, wynik), nie po samym wyniku – biegi na losowych
+    // wieżach potrafią dać remis i wtedy wyszukanie po wyniku trafiało w cudzy wiersz.
+    const tagOf = (p: { token: string }) => p.token.split('.')[0].slice(0, 4).toUpperCase();
+    const got = r.data.entries.map((e: any) => ({ nick: e.nick, tag: e.tag, score: e.score }));
+    expect(got).toEqual(expect.arrayContaining(
+      ps.map((p) => ({ nick: p.nick, tag: tagOf(p), score: p.score }))));
+    expect(tagOf(ps[2])).toMatch(/^[0-9A-F]{4}$/);   // gracz bez nicku dostaje znacznik jako nazwę zastępczą
     expect(JSON.stringify(r.data)).not.toContain(ps[0].token.split('.')[0]);   // identyfikatory graczy nie wyciekają
   });
 
