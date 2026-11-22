@@ -6,6 +6,7 @@
 //    jeśli sieć zawiedzie, wysyłka wznowi się przy następnej okazji (od porcji, na której stanęła).
 // Protokół: server/README.md.
 import { SIM_VERSION, decodeInputs, encodeInputs } from '../sim';
+import { sha256hex } from '../../server/src/auth';
 import { weekKey } from '../../server/src/periods';
 
 const DAY = 86_400_000;
@@ -14,7 +15,10 @@ export const TICKET_RESERVE = 3;
 export const TICKET_MAX_AGE = 6 * DAY;
 const MAX_QUEUE = 20;
 const TIMEOUT_MS = 10_000;
-const KEY = { account: 'sj.account', tickets: 'sj.tickets', queue: 'sj.queue', enabled: 'sj.online', crown: 'sj.crown' };
+const KEY = { account: 'sj.account', tickets: 'sj.tickets', queue: 'sj.queue', enabled: 'sj.online', crown: 'sj.crown', skins: 'sj.skins' };
+/** Paczka własnej postaci: najwyżej tyle bajtów (jak MAX_SKIN_BYTES na serwerze). */
+export const MAX_SKIN_BYTES = 1_500_000;
+const HASH_RE = /^[0-9a-f]{64}$/;
 
 /** Trwała pamięć klucz–wartość: localStorage w przeglądarce, Capacitor Preferences w aplikacji, Map w testach. */
 export interface Store {
@@ -49,28 +53,30 @@ export type BoardKind = PeriodKind | 'lastweek';
 export interface Entry {
   rank: number; nick: string | null; tag: string; score: number; floor: number; combo: number; char: string; country: string | null; me?: boolean;
   replay?: string;   // identyfikator powtórki (tylko najlepsza trójka)
+  skin?: string;     // skrót paczki własnej postaci do pobrania (tylko najlepsza trójka, char = 'custom')
 }
 export interface Board { period: string; entries: Entry[] }
 export interface Around extends Board { rank: number | null }
 
 export type SubmitResult =
-  | { status: 'verified'; score: number; floor: number; combo: number; ticks: number; improved: Record<PeriodKind, boolean>; ranks: Record<PeriodKind, number> }
+  | { status: 'verified'; score: number; floor: number; combo: number; ticks: number; improved: Record<PeriodKind, boolean>; ranks: Record<PeriodKind, number>; needSkin?: boolean }
   | { status: 'queued' }                       // brak sieci – wyślę później
   | { status: 'rejected'; reason: string };    // serwer nie przyjął biegu (albo bieg przepadł razem z kontem)
 
-export interface FinishedRun { ticket: Ticket; ticks: Uint8Array; score: number; char: string; style: string; control: string }
+export interface FinishedRun { ticket: Ticket; ticks: Uint8Array; score: number; char: string; style: string; control: string; skin?: string }
 
 /** Zapis biegu do obejrzenia: ziarno wieży + wejście w każdym kroku fizyki. */
 export interface Replay {
   runId: string; seed: number; simVersion: number; score: number; floor: number; combo: number;
   char: string; style: string | null; nick: string | null; tag: string; ticks: Uint8Array;
+  skin: string | null;   // skrót paczki własnej postaci (char = 'custom'), jeśli serwer ją ma
 }
 
 /** Korona za miejsce 1–3 w zamkniętym tygodniu; nosi się ją przez cały następny tydzień. */
 export interface Crown { week: string; rank: number }
 
 interface Account { playerId: string; token: string; nick: string | null }
-interface QueuedRun { runId: string; chunks: string[]; nextSeq: number; score: number; char: string; style: string; control: string; appVersion: string }
+interface QueuedRun { runId: string; chunks: string[]; nextSeq: number; score: number; char: string; style: string; control: string; appVersion: string; skin?: string }
 
 export interface OnlineOptions {
   baseUrl: string;
@@ -100,6 +106,11 @@ export class Online {
   simVersion = SIM_VERSION;
   /** Wywoływane dla każdego biegu, który opuścił kolejkę (także wysłanego później, po powrocie sieci). */
   onResult: ((r: SubmitResult, runId: string) => void) | null = null;
+  /**
+   * Bajty paczki własnej postaci o danym skrócie (gra trzyma je w IndexedDB). Serwer prosi o paczkę, gdy bieg tą postacią
+   * wejdzie do najlepszej trójki; null – gra już jej nie ma.
+   */
+  skinSource: ((hash: string) => Promise<Uint8Array | null>) | null = null;
 
   private loaded = false;               // dopóki init() nie wczyta pamięci, klient nic nie wysyła
   private account: Account | null = null;
@@ -107,6 +118,7 @@ export class Online {
   private queue: QueuedRun[] = [];
   private results = new Map<string, SubmitResult>();
   private crownSaved: Crown | null = null;
+  private skinsWaiting: string[] = [];   // paczki postaci, o które prosił serwer, a których nie udało się jeszcze wysłać
   private refilling: Promise<void> | null = null;
   private flushing: Promise<void> | null = null;
   private readonly fetchFn: typeof fetch;
@@ -124,6 +136,7 @@ export class Online {
     this.list = parse<Ticket[]>(await s.get(KEY.tickets), []);
     this.queue = parse<QueuedRun[]>(await s.get(KEY.queue), []);
     this.crownSaved = parse<Crown | null>(await s.get(KEY.crown), null);
+    this.skinsWaiting = parse<string[]>(await s.get(KEY.skins), []).filter((h) => HASH_RE.test(h));
     this.dropStaleTickets();
     this.loaded = true;
   }
@@ -163,7 +176,10 @@ export class Online {
     const { ticket } = run;
     const chunks: string[] = [];
     for (let i = 0; i < run.ticks.length; i += ticket.chunkTicks) chunks.push(toB64(encodeInputs(run.ticks.subarray(i, i + ticket.chunkTicks))));
-    this.queue.push({ runId: ticket.runId, chunks, nextSeq: 0, score: run.score, char: run.char, style: run.style, control: run.control, appVersion: this.o.appVersion });
+    this.queue.push({
+      runId: ticket.runId, chunks, nextSeq: 0, score: run.score, char: run.char, style: run.style, control: run.control, appVersion: this.o.appVersion,
+      ...(run.skin && HASH_RE.test(run.skin) ? { skin: run.skin } : {}),
+    });
     while (this.queue.length > MAX_QUEUE) this.queue.shift();
     await this.saveQueue();
     await this.flush();
@@ -199,6 +215,18 @@ export class Online {
     return { top, me };
   }
 
+  /** Paczka własnej postaci z najlepszej trójki (ZIP); null bez sieci, gdy jej nie ma albo gdy nie zgadza się skrót. */
+  async skinPack(hash: string): Promise<Uint8Array | null> {
+    if (!HASH_RE.test(hash)) return null;
+    try {
+      const r = await this.fetchFn(`${this.o.baseUrl}/v1/skins/${hash}`, { signal: AbortSignal.timeout(TIMEOUT_MS * 3) });
+      if (r.status !== 200) return null;
+      const data = new Uint8Array(await r.arrayBuffer());
+      if (data.length > MAX_SKIN_BYTES) return null;
+      return (await sha256hex(data)) === hash ? data : null;
+    } catch { return null; }
+  }
+
   /** Powtórka biegu z rankingu; null bez sieci, gdy jej nie ma albo gdy zapis jest uszkodzony. */
   async replay(runId: string): Promise<Replay | null> {
     try {
@@ -210,7 +238,7 @@ export class Online {
       for (const x of parts) { ticks.set(x, at); at += x.length; }
       return {
         runId: d.runId, seed: d.seed, simVersion: d.simVersion, score: d.score, floor: d.floor, combo: d.combo,
-        char: d.char, style: d.style ?? null, nick: d.nick ?? null, tag: d.tag, ticks,
+        char: d.char, style: d.style ?? null, nick: d.nick ?? null, tag: d.tag, ticks, skin: typeof d.skin === 'string' && HASH_RE.test(d.skin) ? d.skin : null,
       };
     } catch { return null; }
   }
@@ -258,9 +286,9 @@ export class Online {
         if (r.status !== 204 && r.status !== 401) return false;
       } catch { return false; }
     }
-    this.account = null; this.list = []; this.queue = []; this.results.clear(); this.crownSaved = null;
+    this.account = null; this.list = []; this.queue = []; this.results.clear(); this.crownSaved = null; this.skinsWaiting = [];
     const s = this.o.store;
-    await Promise.all([s.remove(KEY.account), s.remove(KEY.tickets), s.remove(KEY.queue), s.remove(KEY.crown)]);
+    await Promise.all([s.remove(KEY.account), s.remove(KEY.tickets), s.remove(KEY.queue), s.remove(KEY.crown), s.remove(KEY.skins)]);
     return true;
   }
 
@@ -298,6 +326,7 @@ export class Online {
 
   private async doFlush(): Promise<void> {
     if (!this.loaded || !this.enabled) return;
+    try { await this.sendWaitingSkins(); } catch (err) { if (err instanceof Offline) return; throw err; }
     while (this.queue.length) {
       const e = this.queue[0];
       let result: SubmitResult | 'retry';
@@ -306,7 +335,29 @@ export class Online {
       this.queue.shift();
       await this.saveQueue();
       this.results.set(e.runId, result);
+      if (result.status === 'verified' && result.needSkin && e.skin) await this.queueSkin(e.skin);
       this.onResult?.(result, e.runId);
+    }
+  }
+
+  /** Serwer prosi o paczkę postaci (bieg wszedł do trójki): wysyłka od razu, a bez sieci – przy następnej okazji. */
+  private async queueSkin(hash: string): Promise<void> {
+    if (!this.skinsWaiting.includes(hash)) this.skinsWaiting.push(hash);
+    while (this.skinsWaiting.length > 5) this.skinsWaiting.shift();
+    await this.o.store.set(KEY.skins, JSON.stringify(this.skinsWaiting));
+    try { await this.sendWaitingSkins(); } catch (err) { if (!(err instanceof Offline)) throw err; }
+  }
+
+  private async sendWaitingSkins(): Promise<void> {
+    while (this.skinsWaiting.length && this.account) {
+      const hash = this.skinsWaiting[0];
+      const data = await this.skinSource?.(hash).catch(() => null) ?? null;
+      if (data) {
+        const r = await this.req('PUT', `/v1/skins/${hash}`, { auth: true, body: data, type: 'application/zip' });
+        if (r.status >= 500 || r.status === 429) return;          // spróbujemy później
+      }
+      this.skinsWaiting.shift();                                  // wysłana albo nie do wysłania (brak paczki, odmowa)
+      await this.o.store.set(KEY.skins, JSON.stringify(this.skinsWaiting));
     }
   }
 
@@ -328,7 +379,7 @@ export class Online {
       return final(r) ?? 'retry';
     }
     const r = await this.req('POST', `/v1/runs/${e.runId}/finish`, {
-      auth: true, json: { score: e.score, char: e.char, style: e.style, control: e.control, appVersion: e.appVersion },
+      auth: true, json: { score: e.score, char: e.char, style: e.style, control: e.control, appVersion: e.appVersion, ...(e.skin ? { skin: e.skin } : {}) },
     });
     if (r.status === 200) return r.data as SubmitResult;
     return final(r) ?? 'retry';
@@ -349,12 +400,12 @@ export class Online {
     await Promise.all([this.o.store.remove(KEY.account), this.saveTickets()]);
   }
 
-  private async req(method: string, path: string, o: { auth?: boolean; json?: unknown; body?: Uint8Array } = {}): Promise<{ status: number; data: any }> {
+  private async req(method: string, path: string, o: { auth?: boolean; json?: unknown; body?: Uint8Array; type?: string } = {}): Promise<{ status: number; data: any }> {
     const headers: Record<string, string> = {};
     if (o.auth && this.account) headers.authorization = `Bearer ${this.account.token}`;
     let body: BodyInit | undefined;
     if (o.json !== undefined) { headers['content-type'] = 'application/json'; body = JSON.stringify(o.json); }
-    if (o.body) { headers['content-type'] = 'application/octet-stream'; body = o.body as BodyInit; }
+    if (o.body) { headers['content-type'] = o.type ?? 'application/octet-stream'; body = o.body as BodyInit; }
     let res: Response;
     try {
       // cache: no-store – gra sama trzyma ranking 30 s, a po zmianie nicku albo nowym wyniku musi zobaczyć świeże dane

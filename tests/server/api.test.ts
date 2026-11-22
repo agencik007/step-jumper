@@ -1,5 +1,7 @@
 // API rankingu na lokalnej bazie D1: konta, bilety, wysyłka porcjami, weryfikacja, rankingi, usuwanie danych.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { MAX_SKIN_BYTES } from '../../server/src/app';
+import { sha256hex } from '../../server/src/auth';
 import { cleanup } from '../../server/src/cleanup';
 import { CHUNK_TICKS, splitChunks } from '../../server/src/verify';
 import { SIM_VERSION, decodeInputs, encodeInputs, runReplay, score } from '../../src/sim';
@@ -363,6 +365,96 @@ describe('powtórki', () => {
   });
 });
 
+describe('własne postacie (paczki z najlepszej trójki)', () => {
+  /** Paczka postaci i jej skrót. Serwer sprawdza w paczce tylko nagłówek ZIP („PK\\3\\4”) – obrazki czyta dopiero gra. */
+  async function pack(seed = 1) {
+    const data = new Uint8Array([0x50, 0x4b, 3, 4, 20, 0, seed, 1, 2, 3]);
+    return { data, hash: await sha256hex(data) };
+  }
+  const put = (token: string, hash: string, body: Uint8Array) =>
+    srv.call('PUT', `/v1/skins/${hash}`, { token, body: body as BodyInit, headers: { 'content-type': 'application/zip' } });
+
+  test('bieg z postacią w trójce: serwer prosi o paczkę, ranking i powtórka ją podają, każdy może ją pobrać', async () => {
+    const token = await srv.newPlayer(), other = await srv.newPlayer();
+    const p = await pack();
+    const { runId, run } = await ticketAndPlay(token);
+    const fin = await srv.submit(token, runId, run, { skin: p.hash });
+    expect(fin.data).toMatchObject({ status: 'verified', needSkin: true });
+    expect((await srv.call('GET', '/v1/leaderboards/week')).data.entries[0].skin).toBeUndefined();   // jeszcze bez paczki
+
+    expect((await put(token, p.hash, new Uint8Array([1, 2, 3, 4]))).data.error).toBe('bad_skin');
+    expect((await put(token, p.hash, (await pack(2)).data)).data.error).toBe('hash_mismatch');
+    expect((await put(other, p.hash, p.data)).status).toBe(403);                  // cudzej postaci nie wyśle
+    expect((await srv.call('PUT', `/v1/skins/${p.hash}`, { body: p.data as BodyInit })).status).toBe(401);
+    expect((await put(token, p.hash, p.data)).status).toBe(201);
+    expect((await put(token, p.hash, p.data)).status).toBe(201);                  // powtórzenie nieszkodliwe
+
+    const [e] = (await srv.call('GET', '/v1/leaderboards/week')).data.entries;
+    expect(e).toMatchObject({ char: 'custom', skin: p.hash });
+    expect((await srv.call('GET', `/v1/replays/${e.replay}`)).data.skin).toBe(p.hash);
+    const res = await srv.app.request(`/v1/skins/${p.hash}`, {}, srv.env);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('application/zip');
+    expect(res.headers.get('cache-control')).toContain('immutable');
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(p.data);
+    expect((await srv.call('GET', `/v1/skins/${'0'.repeat(64)}`)).status).toBe(404);
+    expect((await srv.call('GET', '/v1/skins/zly')).status).toBe(404);
+
+    // kolejny rekord tą samą postacią: paczka już jest
+    const next = await ticketAndPlay(token, 2);
+    const again = await srv.submit(token, next.runId, next.run, { skin: p.hash });
+    expect(again.data.needSkin).toBeUndefined();
+  });
+
+  test('bez prośby o paczkę: wbudowana postać, bieg poza trójką, zły skrót', async () => {
+    const p = await pack();
+    // trzech graczy z wynikami nie do pobicia (wpisani wprost do bazy) – bieg z postacią będzie czwarty
+    for (let i = 1; i <= 3; i++) {
+      const id = (await srv.newPlayer()).split('.')[0];
+      for (const period of ['all', 'W:2026-47', 'D:2026-11-18']) {
+        await srv.db.prepare('INSERT INTO bests (period, player_id, score, floor, combo, char_id, run_id, achieved_at) VALUES (?, ?, ?, 0, 0, ?, ?, ?)')
+          .bind(period, id, 1_000_000 * i, 'fox', `r${i}`, START).run();
+      }
+    }
+    const token = await srv.newPlayer();
+    const { runId, run } = await ticketAndPlay(token);
+    const fin = await srv.submit(token, runId, run, { skin: p.hash });
+    expect(fin.data.status).toBe('verified');
+    expect(fin.data.ranks.week).toBe(4);
+    expect(fin.data.needSkin).toBeUndefined();
+    expect((await rows('SELECT skin FROM bests WHERE player_id = ?', token.split('.')[0]))[0].skin).toBe(p.hash);
+
+    const t2 = await srv.newPlayer();
+    const r2 = await ticketAndPlay(t2, 9);
+    srv.clock.now += Math.ceil(r2.run.ticks.length * 1000 / 120) + 5000;
+    await srv.upload(t2, r2.runId, r2.run.ticks);
+    const fox = await srv.call('POST', `/v1/runs/${r2.runId}/finish`, { token: t2, json: { score: r2.run.score, char: 'fox', skin: p.hash } });
+    expect(fox.data.needSkin).toBeUndefined();          // skrót liczy się tylko z postacią „custom”
+    expect((await rows('SELECT skin FROM runs WHERE id = ?', r2.runId))[0].skin).toBeNull();
+  });
+
+  test('za duża paczka, sprzątanie nieużywanych paczek i usunięcie konta', async () => {
+    const token = await srv.newPlayer();
+    const big = new Uint8Array(MAX_SKIN_BYTES + 1); big.set([0x50, 0x4b, 3, 4]);
+    expect((await put(token, await sha256hex(big), big)).status).toBe(413);
+
+    const p = await pack();
+    const { runId, run } = await ticketAndPlay(token);
+    await srv.submit(token, runId, run, { skin: p.hash });
+    expect((await put(token, p.hash, p.data)).status).toBe(201);
+    await cleanup(srv.db, srv.clock.now);
+    expect(await rows('SELECT hash FROM skins')).toHaveLength(1);       // wynik w rankingu jej używa
+    await srv.db.prepare('UPDATE bests SET skin = NULL').run();         // np. nowy rekord wbudowaną postacią
+    await cleanup(srv.db, srv.clock.now);
+    expect(await rows('SELECT hash FROM skins')).toEqual([]);
+
+    await srv.db.prepare('UPDATE bests SET skin = ?').bind(p.hash).run();
+    expect((await put(token, p.hash, p.data)).status).toBe(201);
+    expect((await srv.call('DELETE', '/v1/me', { token })).status).toBe(204);
+    expect(await rows('SELECT hash FROM skins')).toEqual([]);
+  });
+});
+
 describe('usuwanie danych i sprzątanie', () => {
   test('DELETE /v1/me usuwa konto, biegi i wyniki', async () => {
     const token = await srv.newPlayer();
@@ -370,7 +462,7 @@ describe('usuwanie danych i sprzątanie', () => {
     await srv.submit(token, runId, run);
     await srv.newRun(token);
     expect((await srv.call('DELETE', '/v1/me', { token })).status).toBe(204);
-    for (const t of ['players', 'runs', 'bests', 'run_chunks']) expect(await rows(`SELECT * FROM ${t}`)).toEqual([]);
+    for (const t of ['players', 'runs', 'bests', 'run_chunks', 'skins']) expect(await rows(`SELECT * FROM ${t}`)).toEqual([]);
     expect((await srv.call('GET', '/v1/me', { token })).status).toBe(401);
   });
 

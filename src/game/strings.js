@@ -310,13 +310,13 @@ const pl = {
   'rules.items.4': 'Spowolnienie (niebieska kula z klepsydrą): od {slowFrom}. piętra co {slowEvery} s pojawia się nad ekranem i zjeżdża razem z wieżą. Złapane zwalnia wieżę o połowę na {slowTime} s. Nigdy nie jest na ekranie razem z boosterem.',
   'rules.rank': 'RANKING',
   'rules.rank.1': 'Bieg z nickiem trafia do RANKINGU: DZIŚ, TYDZIEŃ, ZESZŁY TYDZIEŃ i OGÓŁEM. Serwer rozgrywa każdy bieg jeszcze raz, więc liczą się tylko uczciwie zdobyte punkty.',
-  'rules.rank.2': 'Biegi z miejsc 1–3 obejrzysz jako powtórkę: wybierz wiersz w RANKINGU.',
+  'rules.rank.2': 'Biegi z miejsc 1–3 obejrzysz jako powtórkę: wybierz wiersz w RANKINGU. Gdy gracz z trójki biegał własną postacią, przycisk ⬇ POSTAĆ przy jego nicku wczyta ją do KREATORA i od razu ustawi do gry.',
   // KREATOR POSTACI (creator.js, skinpack.js); cr.f.* – krótkie nazwy klatek, cr.pose.* – opis pozy dla czatu AI
   'title.creator': 'KREATOR',
   'char.custom': 'twoja postać',
   'char.new': 'NOWA',
   'cr.title': 'KREATOR POSTACI',
-  'cr.lead': 'Twoje postacie zapisują się tylko na tym urządzeniu. Przycisk ZIP zapisze postać do pliku, który wczytasz na innym urządzeniu.',
+  'cr.lead': 'Twoje postacie zapisują się na tym urządzeniu, a przycisk ZIP zapisze postać do pliku, który wczytasz na innym. Na serwer trafia tylko postać, którą wejdziesz do najlepszej trójki RANKINGU.',
   'cr.empty': 'Nie masz jeszcze własnej postaci. Stwórz nową albo wczytaj plik ZIP z obrazkami.',
   'cr.new': 'Nowa postać',
   'cr.import': 'Wczytaj ZIP / PNG',
@@ -411,6 +411,17 @@ const pl = {
   'cr.pose.fall': 'długie spadanie: ręce i nogi rozrzucone, przestraszona mina',
   'cr.pose.dead': 'koniec gry: leży płasko na brzuchu, oczy zamknięte',
   'cr.pose.cheer': 'radość: podskok z obiema rękami w górze, szeroki uśmiech',
+  // ranking: własne postacie z najlepszej trójki (⬇ POSTAĆ)
+  'board.getChar': '⬇ POSTAĆ',
+  'board.charLoading': 'Pobieram postać…',
+  'msg.charLoaded': 'POSTAĆ WCZYTANA',
+  'msg.charLoadedSub': '{name} – już w grze i w KREATORZE',
+  'msg.charFail': 'NIE UDAŁO SIĘ',
+  'msg.charFailSub': 'Postać jest niedostępna albo nie ma połączenia.',
+  'hint.loadChar': 'wczytaj postać',
+  'sr.boardChar': 'L albo X na padzie – wczytaj postać tego gracza.',
+  'cr.from': 'z rankingu: {nick}',
+  'cr.rules.8': 'Gdy twój bieg własną postacią wejdzie do najlepszej trójki RANKINGU, gra wyśle postać na serwer. Inni gracze zobaczą ją w powtórce i na podium, a przyciskiem ⬇ POSTAĆ wczytają ją do siebie.',
 };
 
 const en = {
@@ -719,13 +730,13 @@ const en = {
   'rules.items.4': 'Slow-down (blue orb with an hourglass): from floor {slowFrom}, every {slowEvery} s one appears above the screen and slides down with the tower. Catch it and the tower moves at half speed for {slowTime} s. It never shares the screen with a booster.',
   'rules.rank': 'LEADERBOARD',
   'rules.rank.1': 'A run with a nickname goes to the LEADERBOARD: TODAY, WEEK, LAST WEEK and ALL TIME. The server plays every run again, so only fairly earned points count.',
-  'rules.rank.2': 'Runs from places 1–3 can be watched as a replay: pick a row in the LEADERBOARD.',
+  'rules.rank.2': 'Runs from places 1–3 can be watched as a replay: pick a row in the LEADERBOARD. If a top-three player ran with their own character, the ⬇ CHARACTER button next to their name loads it into the CREATOR and selects it for play.',
   // KREATOR POSTACI (creator.js, skinpack.js); cr.f.* – krótkie nazwy klatek, cr.pose.* – opis pozy dla czatu AI
   'title.creator': 'CREATOR',
   'char.custom': 'your character',
   'char.new': 'NEW',
   'cr.title': 'CHARACTER CREATOR',
-  'cr.lead': 'Your characters are saved on this device only. The ZIP button saves a character to a file you can load on another device.',
+  'cr.lead': 'Your characters are saved on this device, and the ZIP button saves a character to a file you can load on another one. Only a character you reach the top three of the LEADERBOARD with is sent to the server.',
   'cr.empty': 'You don’t have your own character yet. Create a new one or load a ZIP file with images.',
   'cr.new': 'New character',
   'cr.import': 'Load ZIP / PNG',
@@ -820,6 +831,17 @@ const en = {
   'cr.pose.fall': 'long fall: arms and legs spread, scared face',
   'cr.pose.dead': 'game over: lying flat on the belly, eyes closed',
   'cr.pose.cheer': 'cheering: jumping with both arms up, big smile',
+  // ranking: własne postacie z najlepszej trójki (⬇ POSTAĆ)
+  'board.getChar': '⬇ CHARACTER',
+  'board.charLoading': 'Downloading the character…',
+  'msg.charLoaded': 'CHARACTER LOADED',
+  'msg.charLoadedSub': '{name} – ready to play and in the CREATOR',
+  'msg.charFail': 'COULDN’T LOAD IT',
+  'msg.charFailSub': 'The character is unavailable or there’s no connection.',
+  'hint.loadChar': 'load character',
+  'sr.boardChar': 'L or X on a gamepad – load this player’s character.',
+  'cr.from': 'from the leaderboard: {nick}',
+  'cr.rules.8': 'When your run with your own character makes the top three of the LEADERBOARD, the game sends the character to the server. Other players will see it in the replay and on the podium, and can load it with the ⬇ CHARACTER button.',
 };
 
 const de = {
@@ -1128,13 +1150,13 @@ const de = {
   'rules.items.4': 'Zeitlupe (blaue Kugel mit Sanduhr): Ab Etage {slowFrom} erscheint sie alle {slowEvery} s über dem Bildschirm und fährt mit dem Turm herunter. Gefangen läuft der Turm {slowTime} s lang halb so schnell. Sie ist nie zusammen mit einem Booster im Bild.',
   'rules.rank': 'RANGLISTE',
   'rules.rank.1': 'Ein Lauf mit Nickname kommt in die RANGLISTE: HEUTE, WOCHE, LETZTE WOCHE und GESAMT. Der Server spielt jeden Lauf noch einmal ab, daher zählen nur ehrlich erspielte Punkte.',
-  'rules.rank.2': 'Läufe auf den Plätzen 1–3 kannst du dir als Wiederholung ansehen: Wähle eine Zeile in der RANGLISTE.',
+  'rules.rank.2': 'Läufe auf den Plätzen 1–3 kannst du dir als Wiederholung ansehen: Wähle eine Zeile in der RANGLISTE. Ist jemand aus den besten drei mit eigener Figur gelaufen, lädt der Knopf ⬇ FIGUR neben dem Namen sie in den EDITOR und wählt sie gleich zum Spielen aus.',
   // KREATOR POSTACI (creator.js, skinpack.js); cr.f.* – krótkie nazwy klatek, cr.pose.* – opis pozy dla czatu AI
   'title.creator': 'EDITOR',
   'char.custom': 'deine Figur',
   'char.new': 'NEU',
   'cr.title': 'FIGUREN-EDITOR',
-  'cr.lead': 'Deine Figuren werden nur auf diesem Gerät gespeichert. Der Knopf ZIP speichert eine Figur in eine Datei, die du auf einem anderen Gerät laden kannst.',
+  'cr.lead': 'Deine Figuren werden auf diesem Gerät gespeichert, der Knopf ZIP speichert eine Figur in eine Datei für ein anderes Gerät. An den Server geht nur eine Figur, mit der du unter die besten drei der RANGLISTE kommst.',
   'cr.empty': 'Du hast noch keine eigene Figur. Erstelle eine neue oder lade eine ZIP-Datei mit Bildern.',
   'cr.new': 'Neue Figur',
   'cr.import': 'ZIP / PNG laden',
@@ -1229,6 +1251,17 @@ const de = {
   'cr.pose.fall': 'langer Fall: Arme und Beine ausgebreitet, erschrockenes Gesicht',
   'cr.pose.dead': 'Spielende: liegt flach auf dem Bauch, Augen geschlossen',
   'cr.pose.cheer': 'Jubel: Sprung mit beiden Armen oben, breites Lächeln',
+  // ranking: własne postacie z najlepszej trójki (⬇ POSTAĆ)
+  'board.getChar': '⬇ FIGUR',
+  'board.charLoading': 'Figur wird geladen…',
+  'msg.charLoaded': 'FIGUR GELADEN',
+  'msg.charLoadedSub': '{name} – spielbereit und im EDITOR',
+  'msg.charFail': 'HAT NICHT GEKLAPPT',
+  'msg.charFailSub': 'Die Figur ist nicht verfügbar oder es gibt keine Verbindung.',
+  'hint.loadChar': 'Figur laden',
+  'sr.boardChar': 'L oder X am Gamepad – Figur dieses Spielers laden.',
+  'cr.from': 'aus der Rangliste: {nick}',
+  'cr.rules.8': 'Wenn dein Lauf mit eigener Figur unter die besten drei der RANGLISTE kommt, schickt das Spiel die Figur an den Server. Andere sehen sie in der Wiederholung und auf dem Podest und können sie mit dem Knopf ⬇ FIGUR laden.',
 };
 
 const fr = {
@@ -1537,13 +1570,13 @@ const fr = {
   'rules.items.4': 'Ralenti (boule bleue avec un sablier) : à partir de l’étage {slowFrom}, il apparaît toutes les {slowEvery} s au-dessus de l’écran et descend avec la tour. Attrapé, il fait avancer la tour à mi-vitesse pendant {slowTime} s. Il n’est jamais à l’écran en même temps qu’un propulseur.',
   'rules.rank': 'CLASSEMENT',
   'rules.rank.1': 'Une partie avec un pseudo entre au CLASSEMENT : AUJOURD’HUI, SEMAINE, SEMAINE DERNIÈRE et GÉNÉRAL. Le serveur rejoue chaque partie, donc seuls les points gagnés honnêtement comptent.',
-  'rules.rank.2': 'Les parties des places 1 à 3 peuvent être revues en rediffusion : choisissez une ligne du CLASSEMENT.',
+  'rules.rank.2': 'Les parties des places 1 à 3 peuvent être revues en rediffusion : choisissez une ligne du CLASSEMENT. Si un joueur du trio de tête a couru avec son propre personnage, le bouton ⬇ PERSO à côté de son nom le charge dans le CRÉATEUR et le sélectionne pour jouer.',
   // KREATOR POSTACI (creator.js, skinpack.js); cr.f.* – krótkie nazwy klatek, cr.pose.* – opis pozy dla czatu AI
   'title.creator': 'CRÉATEUR',
   'char.custom': 'votre personnage',
   'char.new': 'NOUVEAU',
   'cr.title': 'CRÉATEUR DE PERSONNAGE',
-  'cr.lead': 'Vos personnages sont enregistrés uniquement sur cet appareil. Le bouton ZIP enregistre un personnage dans un fichier que vous pourrez charger sur un autre appareil.',
+  'cr.lead': 'Vos personnages sont enregistrés sur cet appareil, et le bouton ZIP enregistre un personnage dans un fichier à charger sur un autre. Seul un personnage avec lequel vous entrez dans les trois premiers du CLASSEMENT est envoyé au serveur.',
   'cr.empty': 'Vous n’avez pas encore de personnage à vous. Créez-en un ou chargez un fichier ZIP avec des images.',
   'cr.new': 'Nouveau personnage',
   'cr.import': 'Charger ZIP / PNG',
@@ -1638,6 +1671,17 @@ const fr = {
   'cr.pose.fall': 'longue chute : bras et jambes écartés, air effrayé',
   'cr.pose.dead': 'fin de partie : allongé à plat ventre, yeux fermés',
   'cr.pose.cheer': 'joie : saute les deux bras en l’air, grand sourire',
+  // ranking: własne postacie z najlepszej trójki (⬇ POSTAĆ)
+  'board.getChar': '⬇ PERSO',
+  'board.charLoading': 'Téléchargement du personnage…',
+  'msg.charLoaded': 'PERSONNAGE CHARGÉ',
+  'msg.charLoadedSub': '{name} – prêt à jouer et dans le CRÉATEUR',
+  'msg.charFail': 'ÉCHEC DU CHARGEMENT',
+  'msg.charFailSub': 'Le personnage n’est pas disponible ou il n’y a pas de connexion.',
+  'hint.loadChar': 'charger le perso',
+  'sr.boardChar': 'L ou X à la manette – charger le personnage de ce joueur.',
+  'cr.from': 'du classement : {nick}',
+  'cr.rules.8': 'Quand votre partie avec votre propre personnage entre dans les trois premiers du CLASSEMENT, le jeu envoie le personnage au serveur. Les autres le verront dans la rediffusion et sur le podium, et pourront le charger avec le bouton ⬇ PERSO.',
 };
 
 const es = {
@@ -1946,13 +1990,13 @@ const es = {
   'rules.items.4': 'Ralentización (bola azul con un reloj de arena): desde el piso {slowFrom}, cada {slowEvery} s aparece sobre la pantalla y baja con la torre. Si la atrapas, la torre va a mitad de velocidad durante {slowTime} s. Nunca está en pantalla a la vez que un impulsor.',
   'rules.rank': 'RANKING',
   'rules.rank.1': 'Una partida con apodo entra en el RANKING: HOY, SEMANA, SEMANA PASADA y TOTAL. El servidor vuelve a jugar cada partida, así que solo cuentan los puntos ganados limpiamente.',
-  'rules.rank.2': 'Las partidas de los puestos 1–3 se pueden ver como repetición: elige una fila del RANKING.',
+  'rules.rank.2': 'Las partidas de los puestos 1–3 se pueden ver como repetición: elige una fila del RANKING. Si alguien de los tres primeros corrió con un personaje propio, el botón ⬇ PERSONAJE junto a su nombre lo carga en el CREADOR y lo deja elegido para jugar.',
   // KREATOR POSTACI (creator.js, skinpack.js); cr.f.* – krótkie nazwy klatek, cr.pose.* – opis pozy dla czatu AI
   'title.creator': 'CREADOR',
   'char.custom': 'tu personaje',
   'char.new': 'NUEVO',
   'cr.title': 'CREADOR DE PERSONAJES',
-  'cr.lead': 'Tus personajes se guardan solo en este dispositivo. El botón ZIP guarda un personaje en un archivo que puedes cargar en otro dispositivo.',
+  'cr.lead': 'Tus personajes se guardan en este dispositivo y el botón ZIP guarda un personaje en un archivo para cargarlo en otro. Solo se envía al servidor el personaje con el que entres entre los tres primeros del RANKING.',
   'cr.empty': 'Aún no tienes un personaje propio. Crea uno nuevo o carga un archivo ZIP con imágenes.',
   'cr.new': 'Nuevo personaje',
   'cr.import': 'Cargar ZIP / PNG',
@@ -2047,6 +2091,17 @@ const es = {
   'cr.pose.fall': 'caída larga: brazos y piernas abiertos, cara de susto',
   'cr.pose.dead': 'fin de partida: tumbado boca abajo, ojos cerrados',
   'cr.pose.cheer': 'alegría: salta con los dos brazos arriba, gran sonrisa',
+  // ranking: własne postacie z najlepszej trójki (⬇ POSTAĆ)
+  'board.getChar': '⬇ PERSONAJE',
+  'board.charLoading': 'Descargando el personaje…',
+  'msg.charLoaded': 'PERSONAJE CARGADO',
+  'msg.charLoadedSub': '{name}: listo para jugar y en el CREADOR',
+  'msg.charFail': 'NO SE PUDO CARGAR',
+  'msg.charFailSub': 'El personaje no está disponible o no hay conexión.',
+  'hint.loadChar': 'cargar personaje',
+  'sr.boardChar': 'L o X en el mando: cargar el personaje de este jugador.',
+  'cr.from': 'del ranking: {nick}',
+  'cr.rules.8': 'Cuando tu partida con un personaje propio entra entre los tres primeros del RANKING, el juego envía el personaje al servidor. Los demás lo verán en la repetición y en el podio, y podrán cargarlo con el botón ⬇ PERSONAJE.',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

@@ -64,17 +64,17 @@ export async function startServer() {
   }
 
   /** Wysyła cały bieg i go zatwierdza. Zegar przesuwa się o czas gry, chyba że podano inaczej. */
-  async function submit(token: string, runId: string, run: { ticks: Uint8Array; score: number }, o: { claimScore?: number; advanceMs?: number } = {}) {
+  async function submit(token: string, runId: string, run: { ticks: Uint8Array; score: number }, o: { claimScore?: number; advanceMs?: number; skin?: string } = {}) {
     clock.now += o.advanceMs ?? Math.ceil(run.ticks.length * 1000 / 120) + 5000;
     const up = await upload(token, runId, run.ticks);
     if (up.status !== 200) return up;
     return call('POST', `/v1/runs/${runId}/finish`, {
-      token, json: { score: o.claimScore ?? run.score, char: 'fox', style: 'classic', control: 'keys', appVersion: 'test' },
+      token, json: { score: o.claimScore ?? run.score, char: o.skin ? 'custom' : 'fox', ...(o.skin ? { skin: o.skin } : {}), style: 'classic', control: 'keys', appVersion: 'test' },
     });
   }
 
   async function reset() {
-    await db.batch(['DELETE FROM run_chunks', 'DELETE FROM bests', 'DELETE FROM runs', 'DELETE FROM players'].map((s) => db.prepare(s)));
+    await db.batch(['DELETE FROM run_chunks', 'DELETE FROM skins', 'DELETE FROM bests', 'DELETE FROM runs', 'DELETE FROM players'].map((s) => db.prepare(s)));
     clock.now = START;
   }
 

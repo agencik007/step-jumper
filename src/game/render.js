@@ -846,7 +846,13 @@ function drawBoard(g) {
       const row = { size: 13, sw: 0 };
       if (!medal) text(String(e.rank), L.x + 36, y, { ...row, align: 'right', color: ui.label });
       const nameCol = mine ? ui.gold : medal && style.world !== 'sketch' ? medal.hi : ui.text;
-      text(e.nick ?? t('board.player', { tag: e.tag }), L.x + 52, y, { ...row, align: 'left', color: nameCol, weight: 700, maxW: e.replay ? 170 : 200 });
+      text(e.nick ?? t('board.player', { tag: e.tag }), L.x + 52, y, { ...row, align: 'left', color: nameCol, weight: 700, maxW: e.skin ? 110 : e.replay ? 170 : 200 });
+      if (e.skin && e.rank <= 3) {                       // własna postać gracza do wczytania (KREATOR)
+        const p = UIBOX.boardChar(e.rank - 1), loading = g.charLoad?.hash === e.skin;
+        c.fillStyle = loading ? ui.panel : ui.btn; rr(p.x, y - 8.5, p.w, 17, 8.5); c.fill();
+        c.strokeStyle = ui.frame; c.lineWidth = 1; c.stroke();
+        text(loading ? '…' : t('board.getChar'), p.x + p.w / 2, y + 0.5, { size: 10, color: loading ? ui.hint : ui.btnText, sw: 0, maxW: p.w - 6 });
+      }
       if (e.replay) {                                    // powtórka do obejrzenia
         const px = L.x + 232, loading = g.replay?.loading && g.replay.entry === e;
         c.fillStyle = loading ? ui.panel : ui.btn; rr(px, y - 8.5, 50, 17, 8.5); c.fill();
@@ -869,11 +875,15 @@ function drawBoard(g) {
   }
   if (o.pending) text(t('board.pending', { n: o.pending }), W / 2, 410, { size: 10, color: ui.label, sw: 0 });
   else if (g.replay?.loading) text(t('replay.loading'), W / 2, 410, { size: 11, color: ui.hint, sw: 0 });
+  else if (g.charLoad) text(t('board.charLoading'), W / 2, 410, { size: 11, color: ui.hint, sw: 0 });
 
   const name = o.nick ?? (o.tag ? t('board.player', { tag: o.tag }) : '—');
   button(UIBOX.nick, t(g.hint === 'keys' ? 'board.nickKey' : 'board.nick', { name: o.enabled ? name : '—' }), { size: 12 });
   button(UIBOX.back, t(g.hint === 'keys' ? 'board.backKey' : 'board.back'), { size: 12, glyph: g.hint === 'pad' ? BTN.B : null });
-  if (g.hint === 'pad') padHints([['dpad', 'hint.pick'], [BTN.A, b.sel >= 0 ? 'hint.watch' : 'hint.back'], [BTN.B, 'hint.back']], 468, { size: 10 });
+  if (g.hint === 'pad') {
+    const sel = b.sel >= 0 ? d?.top?.entries.find((e) => e.rank === b.sel + 1) : null;
+    padHints([['dpad', 'hint.pick'], [BTN.A, sel?.replay ? 'hint.watch' : sel?.skin ? 'hint.loadChar' : 'hint.back'], ...(sel?.skin && sel.replay ? [[BTN.X, 'hint.loadChar']] : []), [BTN.B, 'hint.back']], 468, { size: 10 });
+  }
 }
 
 const PAGE_TITLES = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news', rules: 'title.rules' };
@@ -1130,7 +1140,8 @@ function drawRecap(g) {
     text(String(i + 1), x, top + UIBOX.podH[i] / 2 + 3, { size: 26, color: '#fff', stroke: m.lo, sw: 5 });
     if (!e) { text('—', x, top - 24, { size: 20, color: ui.label, sw: 0 }); continue; }
     // zwycięzca na stopniu, z koroną
-    const ci = Math.max(0, CHARS.findIndex((ch) => ch.id === e.char)), hop = reduceMotion ? 0 : Math.abs(Math.sin(time * 3 + i)) * (i ? 2 : 4);
+    const ci = (e.char === 'custom' && g.remoteReady(e.skin)) || Math.max(0, CHARS.findIndex((ch) => ch.id === e.char));   // własna postać z trójki, gdy już pobrana
+    const hop = reduceMotion ? 0 : Math.abs(Math.sin(time * 3 + i)) * (i ? 2 : 4);
     drawHero({ x, y: top - hop, vx: 0, vy: 0, face: i === 2 ? -1 : 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: 0 }, time + i, ci);
     drawCrown(x, top - 68 - hop, i + 1, time + i * 0.5, i ? 0.95 : 1.15);
     text(e.nick ?? t('board.player', { tag: e.tag }), x, UIBOX.podBase + 14, { size: 13, color: e.me ? ui.gold : ui.text, sw: 3, maxW: 104 });

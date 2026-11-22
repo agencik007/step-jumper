@@ -10,6 +10,18 @@ Wygląd nie zmienia rozgrywki: bohater biega, skacze i zderza się tak samo jak 
 Ten sam opis gracz widzi w grze: KREATOR → **Zasady tworzenia** (we wszystkich pięciu językach, z przyciskiem
 „Kopiuj” przy poleceniu dla czatu AI). Teksty są w `src/game/strings.js` (klucze `cr.rules.*`, `cr.ai.*`, `cr.pose.*`).
 
+## Postacie z najlepszej trójki rankingu
+
+Bieg własną postacią idzie do rankingu z `char: "custom"` i skrótem SHA-256 paczki postaci (`skin`). Gdy wejdzie do
+najlepszej trójki któregoś okresu (DZIŚ, TYDZIEŃ, OGÓŁEM), serwer prosi o paczkę, a gra ją wysyła (bez sieci – przy
+następnej okazji). Paczka to ten sam ZIP co eksport z kreatora, z klatkami zmniejszonymi jednakowo do najwyżej 480 px
+(gra rysuje postać w ok. 180 px), do 1,5 MB.
+
+W RANKINGU przy miejscach 1–3 z własną postacią jest przycisk **⬇ POSTAĆ** (klawisz **L**, X na padzie): postać
+pobiera się do kreatora (lista własnych postaci, z dopiskiem „z rankingu: nick”; ta sama paczka drugi raz się nie
+dubluje) i od razu jest wybrana na ekranie tytułowym. Powtórki i podium tygodnia pokazują własne postacie z trójki.
+API: `server/README.md`.
+
 ## Dwa rodzaje postaci
 
 | Rodzaj | Pliki | Co robi gra |

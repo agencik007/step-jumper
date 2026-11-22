@@ -22,8 +22,11 @@ const MAX_CHUNK_BYTES = 4 * CHUNK_TICKS;   // porcja to w najgorszym razie 2 baj
 const TOP_DEFAULT = 50, TOP_MAX = 100, NEIGHBOURS = 5;
 const ID_RE = /^[a-z0-9_-]{1,24}$/;
 const PERIODS: PeriodKind[] = ['all', 'week', 'day'];
-/** Tylu najlepszym graczom ranking podaje identyfikator powtórki. */
+/** Tylu najlepszym graczom ranking podaje identyfikator powtórki i paczkę własnej postaci. */
 const REPLAY_TOP = 3;
+/** Paczka własnej postaci (ZIP z kreatora, klatki do 400 px) – D1 mieści w wierszu do 2 MB. */
+export const MAX_SKIN_BYTES = 1_500_000;
+const HASH_RE = /^[0-9a-f]{64}$/;
 
 /** Odpowiedź z błędem, którą handler może po prostu rzucić. */
 class ApiError extends Error {
@@ -68,7 +71,7 @@ interface RunRow {
 }
 interface BoardRow {
   player_id: string; nick: string | null; country: string | null; score: number; floor: number; combo: number; char_id: string; achieved_at: number;
-  run_id: string; has_replay: number;
+  run_id: string; has_replay: number; skin: string | null; has_skin: number;
 }
 
 export function createApp(deps: { now?: () => number } = {}) {
@@ -140,6 +143,7 @@ export function createApp(deps: { now?: () => number } = {}) {
     const id = c.var.player.id, db = c.env.DB;
     await db.batch([
       db.prepare('DELETE FROM run_chunks WHERE run_id IN (SELECT id FROM runs WHERE player_id = ?)').bind(id),
+      db.prepare('DELETE FROM skins WHERE player_id = ?').bind(id),
       db.prepare('DELETE FROM bests WHERE player_id = ?').bind(id),
       db.prepare('DELETE FROM runs WHERE player_id = ?').bind(id),
       db.prepare('DELETE FROM players WHERE id = ?').bind(id),
@@ -239,6 +243,8 @@ export function createApp(deps: { now?: () => number } = {}) {
     const body = await readJson(c);
     const char = typeof body.char === 'string' && ID_RE.test(body.char) ? body.char : null;
     if (!Number.isInteger(body.score) || !char) throw fail(400, 'bad_request');
+    // własna postać z KREATORA: skrót paczki, którą gracz wyśle, jeśli bieg trafi do najlepszej trójki
+    const skin = char === 'custom' && typeof body.skin === 'string' && HASH_RE.test(body.skin) ? body.skin : null;
 
     const state: SimState | null = run.checkpoint ? JSON.parse(run.checkpoint) : null;
     if (!state?.over) return reject(c, run.id, 'not_over');
@@ -253,16 +259,16 @@ export function createApp(deps: { now?: () => number } = {}) {
         .bind(p.id, keys.all, keys.week, keys.day).all<{ period: string; score: number; achieved_at: number }>()).results.map((r) => [r.period, r]),
     );
     const upsert = db.prepare(
-      'INSERT INTO bests (period, player_id, score, floor, combo, char_id, run_id, achieved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ' +
+      'INSERT INTO bests (period, player_id, score, floor, combo, char_id, skin, run_id, achieved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
       'ON CONFLICT (period, player_id) DO UPDATE SET score = excluded.score, floor = excluded.floor, combo = excluded.combo, ' +
-      'char_id = excluded.char_id, run_id = excluded.run_id, achieved_at = excluded.achieved_at WHERE excluded.score > bests.score',
+      'char_id = excluded.char_id, skin = excluded.skin, run_id = excluded.run_id, achieved_at = excluded.achieved_at WHERE excluded.score > bests.score',
     );
     await db.batch([
       db.prepare(
         "UPDATE runs SET status = 'verified', checkpoint = NULL, finished_at = ?, updated_at = ?, score = ?, floor = ?, combo = ?, " +
-        'char_id = ?, style_id = ?, control = ?, app_version = ? WHERE id = ?',
-      ).bind(t, t, sc, state.maxFloor, state.bestCombo, char, optText(body.style, 24), optText(body.control, 24), optText(body.appVersion, 32), run.id),
-      ...PERIODS.map((k) => upsert.bind(keys[k], p.id, sc, state.maxFloor, state.bestCombo, char, run.id, t)),
+        'char_id = ?, skin = ?, style_id = ?, control = ?, app_version = ? WHERE id = ?',
+      ).bind(t, t, sc, state.maxFloor, state.bestCombo, char, skin, optText(body.style, 24), optText(body.control, 24), optText(body.appVersion, 32), run.id),
+      ...PERIODS.map((k) => upsert.bind(keys[k], p.id, sc, state.maxFloor, state.bestCombo, char, skin, run.id, t)),
       // powtórki trzymamy tylko dla biegów, które są czyimś najlepszym wynikiem (ten bieg albo wyparte nim starsze)
       db.prepare(
         'DELETE FROM run_chunks WHERE run_id IN (SELECT id FROM runs WHERE player_id = ?1) AND run_id NOT IN (SELECT run_id FROM bests WHERE player_id = ?1)',
@@ -275,20 +281,26 @@ export function createApp(deps: { now?: () => number } = {}) {
       improved[k] = !old || sc > old.score;
       ranks[k] = await rankOf(db, keys[k], improved[k] ? { score: sc, achieved_at: t, player_id: p.id } : { ...old!, player_id: p.id });
     }
-    return c.json({ status: 'verified', score: sc, floor: state.maxFloor, combo: state.bestCombo, ticks: state.tick, improved, ranks });
+    // bieg z własną postacią wszedł do najlepszej trójki, a serwer nie ma jeszcze tej paczki – gra ją dośle (PUT /v1/skins/:hash)
+    const top = PERIODS.some((k) => improved[k] && ranks[k] <= REPLAY_TOP);
+    const needSkin = !!skin && top && !(await db.prepare('SELECT 1 FROM skins WHERE hash = ?').bind(skin).first());
+    return c.json({ status: 'verified', score: sc, floor: state.maxFloor, combo: state.bestCombo, ticks: state.tick, improved, ranks, ...(needSkin ? { needSkin } : {}) });
   });
 
   // ───────────────────────── rankingi ─────────────────────────
 
   const BOARD_SELECT =
-    'SELECT b.player_id, p.nick, p.country, b.score, b.floor, b.combo, b.char_id, b.achieved_at, b.run_id, ' +
-    'EXISTS (SELECT 1 FROM run_chunks k WHERE k.run_id = b.run_id) AS has_replay ' +
+    'SELECT b.player_id, p.nick, p.country, b.score, b.floor, b.combo, b.char_id, b.achieved_at, b.run_id, b.skin, ' +
+    'EXISTS (SELECT 1 FROM run_chunks k WHERE k.run_id = b.run_id) AS has_replay, ' +
+    'EXISTS (SELECT 1 FROM skins s WHERE s.hash = b.skin) AS has_skin ' +
     'FROM bests b JOIN players p ON p.id = b.player_id WHERE b.period = ? AND p.banned = 0 ' +
     'ORDER BY b.score DESC, b.achieved_at ASC, b.player_id ASC LIMIT ? OFFSET ?';
   const entry = (r: BoardRow, rank: number) => ({
     rank, nick: r.nick, tag: playerTag(r.player_id), score: r.score, floor: r.floor, combo: r.combo, char: r.char_id, country: r.country,
     // najlepsza trójka: identyfikator biegu do obejrzenia (GET /v1/replays/:id)
     ...(rank <= REPLAY_TOP && r.has_replay ? { replay: r.run_id } : {}),
+    // i własna postać do wczytania w grze (GET /v1/skins/:hash)
+    ...(rank <= REPLAY_TOP && r.skin && r.has_skin ? { skin: r.skin } : {}),
   });
   function periodParam(c: Ctx): string {
     const kind = c.req.param('period') ?? '';
@@ -323,10 +335,12 @@ export function createApp(deps: { now?: () => number } = {}) {
     const id = c.req.param('id'), db = c.env.DB;
     const run = await db.prepare(
       'SELECT r.id, r.seed, r.sim_version, r.next_seq, r.ticks, r.score, r.floor, r.combo, r.char_id, r.style_id, r.finished_at, ' +
+      'EXISTS (SELECT 1 FROM skins s WHERE s.hash = r.skin) AS has_skin, r.skin, ' +
       'p.id AS player_id, p.nick, p.banned FROM runs r JOIN players p ON p.id = r.player_id WHERE r.id = ? AND r.status = \'verified\'',
     ).bind(id).first<{
       id: string; seed: number; sim_version: number; next_seq: number; ticks: number; score: number; floor: number; combo: number;
       char_id: string; style_id: string | null; finished_at: number; player_id: string; nick: string | null; banned: number;
+      skin: string | null; has_skin: number;
     }>();
     if (!run || run.banned) throw fail(404, 'not_found');
     const { results } = await db.prepare('SELECT seq, data FROM run_chunks WHERE run_id = ? ORDER BY seq').bind(id).all<{ seq: number; data: ArrayBuffer | number[] }>();
@@ -335,8 +349,35 @@ export function createApp(deps: { now?: () => number } = {}) {
     return c.json({
       runId: run.id, seed: run.seed, simVersion: run.sim_version, ticks: run.ticks, score: run.score, floor: run.floor, combo: run.combo,
       char: run.char_id, style: run.style_id, nick: run.nick, tag: playerTag(run.player_id), finishedAt: run.finished_at,
+      ...(run.skin && run.has_skin ? { skin: run.skin } : {}),
       chunks: results.map((r) => toB64(new Uint8Array(r.data))),
     });
+  });
+
+  // ───────────────────────── własne postacie ─────────────────────────
+
+  // Paczka postaci z najlepszej trójki: serwer przyjmie ją tylko od gracza, którego wynik w rankingu jest rozegrany tą postacią,
+  // i tylko gdy skrót zgadza się z zawartością. Zawartości (obrazków) nie rozpakowuje – gra sprawdza ją przy wczytaniu.
+  app.put('/v1/skins/:hash', requirePlayer, async (c) => {
+    const hash = c.req.param('hash') ?? '', db = c.env.DB, p = c.var.player;
+    if (!HASH_RE.test(hash)) throw fail(404, 'not_found');
+    if (p.banned) throw fail(403, 'banned');
+    const data = await readCapped(c.req.raw, MAX_SKIN_BYTES);
+    if (data.length < 4 || data[0] !== 0x50 || data[1] !== 0x4b || data[2] !== 3 || data[3] !== 4) throw fail(400, 'bad_skin');
+    if ((await sha256hex(data)) !== hash) throw fail(400, 'hash_mismatch');
+    if (!(await db.prepare('SELECT 1 FROM bests WHERE player_id = ? AND skin = ?').bind(p.id, hash).first())) throw fail(403, 'not_needed');
+    await db.prepare('INSERT OR IGNORE INTO skins (hash, player_id, data, created_at) VALUES (?, ?, ?, ?)').bind(hash, p.id, data, now()).run();
+    return c.json({ hash }, 201);
+  });
+
+  // Pobranie paczki postaci. Zawartość pod danym skrótem nigdy się nie zmienia, więc może leżeć w cache bez końca.
+  app.get('/v1/skins/:hash', async (c) => {
+    const hash = c.req.param('hash') ?? '';
+    if (!HASH_RE.test(hash)) throw fail(404, 'not_found');
+    const row = await c.env.DB.prepare('SELECT s.data FROM skins s JOIN players p ON p.id = s.player_id WHERE s.hash = ? AND p.banned = 0')
+      .bind(hash).first<{ data: ArrayBuffer | number[] }>();
+    if (!row) throw fail(404, 'not_found');
+    return c.body(new Uint8Array(row.data), 200, { 'content-type': 'application/zip', 'cache-control': 'public, max-age=31536000, immutable' });
   });
 
   return app;

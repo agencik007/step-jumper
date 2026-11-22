@@ -6,8 +6,10 @@ function base64url(bytes: Uint8Array): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export async function sha256hex(text: string): Promise<string> {
-  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+/** SHA-256 (hex) tekstu albo bajtów. */
+export async function sha256hex(data: string | Uint8Array): Promise<string> {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>));
   return [...d].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 

@@ -399,6 +399,7 @@ function handlePad(p, B) {
       else if (nav === 'right' || RB) game.boardTab(1);
       else if (nav === 'up' || nav === 'down') game.boardMove(nav === 'up' ? -1 : 1);
       if (A) game.boardConfirm();
+      else if (X) game.boardLoadChar();
       else if (Bk) { sfx.pick(); game.toTitle(); }
       break;
     case 'recap':
@@ -474,6 +475,7 @@ function onKey(e) {
     if (left || right) { game.boardTab(left ? -1 : 1); return; }
     if (up || dn) { game.boardMove(up ? -1 : 1); return; }
     if (free && code === 'KeyN') { game.editNick(); return; }
+    if (free && code === 'KeyL') { game.boardLoadChar(); return; }
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.boardReplay(Number(code.slice(-1))); return; }
   } else if (s === 'recap') {
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.recapReplay(Number(code.slice(-1))); return; }

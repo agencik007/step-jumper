@@ -6,11 +6,9 @@ import { drawHero } from './characters.js';
 import { ctx, focusGame, setCtx } from './gfx.js';
 import { t } from './i18n.js';
 import {
-  COLOR_KEYS, DEFAULT_COLORS, FRAMES, HEAD, MAX_CHARS, MAX_FILE, MAX_SIDE, MAX_ZIP, PACK_JSON, assignFiles, cleanAdjust, cleanName, packJson,
-  parsePackJson, zipName,
+  COLOR_KEYS, DEFAULT_COLORS, FRAMES, HEAD, MAX_CHARS, MAX_FILE, MAX_SIDE, MAX_ZIP, cleanAdjust, cleanName, zipName,
 } from './skinpack.js';
-import { bakeSkin, buildSkin, deleteChar, listChars, newId, prepareImage, putChar } from './skins.js';
-import { unzip, zipFiles } from './zip.js';
+import { bakeSkin, buildSkin, deleteChar, failure, listChars, newId, packZip, prepareImage, putChar, readPack, unpackZip } from './skins.js';
 
 const $ = (id) => document.getElementById(id);
 const root = $('creator');
@@ -55,7 +53,6 @@ function show(name) {
   setTimeout(() => $(VIEWS[name]).querySelector('button, input')?.focus({ preventScroll: true }), 0);
 }
 function setMsg(el, text = '', err = false) { el.textContent = text; el.classList.toggle('err', !!err); }
-const failure = (key, vars) => Object.assign(new Error(key), { key, vars });
 const baseName = (n) => String(n).split(/[\\/]/).pop();
 const fname = (role) => `${role}.png`;
 const frameLabel = (role) => t(`cr.f.${role}`);
@@ -80,7 +77,8 @@ function listItem(rec) {
   const who = document.createElement('div'); who.className = 'who';
   const b = document.createElement('b'); b.textContent = rec.name;
   const n = FRAMES.filter((f) => rec.files?.[f]).length;
-  const s = document.createElement('span'); s.textContent = rec.type === 'head' ? t('cr.kind.head') : t('cr.kind.frames', { n });
+  const s = document.createElement('span');
+  s.textContent = (rec.type === 'head' ? t('cr.kind.head') : t('cr.kind.frames', { n })) + (rec.source ? ` · ${t('cr.from', { nick: rec.author || 'TOP3' })}` : '');
   who.append(b, s);
   const acts = document.createElement('div'); acts.className = 'acts';
   const use = btn(active ? t('cr.inUse') : t('cr.use'), () => useChar(rec));
@@ -157,26 +155,11 @@ async function importFiles(list, into = null) {
     for (const f of files) {
       if (await isZip(f)) {
         if (f.size > MAX_ZIP) throw failure('cr.err.big');
-        let un;
-        try {
-          un = await unzip(new Uint8Array(await f.arrayBuffer()), { maxTotal: MAX_ZIP * 2, wanted: (n) => /\.(png|webp|json)$/i.test(n) });
-        } catch (e) { throw failure(e.message === 'big' ? 'cr.err.big' : 'cr.err.zip'); }
+        entries.push(...(await unpackZip(new Uint8Array(await f.arrayBuffer()))));
         zipBase ||= f.name.replace(/\.zip$/i, '').replace(/^postac-/i, '');
-        for (const u of un) entries.push({ name: u.name, blob: new Blob([u.data]) });
       } else entries.push({ name: f.name, blob: f });
     }
-    const json = entries.find((e) => baseName(e.name).toLowerCase() === PACK_JSON);
-    const cfg = json ? parsePackJson(await json.blob.text()) : null;
-    const a = assignFiles(entries.map((e) => e.name));
-    if (!a.type) throw failure('cr.err.none');
-    const byName = new Map(entries.map((e) => [e.name, e.blob]));
-    const pairs = Object.entries(a.map);
-    if (pairs.some(([, name]) => byName.get(name).size > MAX_FILE)) throw failure('cr.err.big');
-    // wszystkie obrazki naraz: kodowanie PNG bywa wolne (przeglądarka robi je w tle), a równolegle trwa tyle co jedno
-    const ready = await Promise.all(pairs.map(([, name]) => prepareImage(byName.get(name)).catch(() => null)));
-    const bad = pairs.findIndex((_, i) => !ready[i]);
-    if (bad >= 0) throw failure('cr.err.image', { file: baseName(pairs[bad][1]) });
-    const out = Object.fromEntries(pairs.map(([role], i) => [role, ready[i]]));
+    const a = await readPack(entries), cfg = a.cfg, out = a.files;
     const msgs = [];
     if (a.type === 'head') msgs.push(t('cr.loadedHead'));
     else {
@@ -184,7 +167,7 @@ async function importFiles(list, into = null) {
       const missing = FRAMES.filter((f) => !out[f] && !into?.files[f]);
       if (missing.length) msgs.push(t('cr.missing', { list: missing.map(frameLabel).join(', ') }));
     }
-    const skipped = a.extra.map(baseName);
+    const skipped = a.extra;
     if (skipped.length) msgs.push(t('cr.skipped', { list: skipped.slice(0, 6).join(', ') + (skipped.length > 6 ? '…' : '') }));
     if (into) {
       into.type = a.type;
@@ -353,11 +336,7 @@ async function save() {
 
 // ───────────────────────── eksport ─────────────────────────
 async function exportChar(rec) {
-  const enc = new TextEncoder();
-  const keep = rec.type === 'head' ? [HEAD] : FRAMES;
-  const files = [{ name: PACK_JSON, data: enc.encode(`${JSON.stringify(packJson(rec), null, 2)}\n`) }];
-  for (const k of keep) if (rec.files[k]) files.push({ name: fname(k), data: new Uint8Array(await rec.files[k].arrayBuffer()) });
-  const url = URL.createObjectURL(new Blob([zipFiles(files)], { type: 'application/zip' }));
+  const url = URL.createObjectURL(new Blob([await packZip(rec)], { type: 'application/zip' }));
   const a = document.createElement('a');
   a.href = url; a.download = zipName(rec.name);
   document.body.append(a); a.click(); a.remove();
@@ -379,7 +358,7 @@ function showRules() {
     ul.append(x);
   }
   files.querySelector('span').append(ul);
-  ol.replaceChildren(li(t('cr.rules.1')), files, li(t('cr.rules.3')), li(t('cr.rules.4')), li(t('cr.rules.5', { max: MAX_SIDE })), li(t('cr.rules.6')), li(t('cr.rules.7')));
+  ol.replaceChildren(li(t('cr.rules.1')), files, li(t('cr.rules.3')), li(t('cr.rules.4')), li(t('cr.rules.5', { max: MAX_SIDE })), li(t('cr.rules.6')), li(t('cr.rules.8')), li(t('cr.rules.7')));
   $('crAiFrames').value = aiPrompt();
   $('crAiHead').value = t('cr.ai.head');
   setMsg($('crRulesMsg'));

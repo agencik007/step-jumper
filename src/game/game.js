@@ -9,7 +9,7 @@ import { VOL_STEPS, sfx } from './audio.js';
 import { access, fontSize, loadAccess } from './access.js';
 import { CHARS } from './characters.js';
 import { creatorOpen, openCreator } from './creator.js';
-import { loadSkin } from './skins.js';
+import { bakeSkin, buildSkin, loadSkin, packBytes, previewPack, saveFromPack, sharePack } from './skins.js';
 import { FONT, MEDALS, NEON, PENCILS, STYLES, applyStyle, ctx, cycle, style, themeOf } from './gfx.js';
 import { KIND_NAMES, gpad } from './gamepad.js';
 import { HAPTIC_LEVELS, haptics } from './haptics.js';
@@ -54,6 +54,10 @@ export class Game {
     // własna postać z KREATORA (IndexedDB): do czasu wczytania rysujemy pierwszą wbudowaną
     this.custom = null;
     this.customId = typeof prefs.custom === 'string' ? prefs.custom : null;
+    this.customHash = null;              // skrót paczki własnej postaci – idzie z biegiem do rankingu (serwer poprosi o paczkę, gdy bieg wejdzie do trójki)
+    this.remote = new Map();             // postacie z najlepszej trójki pobrane do obejrzenia (powtórki, podium): skrót → { skin, wait }
+    this.charLoad = null;                // „⬇ POSTAĆ” w rankingu: pobieranie w toku
+    online.skinSource = packBytes;
     if (this.customId) this.loadCustom(this.customId);
     else if (this.charIdx === CUSTOM) this.charIdx = 0;
     this.styleIdx = clamp(prefs.style | 0, 0, STYLES.length - 1);
@@ -116,7 +120,7 @@ export class Game {
   async loadCustom(id) {
     const skin = await loadSkin(id);
     if (this.customId !== id) return;                    // w międzyczasie wybrano inną
-    if (skin) { this.custom = skin; return; }
+    if (skin) { this.custom = skin; this.refreshCustomHash(); return; }
     this.setCustom(null);                                // usunięta albo nie da się jej wczytać
   }
   /** Gra tą postacią (null = żadna własna; wybór wraca na pierwszą wbudowaną). */
@@ -124,6 +128,55 @@ export class Game {
     this.custom = skin; this.customId = skin?.id ?? null;
     if (skin) this.charIdx = CUSTOM; else if (this.charIdx === CUSTOM) this.charIdx = 0;
     this.savePrefs();
+    this.refreshCustomHash();
+  }
+  /** Paczka postaci na serwer (skins.js → sharePack): liczona w tle, raz na wersję postaci. */
+  refreshCustomHash() {
+    const id = this.customId;
+    this.customHash = null;
+    if (id) sharePack(id).then((h) => { if (this.customId === id) this.customHash = h; });
+  }
+  /** Postać z najlepszej trójki do obejrzenia: gotowa albo null (wtedy pobiera się w tle). */
+  remoteSkin(hash) {
+    if (!hash) return null;
+    let r = this.remote.get(hash);
+    if (!r) {
+      r = { skin: null, wait: null };
+      r.wait = online.skinPack(hash).then((b) => (b ? previewPack(b, hash) : null)).then((sk) => { r.skin = sk; if (!sk) this.remote.delete(hash); return sk; });
+      this.remote.set(hash, r);
+    }
+    return r.skin;
+  }
+  /** Już pobrana postać z trójki (do rysowania – niczego nie pobiera). */
+  remoteReady(hash) { return this.remote.get(hash)?.skin ?? null; }
+  /**
+   * „⬇ POSTAĆ” w rankingu: postać gracza z trójki trafia do KREATORA (własne postacie) i od razu jest wybrana na ekranie
+   * tytułowym. Ta sama postać drugi raz się nie dubluje.
+   */
+  async loadBoardChar(e) {
+    if (!e?.skin || this.charLoad) return;
+    sfx.pick();
+    this.charLoad = { hash: e.skin };
+    try {
+      const bytes = await online.skinPack(e.skin);
+      if (!bytes) throw new Error('net');
+      const rec = await saveFromPack(bytes, e.skin, e.nick ?? t('board.player', { tag: e.tag }));
+      const sk = bakeSkin(await buildSkin(rec));
+      if (!sk) throw new Error('bad');
+      this.charLoad = null;
+      this.setCustom(sk);
+      if (this.state === 'board') this.toTitle();
+      this.say(t('msg.charLoaded'), t('msg.charLoadedSub', { name: rec.name }), 'mint', 2.4);
+    } catch (err) {
+      this.charLoad = null;
+      this.say(t('msg.charFail'), err?.key ? t(err.key, err.vars) : t('msg.charFailSub'), 'warn', 2.8);
+    }
+  }
+  /** Wiersz rankingu z miejscem 1–3 i postacią do wczytania: wybrany (pad, strzałki) albo pierwszy taki. */
+  boardLoadChar() {
+    const rows = this.board.data[this.board.kind]?.top?.entries ?? [];
+    const e = this.board.sel >= 0 ? rows.find((x) => x.rank === this.board.sel + 1) : rows.find((x) => x.rank <= 3 && x.skin);
+    this.loadBoardChar(e);
   }
   openCreator() {
     if (this.state !== 'title' || nickOpen() || creatorOpen()) return;
@@ -197,7 +250,7 @@ export class Game {
   }
   /** Strzałki / pad w rankingu: wybór wiersza 1–3 z powtórką (−1 = żaden). */
   boardMove(d) {
-    const rows = (this.board.data[this.board.kind]?.top?.entries ?? []).filter((e) => e.rank <= 3 && e.replay).map((e) => e.rank - 1);
+    const rows = (this.board.data[this.board.kind]?.top?.entries ?? []).filter((e) => e.rank <= 3 && (e.replay || e.skin)).map((e) => e.rank - 1);
     if (!rows.length) { this.board.sel = -1; return; }
     const opts2 = [-1, ...rows], i = opts2.indexOf(this.board.sel);
     this.board.sel = opts2[clamp((i < 0 ? 0 : i) + d, 0, opts2.length - 1)];
@@ -205,7 +258,9 @@ export class Game {
   }
   /** Enter / A w rankingu: powtórka wybranego wiersza albo powrót do tytułu. */
   boardConfirm() {
-    if (this.board.sel >= 0) this.boardReplay(this.board.sel + 1);
+    const e = this.board.data[this.board.kind]?.top?.entries.find((x) => x.rank === this.board.sel + 1);
+    if (this.board.sel >= 0 && e?.replay) this.boardReplay(this.board.sel + 1);
+    else if (this.board.sel >= 0 && e?.skin) this.loadBoardChar(e);
     else { sfx.pick(); this.toTitle(); }
   }
   async loadBoard(force = false) {
@@ -241,6 +296,7 @@ export class Game {
     if (!this.recap) return;
     saveJSON(WEEK, { seen: this.recap.top.period });
     this.state = 'recap'; this.recapSel = 0;
+    for (const e of this.recap.top.entries) if (e.rank <= 3 && e.skin) this.remoteSkin(e.skin);   // własne postacie na podium
     sfx.combo(4);
   }
   closeRecap() { sfx.pick(); this.toTitle(); }
@@ -271,7 +327,14 @@ export class Game {
       return;
     }
     const ci = CHARS.findIndex((c) => c.id === r.char), si = STYLES.findIndex((st) => st.id === r.style);
-    this.replay = { data: r, from, rank: entry.rank, name: r.nick ?? t('board.player', { tag: r.tag }), charIdx: Math.max(0, ci), i: 0, playing: true, speed: 0, ended: false };
+    // własna postać gracza z trójki: pobieramy jej paczkę (bez niej – pierwsza wbudowana)
+    let kind = Math.max(0, ci);
+    if (r.char === 'custom' && r.skin) {
+      this.remoteSkin(r.skin);
+      kind = (await this.remote.get(r.skin)?.wait) ?? kind;
+      if (this.replay !== loading) return;
+    }
+    this.replay = { data: r, from, rank: entry.rank, name: r.nick ?? t('board.player', { tag: r.tag }), charIdx: kind, i: 0, playing: true, speed: 0, ended: false };
     if (si >= 0) applyStyle(si);                           // mapa, na której grał oglądany gracz
     this.state = 'replay';
     this.replayRestart(true);
@@ -547,6 +610,8 @@ export class Game {
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
       for (let i = 0; i < PERIODS.length; i++) if (inBox(x, y, UIBOX.tab(i))) return this.boardTab(i, true);
+      const top = this.board.data[this.board.kind]?.top?.entries ?? [];
+      for (let i = 0; i < 3; i++) if (top[i]?.skin && inBox(x, y, UIBOX.boardChar(i))) return this.loadBoardChar(top[i]);   // „⬇ POSTAĆ”
       for (let i = 0; i < 3; i++) if (inBox(x, y, UIBOX.boardRow(i))) return this.boardReplay(i + 1);
       if (inBox(x, y, UIBOX.nick)) this.editNick();
       else if (inBox(x, y, UIBOX.back)) { sfx.pick(); this.toTitle(); }
@@ -640,7 +705,11 @@ export class Game {
     this.net = { status: 'sending', runId: ticket.runId };
     // statystyka serwera: dawne „touch” to dzisiejsze przyciski ekranowe
     const control = tilt.active ? 'tilt' : ctrl.mode === 'one' ? 'one' : this.hint === 'pad' ? 'pad' : !isTouch ? 'keys' : ctrl.mode === 'buttons' ? 'touch' : ctrl.mode;
-    online.submit({ ticket, ticks: ticks.slice(), score: this.score, char: this.charIdx === CUSTOM ? 'custom' : CHARS[this.charIdx].id, style: STYLES[this.styleIdx].id, control })
+    const custom = this.charIdx === CUSTOM;
+    online.submit({
+      ticket, ticks: ticks.slice(), score: this.score, char: custom ? 'custom' : CHARS[this.charIdx].id, style: STYLES[this.styleIdx].id, control,
+      ...(custom && this.customHash ? { skin: this.customHash } : {}),
+    })
       .catch(() => ({ status: 'queued' }))
       .then((r) => {
         if (this.net?.runId === ticket.runId) this.net = { ...r, runId: ticket.runId };

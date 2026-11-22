@@ -19,6 +19,7 @@ export const UIBOX = {
   tab: (i) => ({ x: 104 + i * 110, y: 64, w: 102, h: 28 }),
   list: { x: 110, y: 102, w: 420, h: 276 },
   boardRow: (i) => ({ x: 118, y: 131 + i * 23, w: 404, h: 22 }),   // wiersz rankingu (miejsca 1–3: dotknięcie = powtórka)
+  boardChar: (i) => ({ x: 278, y: 133 + i * 23, w: 58, h: 18 }),    // „⬇ POSTAĆ” w wierszu 1–3 (własna postać gracza)
   // powtórka: pasek przycisków na dole pola gry
   rPlay: { x: 104, y: 436, w: 44, h: 32 }, rStop: { x: 154, y: 436, w: 44, h: 32 }, rSpeed: { x: 204, y: 436, w: 50, h: 32 },
   rBar: { x: 264, y: 446, w: 200, h: 12 }, rExit: { x: 474, y: 436, w: 62, h: 32 },

@@ -102,7 +102,7 @@ function describe(g) {
     const end = periodEnd(b.kind), tab = t(`period.${PERIODS.includes(b.kind) ? b.kind : 'week'}`);
     const ends = end && g.online.enabled ? t(b.kind === 'day' ? 'board.endsDay' : 'board.endsWeek', { when: fmtWhen(end), left: fmtLeft(end) }) : '';
     return [['screen', t('board.title')], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
-      ['sel', sel ? t('sr.boardSel', { rank: sel.rank, name: name(sel) }) : '']];
+      ['sel', sel ? `${t('sr.boardSel', { rank: sel.rank, name: name(sel) })}${sel.skin ? ` ${t('sr.boardChar')}` : ''}` : '']];
   }
   if (s === 'settings') {
     const st = g.settings, titles = { main: 'set.title', controls: 'ctrl.title', access: 'acc.title', sound: 'snd.title', keys: 'bind.keysTitle', pad: 'bind.padTitle', news: 'title.news', rules: 'title.rules' };
