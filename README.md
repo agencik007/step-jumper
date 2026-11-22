@@ -58,6 +58,10 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
   - **testy E2E** (Playwright, `tests/e2e/`, `npm run e2e`): sześć trybów dotyku na emulowanym telefonie, układ leworęczny
     i własny układ przycisków. Uruchamiają własny serwer deweloperski na porcie 5174 i nie łączą się z rankingiem online.
 - Ekran NOWOŚCI rysuje sam tekst na jednolitym tle, bez mapy i efektów pod spodem.
+- **ZASADY GRY** (przycisk pod NOWOŚCIAMI, klawisz **H**, LT na padzie; `src/game/rules.js`): dokładny opis mechaniki –
+  cel, bieg i skok, piętra, wynik, combo, przedmioty, ranking. Teksty w `strings.js` (klucze `rules.*`), liczby w nich
+  ({zmienne}) idą wprost ze stałych symulacji, a `tests/rules.test.ts` pilnuje twierdzeń zapisanych w tekście wprost
+  (np. wysokości skoku). Po zmianie zasad w `src/sim/` popraw opis we wszystkich językach.
 - Wibracje w 4 stopniach (wył. / słabe / średnie / mocne) – telefon i pad (`vibrationActuator`).
 - Pełny ekran: przycisk w prawym górnym rogu albo klawisz **F** (Fullscreen API; na telefonie dodatkowo obrót do poziomu). iPhone nie daje pełnego ekranu zwykłej stronie – tam przycisk otwiera instrukcję „Do ekranu początkowego” (w każdym języku gry; przy pierwszym uruchomieniu w Safari pokazuje się sama), a zainstalowana gra startuje bez pasków (`src/game/install.js`).
 - Pauza: klawisz **P** albo przycisk ⏸ w prawym górnym rogu (widoczny w trakcie biegu); z pauzy przycisk MENU wraca do wyboru postaci i mapy.

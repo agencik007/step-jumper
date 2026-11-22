@@ -9,6 +9,7 @@ export const UIBOX = {
   // ekran tytułowy: rogi
   opts: { x: 10, y: 10, w: 92, h: 28 }, rank: { x: 538, y: 10, w: 92, h: 28 },
   news: { x: 10, y: 44, w: 92, h: 28 },                   // NOWOŚCI (lista zmian)
+  rules: { x: 10, y: 78, w: 92, h: 28 },                  // ZASADY GRY
   update: { x: 538, y: 44, w: 92, h: 38 },                // PRZEŁADUJ – tylko gdy na serwerze jest nowa wersja
   // ranking
   tab: (i) => ({ x: 104 + i * 110, y: 64, w: 102, h: 28 }),
@@ -25,6 +26,8 @@ export const UIBOX = {
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
+/** Strony opcji z samym tekstem (NOWOŚCI, ZASADY GRY): nic do wybrania, tylko przewijanie, jednolite tło bez mapy. */
+export const isTextPage = (page) => page === 'news' || page === 'rules';
 
 // ───────────────────────── opcje: przewijana lista ─────────────────────────
 // Każda strona opcji to lista wierszy (src/game/options.js); co się nie mieści, przewija się palcem, kółkiem myszy,

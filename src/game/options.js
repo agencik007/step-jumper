@@ -7,7 +7,7 @@
 //   row    – zwykły wiersz: value() po prawej; arrows – wartość zmienia się ◀ ▶; act() – dotknięcie / Enter / A,
 //   slider – suwak 0…8: get(), set(v), show() – napis wartości, low/high – podpisy końców,
 //   bind   – przypisanie akcji do klawiszy (kind 'key') albo przycisków pada (kind 'pad'),
-//   note   – punkt listy zmian (strona NOWOŚCI): lines – tekst już połamany na linijki,
+//   note   – punkt tekstu (strony NOWOŚCI i ZASADY GRY): lines – tekst już połamany na linijki,
 //   back   – „Wróć” pod listą.
 // off() → klucz tekstu, gdy wiersz nie dotyczy obecnego trybu (jest przygaszony, ale da się go ustawić na zapas).
 import { ACCESS_DEFAULT, MOTION_MODES, TEXT_SIZES, access, applyAccess, systemReducesMotion } from './access.js';
@@ -20,6 +20,7 @@ import {
   padDeadValue, resetBinds, stickDeadValue, tilt,
 } from './input.js';
 import { CHANGELOG, wrap } from './changelog.js';
+import { rulesText } from './rules.js';
 import { LIST, listLayout } from './layout.js';
 import { PAD_STEPS, padAlpha, padScale, pads, applyPads, openPadEditor, resetPads } from './padlayout.js';
 import { clamp, mod } from './util.js';
@@ -153,22 +154,30 @@ export function buildPages(g) {
   return pages;
 }
 
-/**
- * Strona NOWOŚCI: wersje od najnowszej, pod każdą jej punkty w bieżącym języku. Budowana przy każdym otwarciu,
- * bo łamanie linijek zależy od języka; measure(tekst) → szerokość w px czcionką punktów.
- */
-export function buildNews(g, measure) {
-  const code = lang(), width = LIST.w - 40;
-  const date = (d) => new Date(`${d}T12:00:00`).toLocaleDateString(code, { day: 'numeric', month: 'long', year: 'numeric' });
-  const items = [];
-  for (const e of CHANGELOG) {
-    items.push({ k: `v.${e.v}`, type: 'head', gold: true, label: () => `${e.v}   ·   ${date(e.date)}` });
-    (e[code] ?? e.en).forEach((line, i) => items.push({ k: `v.${e.v}.${i}`, type: 'note', lines: wrap(line, width, measure) }));
-  }
+/** Strona tylko do czytania (NOWOŚCI, ZASADY GRY): sekcje [nagłówek, punkty], punkty połamane na linijki o szerokości listy. */
+function buildNotes(g, sections, measure) {
+  const width = LIST.w - 40, items = [];
+  sections.forEach(([head, notes], i) => {
+    items.push({ k: `s.${i}`, type: 'head', gold: true, label: () => head });
+    notes.forEach((line, j) => items.push({ k: `s.${i}.${j}`, type: 'note', lines: wrap(line, width, measure) }));
+  });
   items.push({ k: 'back', type: 'back', label: () => t(g.hint === 'keys' ? 'set.backKey' : 'set.back'), act: () => g.settingsBack() });
   items.contentH = listLayout(items);
   return items;
 }
 
-/** Wiersze, które da się wybrać (strzałkami, padem): bez nagłówków, objaśnień i punktów listy zmian. */
+/**
+ * Strona NOWOŚCI: wersje od najnowszej, pod każdą jej punkty w bieżącym języku. Budowana przy każdym otwarciu,
+ * bo łamanie linijek zależy od języka; measure(tekst) → szerokość w px czcionką punktów.
+ */
+export function buildNews(g, measure) {
+  const code = lang();
+  const date = (d) => new Date(`${d}T12:00:00`).toLocaleDateString(code, { day: 'numeric', month: 'long', year: 'numeric' });
+  return buildNotes(g, CHANGELOG.map((e) => [`${e.v}   ·   ${date(e.date)}`, e[code] ?? e.en]), measure);
+}
+
+/** Strona ZASADY GRY: jak NOWOŚCI – sam tekst do przewijania. */
+export const buildRules = (g, measure) => buildNotes(g, rulesText(), measure);
+
+/** Wiersze, które da się wybrać (strzałkami, padem): bez nagłówków, objaśnień i punktów tekstu. */
 export const selectable = (items) => items.filter((it) => it.type !== 'head' && it.type !== 'info' && it.type !== 'note');
