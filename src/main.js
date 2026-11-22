@@ -1,5 +1,6 @@
 // Start gry: tworzy grę, podpina sterowanie i kręci pętlą klatek.
 import { online } from './net';
+import { initCursor } from './game/cursor.js';
 import { initFullscreen } from './game/fullscreen.js';
 import { Game } from './game/game.js';
 import { focusGame, setDprCap } from './game/gfx.js';
@@ -14,6 +15,7 @@ initSpeech();
 initInput(game);
 focusGame();                           // klawiatura i czytnik ekranu od razu „w grze”
 initFullscreen(game);
+initCursor();
 initInstall(game);
 initUpdateCheck();                     // nowa wersja na serwerze → przycisk PRZEŁADUJ na ekranie tytułowym
 
