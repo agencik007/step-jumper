@@ -204,11 +204,21 @@ export async function previewPack(bytes, hash) {
   try { return bakeSkin(await buildSkin(await recordFromPack(bytes, hash, ''))); } catch { return null; }
 }
 
+/** Własna postać gracza, z której powstała paczka o tym skrócie (magazyn 'packs'), albo null. */
+async function ownByHash(hash) {
+  try {
+    const p = await tx('readonly', (s) => s.get(hash), PACKS);
+    return p ? ((await getChar(p.key.split(':')[0])) ?? null) : null;
+  } catch { return null; }
+}
+
 /**
- * „⬇ POSTAĆ” w rankingu: zapisuje postać z najlepszej trójki wśród własnych (ta sama paczka drugi raz – nie dubluje)
- * i zwraca jej rekord. Rzuca failure('cr.err.limit' …), gdy nie ma już miejsca.
+ * „⬇ POSTAĆ” w rankingu: zapisuje postać z najlepszej trójki wśród własnych (ta sama paczka drugi raz – nie dubluje,
+ * własna postać gracza wraca jako ona sama) i zwraca jej rekord. Rzuca failure('cr.err.limit' …), gdy nie ma już miejsca.
  */
 export async function saveFromPack(bytes, hash, author) {
+  const own = await ownByHash(hash);                     // własny bieg gracza w trójce – to jego postać, bez kopii
+  if (own) return own;
   const list = await listChars();
   const had = list.find((r) => r.source === hash);
   if (had) return had;

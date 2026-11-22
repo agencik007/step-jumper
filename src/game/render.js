@@ -11,6 +11,7 @@ import {
 } from './gfx.js';
 import { fmt, fmtLeft, fmtWhen, periodEnd } from './format.js';
 import { BTN, glyphOf } from './gamepad.js';
+import { drinkAt } from './drinks.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
 import {
@@ -343,32 +344,71 @@ function drawPlatformBody(g, p) {
   }
 }
 
-// ── przedmioty: booster wyrzutu i spowolnienie ──
+// ── przedmioty: booster wyrzutu (piwo, wyżej wódka – drinks.js) i spowolnienie ──
 function drawItems(g) {
   const s = g.sim, top = s.camY - 40, bottom = s.camY + H + 40;
   const visible = (n) => { const y = -n * GAP - ITEM_LIFT; return y > top && y < bottom; };
-  if (!s.rising && visible(s.boost.n)) drawBooster(s.boost.x, -s.boost.n * GAP - ITEM_LIFT, g.t);
+  if (!s.rising && visible(s.boost.n)) drawDrink(drinkAt(s.boost.n), s.boost.x, -s.boost.n * GAP - ITEM_LIFT, g.t);
   if (s.slow.n >= 0 && visible(s.slow.n)) drawSlowItem(s.slow.x, -s.slow.n * GAP - ITEM_LIFT, g.t);
 }
 
-/** Kula z poświatą – wspólna podstawa obu przedmiotów. Lekkie kołysanie jest tylko wizualne (łapie się w stałym miejscu). */
-function orb(x, y, t, inner, outer, glow) {
+/** Pulsująca poświata pod przedmiotem – widać go z daleka. Lekkie kołysanie jest tylko wizualne (łapie się w stałym miejscu). */
+function halo(x, y, t, glow) {
   const c = ctx, r = ITEM_R, pulse = reduceMotion ? 1 : 1 + Math.sin(t * 6) * 0.08;
-  const halo = c.createRadialGradient(x, y, r * 0.4, x, y, r * 2.6 * pulse);
-  halo.addColorStop(0, glow); halo.addColorStop(1, 'rgba(0,0,0,0)');
-  c.fillStyle = halo; c.beginPath(); c.arc(x, y, r * 2.6 * pulse, 0, 7); c.fill();
+  const g = c.createRadialGradient(x, y, r * 0.4, x, y, r * 2.6 * pulse);
+  g.addColorStop(0, glow); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 2.6 * pulse, 0, 7); c.fill();
+}
+/** Kula z poświatą (spowolnienie). */
+function orb(x, y, t, inner, outer, glow) {
+  const c = ctx, r = ITEM_R;
+  halo(x, y, t, glow);
   const body = c.createRadialGradient(x - r * 0.35, y - r * 0.4, 1, x, y, r);
   body.addColorStop(0, inner); body.addColorStop(1, outer);
   c.fillStyle = body; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
   c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.stroke();
 }
 
-function drawBooster(x, y0, t) {
-  const c = ctx, y = y0 + (reduceMotion ? 0 : Math.sin(t * 3) * 3);
-  orb(x, y, t, '#fff3a0', '#ff6a2c', 'rgba(255,170,60,.55)');
-  // dwie strzałki w górę
-  c.strokeStyle = '#3a1300'; c.lineWidth = 2.6; c.lineCap = 'round'; c.lineJoin = 'round';
-  for (const dy of [-3, 4]) { c.beginPath(); c.moveTo(x - 6, y + dy + 3); c.lineTo(x, y + dy - 3); c.lineTo(x + 6, y + dy + 3); c.stroke(); }
+/** Booster wyrzutu: kufel piwa z pianą albo (od VODKA_FROM piętra) butelka wódki – mieści się w kole ITEM_R. */
+function drawDrink(kind, x, y0, t) {
+  const c = ctx, y = y0 + (reduceMotion ? 0 : Math.sin(t * 3) * 3), tilt = reduceMotion ? 0 : Math.sin(t * 2.2) * 0.12;
+  halo(x, y, t, kind === 'beer' ? 'rgba(255,190,60,.6)' : 'rgba(190,230,255,.6)');
+  c.save(); c.translate(x, y); c.rotate(tilt);
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  if (kind === 'beer') {
+    const ink = '#3a1f00';
+    // ucho kufla
+    c.strokeStyle = ink; c.lineWidth = 5; c.beginPath(); c.arc(6, 2, 5, -1.3, 1.3); c.stroke();
+    c.strokeStyle = '#fff6d8'; c.lineWidth = 2; c.stroke();
+    // szkło z piwem
+    const beer = c.createLinearGradient(-8, 0, 7, 0);
+    beer.addColorStop(0, '#ffcf3a'); beer.addColorStop(0.45, '#ffe680'); beer.addColorStop(1, '#e89a12');
+    rr(-8, -6, 15, 18, 3); c.fillStyle = beer; c.fill();
+    c.strokeStyle = ink; c.lineWidth = 2; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(-5.5, -3, 2, 12);                       // odblask
+    c.fillStyle = 'rgba(255,255,255,.8)';                                                     // bąbelki
+    for (const [bx, by] of [[1, 8], [3, 3], [0.5, -1]]) { c.beginPath(); c.arc(bx, by + (reduceMotion ? 0 : -mod(t * 6, 3)), 1, 0, 7); c.fill(); }
+    // piana wylewająca się górą: kółka najpierw grubsze w kolorze konturu, potem białe – jeden obrys całej czapy
+    const foam = [[-4.5, -6.5, 3.6], [0, -9, 4.2], [4, -6.5, 3.6], [-0.5, -5.5, 3.5]];
+    for (const [r, col] of [[1.6, ink], [0, '#fffdf2']]) {
+      c.fillStyle = col;
+      for (const [fx, fy, fr] of foam) { c.beginPath(); c.arc(fx, fy, fr + r, 0, 7); c.fill(); }
+    }
+  } else {
+    const ink = '#13233f';
+    // butelka: korpus, ramiona, szyjka
+    c.beginPath();
+    c.moveTo(-6, 12); c.lineTo(-6, -1); c.quadraticCurveTo(-6, -5, -2.5, -6.5); c.lineTo(-2.5, -10);
+    c.lineTo(2.5, -10); c.lineTo(2.5, -6.5); c.quadraticCurveTo(6, -5, 6, -1); c.lineTo(6, 12); c.closePath();
+    const glass = c.createLinearGradient(-6, 0, 6, 0);
+    glass.addColorStop(0, '#d8f0ff'); glass.addColorStop(0.4, '#ffffff'); glass.addColorStop(1, '#a8cfee');
+    c.fillStyle = glass; c.fill(); c.strokeStyle = ink; c.lineWidth = 2; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(-4, -1, 1.6, 11);                          // odblask
+    rr(-6, 1.5, 12, 6.5, 1); c.fillStyle = '#fffaf0'; c.fill();                                // etykieta
+    c.fillStyle = '#d0202a'; c.fillRect(-6, 3.6, 12, 2.2);
+    rr(-3.2, -13, 6.4, 3.5, 1); c.fillStyle = '#d0202a'; c.fill(); c.strokeStyle = ink; c.lineWidth = 1.5; c.stroke();   // nakrętka
+  }
+  c.restore();
 }
 
 function drawSlowItem(x, y0, t) {
@@ -848,10 +888,12 @@ function drawBoard(g) {
       const nameCol = mine ? ui.gold : medal && style.world !== 'sketch' ? medal.hi : ui.text;
       text(e.nick ?? t('board.player', { tag: e.tag }), L.x + 52, y, { ...row, align: 'left', color: nameCol, weight: 700, maxW: e.skin ? 110 : e.replay ? 170 : 200 });
       if (e.skin && e.rank <= 3) {                       // własna postać gracza do wczytania (KREATOR)
-        const p = UIBOX.boardChar(e.rank - 1), loading = g.charLoad?.hash === e.skin;
-        c.fillStyle = loading ? ui.panel : ui.btn; rr(p.x, y - 8.5, p.w, 17, 8.5); c.fill();
-        c.strokeStyle = ui.frame; c.lineWidth = 1; c.stroke();
-        text(loading ? '…' : t('board.getChar'), p.x + p.w / 2, y + 0.5, { size: 10, color: loading ? ui.hint : ui.btnText, sw: 0, maxW: p.w - 6 });
+        const p = UIBOX.boardChar(e.rank - 1), loading = g.charLoad?.hash === e.skin, ask = !loading && g.charArmed(e.skin);
+        c.fillStyle = loading ? ui.panel : ask ? ui.warn : ui.btn; rr(p.x, y - 8.5, p.w, 17, 8.5); c.fill();
+        c.strokeStyle = ui.frame; c.lineWidth = ask ? 1.5 : 1; c.stroke();
+        // pierwsze dotknięcie tylko pyta – wczytuje drugie (game.js → loadBoardChar)
+        text(loading ? '…' : t(ask ? 'board.getCharSure' : 'board.getChar'), p.x + p.w / 2, y + 0.5,
+          { size: 10, color: loading ? ui.hint : ask ? '#fff' : ui.btnText, sw: 0, maxW: p.w - 6 });
       }
       if (e.replay) {                                    // powtórka do obejrzenia
         const px = L.x + 232, loading = g.replay?.loading && g.replay.entry === e;
