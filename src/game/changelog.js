@@ -5,6 +5,14 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.18.2', date: '2026-11-22',
+    pl: ['Kursor myszy znika w trakcie biegu i nie zasłania wieży. Wystarczy poruszyć myszą, żeby na chwilę wrócił.'],
+    en: ['The mouse cursor now hides during a run so it doesn’t cover the tower. Just move the mouse to bring it back for a moment.'],
+    de: ['Der Mauszeiger verschwindet jetzt während des Laufs und verdeckt den Turm nicht. Beweg einfach die Maus, dann ist er kurz wieder da.'],
+    fr: ['Le curseur de la souris disparaît maintenant pendant la partie et ne cache plus la tour. Bougez la souris pour le faire revenir un instant.'],
+    es: ['El cursor del ratón ahora se oculta durante la partida para no tapar la torre. Mueve el ratón y volverá un momento.'],
+  },
+  {
     v: '0.18.1', date: '2026-11-22',
     pl: ['W OPCJACH na urządzeniu z ekranem dotykowym klawiatura znów pokazuje, która opcja jest wybrana – strzałką i ramką, jak na padzie.'],
     en: ['In OPTIONS on a touchscreen device, the keyboard now shows which option is selected – with an arrow and a frame, just like on a gamepad.'],

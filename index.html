@@ -100,6 +100,8 @@
   body.pad-edit.ctrl-joystick #stick { display: block !important; pointer-events: auto; opacity: max(.6, var(--pad-alpha)); }
   body.pad-edit .pad button, body.pad-edit #stick { cursor: grab; outline: 2px dashed #ffe066; outline-offset: 4px; }
   body.pad-edit .dragging { cursor: grabbing; outline-style: solid; }
+  /* w trakcie biegu kursor myszy znika; ruch myszą pokazuje go na chwilę (src/game/cursor.js) */
+  body[data-state="play"]:not(.mouse-on), body[data-state="play"]:not(.mouse-on) * { cursor: none !important; }
   #padEdit[hidden] { display: none; }
   #padEdit {
     position: fixed; z-index: 10; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
