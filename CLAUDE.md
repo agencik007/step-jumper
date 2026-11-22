@@ -10,8 +10,11 @@ i uruchamianie: [`README.md`](README.md). Kod, komentarze, commity i opisy PR pi
    językach** (pl, en, de, fr, es).
 3. Gdy zmiana dotyka `src/sim/` (fizyka, piętra, przedmioty, punktacja) – podbij `SIM_VERSION` w `src/sim/constants.ts`
    i odśwież złote biegi (szczegóły w README, sekcja „Determinizm”).
-4. Nowe napisy w grze: klucz w `src/game/strings.js` we wszystkich pięciu językach.
-5. `npm run typecheck` i `npm test` muszą przechodzić. `tests/changelog.test.ts` sprawdza, że najnowszy wpis listy zmian
+4. **Zasady gry**: gdy zmiana dotyka mechaniki opisanej na ekranie ZASADY GRY (bieg, skok, piętra, wynik, combo,
+   przedmioty, tempo wieży, ranking) albo dodaje nową – popraw lub dopisz punkty zasad (szczegóły niżej, sekcja
+   „Zasady gry”).
+5. Nowe napisy w grze: klucz w `src/game/strings.js` we wszystkich pięciu językach.
+6. `npm run typecheck` i `npm test` muszą przechodzić. `tests/changelog.test.ts` sprawdza, że najnowszy wpis listy zmian
    ma wersję z `package.json` i że każdy język ma te same punkty.
 
 ## Wersje i lista zmian
@@ -44,6 +47,21 @@ Lista zmian jest dla graczy (ekran NOWOŚCI), nie dla deweloperów.
   po hiszpańsku OPCIONES → CONTROL).
 - Każdy język ma tyle samo punktów, w tej samej kolejności. Zwracaj się do gracza tak jak gra w danym języku
   (po francusku „vous”, po niemiecku „du”, po hiszpańsku „tú”).
+
+## Zasady gry
+
+Ekran ZASADY GRY (przycisk pod NOWOŚCIAMI, `src/game/rules.js`) opisuje graczowi mechanikę dokładnie tak, jak liczy ją
+`src/sim/`. Musi nadążać za grą – nieaktualny opis wprowadza graczy w błąd.
+
+- Teksty: `src/game/strings.js`, klucze `rules.<sekcja>` (nagłówek) i `rules.<sekcja>.1…n` (punkty), we wszystkich
+  pięciu językach. Lista sekcji i liczba punktów: `RULES` w `src/game/rules.js` – nowy punkt to nowy klucz i wyższa liczba.
+- Liczby w tekstach to `{zmienne}` z `RULE_VARS` (`src/game/rules.js`), brane wprost ze stałych symulacji. Nowa liczba
+  w zasadach = nowa zmienna, nie liczba wpisana na sztywno.
+- Zmiana **zachowania** (nie tylko stałej) – inne punktowanie, nowy przedmiot, nowy warunek końca combo, inna fizyka –
+  wymaga poprawienia słów we wszystkich językach. Nowa funkcja rozgrywki dostaje swój punkt (albo sekcję).
+- `tests/rules.test.ts` pilnuje kompletności tłumaczeń i twierdzeń zapisanych w tekście wprost (np. „obrót w locie =
+  co najmniej 2 piętra”). Gdy ten test pada po zmianie w `src/sim/`, popraw tekst zasad, a dopiero potem test.
+- Nazwy ekranów, przycisków i napisów HUD w zasadach – dokładnie takie jak w grze w danym języku (jak w liście zmian).
 
 ## Wykrywanie nowej wersji
 
