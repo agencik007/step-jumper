@@ -8,6 +8,8 @@ import { online } from '../net';
 import { VOL_STEPS, sfx } from './audio.js';
 import { access, fontSize, loadAccess } from './access.js';
 import { CHARS } from './characters.js';
+import { creatorOpen, openCreator } from './creator.js';
+import { loadSkin } from './skins.js';
 import { FONT, MEDALS, NEON, PENCILS, STYLES, applyStyle, ctx, cycle, style, themeOf } from './gfx.js';
 import { KIND_NAMES, gpad } from './gamepad.js';
 import { HAPTIC_LEVELS, haptics } from './haptics.js';
@@ -15,7 +17,7 @@ import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
 import {
   CONTROLS, DEAD_STEPS, JUMP_MODES, OPTS_DEFAULT, SENS_MAX, TILT_ZERO_MAX, binds, ctrl, hintMode, input, isTouch, loadBinds, opts, resetBinds, setBind, setControl, tilt, touchAxis,
 } from './input.js';
-import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
+import { ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, charX, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
 import { buildNews, buildPages, buildRules, selectable } from './options.js';
 import { loadPads, mirrorPads, resetPads, savedPads } from './padlayout.js';
@@ -37,16 +39,23 @@ const TIERS = [200, 140, 100, 70, 50, 35, 25, 15, 7, 4];
 
 const newSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
 const BOARD_TTL = 30;                    // s – tyle samo serwer trzyma ranking w cache
+/** Numer miejsca własnej postaci na ekranie tytułowym (za pięcioma wbudowanymi). */
+export const CUSTOM = CHARS.length;
 
 export class Game {
   constructor() {
     this.best = loadJSON(STORE, { score: 0, floor: 0, combo: 0 });
     const prefs = loadJSON(PREFS, {
       char: 0, style: 0, control: null, tilt: false, tiltSens: SENS_MAX / 2, tiltZero: 0, sound: true, music: true, vibrate: 2, lefty: false, lang: null,
-      power: 'auto', jumpMode: 'hold', stickDead: opts.stickDead, padDead: opts.padDead, pads: null, keys: null, padKeys: null, keyNames: null,
+      power: 'auto', jumpMode: 'hold', stickDead: opts.stickDead, padDead: opts.padDead, pads: null, keys: null, padKeys: null, keyNames: null, custom: null,
     });
     setLang(prefs.lang ?? detectLang());   // pierwsze uruchomienie: język przeglądarki
-    this.charIdx = clamp(prefs.char | 0, 0, CHARS.length - 1);
+    this.charIdx = clamp(prefs.char | 0, 0, CUSTOM);
+    // własna postać z KREATORA (IndexedDB): do czasu wczytania rysujemy pierwszą wbudowaną
+    this.custom = null;
+    this.customId = typeof prefs.custom === 'string' ? prefs.custom : null;
+    if (this.customId) this.loadCustom(this.customId);
+    else if (this.charIdx === CUSTOM) this.charIdx = 0;
     this.styleIdx = clamp(prefs.style | 0, 0, STYLES.length - 1);
     tilt.sens = clamp(Math.round(Number(prefs.tiltSens)) || 0, 0, SENS_MAX);
     tilt.zero = clamp(Math.round(Number(prefs.tiltZero)) || 0, -TILT_ZERO_MAX, TILT_ZERO_MAX);
@@ -90,7 +99,7 @@ export class Game {
   }
 
   pick(what, d, abs = false) {
-    if (what === 'char') this.charIdx = abs ? d : mod(this.charIdx + d, CHARS.length);
+    if (what === 'char') this.charIdx = abs ? d : mod(this.charIdx + d, CUSTOM + (this.customId ? 1 : 0));
     else { this.styleIdx = abs ? d : mod(this.styleIdx + d, STYLES.length); applyStyle(this.styleIdx); }
     this.savePrefs();
     sfx.pick();
@@ -99,9 +108,30 @@ export class Game {
     saveJSON(PREFS, {
       char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, tiltZero: tilt.zero, sound: !sfx.muted, fxVol: sfx.fxVol, musicVol: sfx.musicVol,
       vibrate: haptics.level, lefty: this.lefty, lang: lang(), jumpMode: opts.jump, stickDead: opts.stickDead, padDead: opts.padDead,
-      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access }, power: power.mode,
+      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access }, power: power.mode, custom: this.customId,
     });
   }
+
+  // ── własne postacie (KREATOR, creator.js) ──
+  async loadCustom(id) {
+    const skin = await loadSkin(id);
+    if (this.customId !== id) return;                    // w międzyczasie wybrano inną
+    if (skin) { this.custom = skin; return; }
+    this.setCustom(null);                                // usunięta albo nie da się jej wczytać
+  }
+  /** Gra tą postacią (null = żadna własna; wybór wraca na pierwszą wbudowaną). */
+  setCustom(skin) {
+    this.custom = skin; this.customId = skin?.id ?? null;
+    if (skin) this.charIdx = CUSTOM; else if (this.charIdx === CUSTOM) this.charIdx = 0;
+    this.savePrefs();
+  }
+  openCreator() {
+    if (this.state !== 'title' || nickOpen() || creatorOpen()) return;
+    sfx.pick();
+    openCreator(this);
+  }
+  /** Postać do narysowania: numer wbudowanej albo własna (do czasu wczytania – pierwsza wbudowana). */
+  get heroChar() { return this.charIdx === CUSTOM ? (this.custom ?? 0) : this.charIdx; }
   /** Układ przycisków ekranowych: leworęczny = skok pod lewym kciukiem, ◀ ▶ pod prawym. Własny układ odbija się wtedy w poziomie. */
   setLefty(on, mirror = false) {
     if (mirror && on !== this.lefty) mirrorPads();
@@ -129,7 +159,7 @@ export class Game {
   /** Moja korona na ten tydzień (miejsce 1–3 w zeszłym tygodniu) albo null. */
   get crown() { return DEV_CROWN ?? online.crown; }
   /** Postać na planszy: w powtórce ta, którą grał oglądany gracz. */
-  get heroIdx() { return this.state === 'replay' && this.replay?.data ? this.replay.charIdx : this.charIdx; }
+  get heroIdx() { return this.state === 'replay' && this.replay?.data ? this.replay.charIdx : this.heroChar; }
 
   /** Suwaki fizyki lotu (tylko DEV) zmieniły wartość: nowe strojenie działa od razu, także w trwającym biegu. */
   retune(tune) {
@@ -144,7 +174,7 @@ export class Game {
   get needsNick() { return online.ready && online.enabled && !online.nick && !this.nickLater; }
 
   start() {
-    if (nickOpen()) return;
+    if (nickOpen() || creatorOpen()) return;
     if (this.state === 'title' && this.needsNick) { this.askNick(); return; }
     // wieża z biletu rankingu (ziarno od serwera); bez biletu – losowa wieża i bieg poza rankingiem
     this.ticket = this.officialTune ? online.takeTicket() : null;
@@ -496,17 +526,23 @@ export class Game {
 
   pointer(x, y) {
     if (this.state === 'title') {
-      for (let i = 0; i < 5; i++) {
-        if (Math.abs(x - slotX(i)) <= 34) {
-          if (y >= UIBOX.chars.y && y <= UIBOX.chars.y + UIBOX.chars.h) return this.pick('char', i, true);
-          if (y >= UIBOX.maps.y - 4 && y <= UIBOX.maps.y + UIBOX.maps.h + 4) return this.pick('style', i, true);
+      if (y >= UIBOX.chars.y && y <= UIBOX.chars.y + UIBOX.chars.h) {
+        for (let i = 0; i <= CUSTOM; i++) {
+          if (Math.abs(x - charX(i)) > CHAR_W / 2 + 3) continue;
+          // własna postać: puste miejsce albo drugie dotknięcie wybranej otwiera KREATOR
+          if (i === CUSTOM && (!this.customId || this.charIdx === CUSTOM)) return this.openCreator();
+          return this.pick('char', i, true);
         }
+      }
+      for (let i = 0; i < STYLES.length; i++) {
+        if (Math.abs(x - slotX(i)) <= 34 && y >= UIBOX.maps.y - 4 && y <= UIBOX.maps.y + UIBOX.maps.h + 4) return this.pick('style', i, true);
       }
       if (inBox(x, y, UIBOX.play)) this.start();
       else if (inBox(x, y, UIBOX.rank)) this.openBoard();
       else if (inBox(x, y, UIBOX.opts)) this.openSettings();
       else if (inBox(x, y, UIBOX.news)) this.openNews();
       else if (inBox(x, y, UIBOX.rules)) this.openRules();
+      else if (inBox(x, y, UIBOX.creator)) this.openCreator();
       else if (update.available && inBox(x, y, UIBOX.update)) this.reloadGame();
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
@@ -604,7 +640,7 @@ export class Game {
     this.net = { status: 'sending', runId: ticket.runId };
     // statystyka serwera: dawne „touch” to dzisiejsze przyciski ekranowe
     const control = tilt.active ? 'tilt' : ctrl.mode === 'one' ? 'one' : this.hint === 'pad' ? 'pad' : !isTouch ? 'keys' : ctrl.mode === 'buttons' ? 'touch' : ctrl.mode;
-    online.submit({ ticket, ticks: ticks.slice(), score: this.score, char: CHARS[this.charIdx].id, style: STYLES[this.styleIdx].id, control })
+    online.submit({ ticket, ticks: ticks.slice(), score: this.score, char: this.charIdx === CUSTOM ? 'custom' : CHARS[this.charIdx].id, style: STYLES[this.styleIdx].id, control })
       .catch(() => ({ status: 'queued' }))
       .then((r) => {
         if (this.net?.runId === ticket.runId) this.net = { ...r, runId: ticket.runId };

@@ -1,6 +1,7 @@
-// Postacie: rysowane w całości kodem (Canvas 2D), bez plików graficznych. Różnią się tylko wyglądem.
+// Postacie: wbudowane rysowane w całości kodem (Canvas 2D), własne – z obrazków gracza (skins.js). Różnią się tylko wyglądem.
 import { P } from '../sim';
 import { ctx, rr } from './gfx.js';
+import { pickFrame, resolveFrame } from './skinpack.js';
 import { clamp } from './util.js';
 
 const INK = '#3a1c10';
@@ -26,7 +27,7 @@ function arm(c, p, { x = 1, y = -24, len = 8, color, w = 4 }) {
   c.restore();
 }
 function eye(c, p, x, y, { rx = 3.3, ry = 4.2, white = '#fff', slit = false } = {}) {
-  if (!p.air && (p.t % 3.4) < 0.11) { c.beginPath(); c.moveTo(x - rx, y); c.lineTo(x + rx, y); c.stroke(); return; }
+  if (p.closed || (!p.air && (p.t % 3.4) < 0.11)) { c.beginPath(); c.moveTo(x - rx, y); c.lineTo(x + rx, y); c.stroke(); return; }
   const big = p.air ? 1.15 : 1;
   c.fillStyle = white; c.beginPath(); c.ellipse(x, y, rx * big, ry * big, 0, 0, 7); c.fill(); c.stroke();
   c.fillStyle = INK; c.beginPath();
@@ -176,20 +177,75 @@ export const CHARS = [
   { id: 'cat', name: 'Figa', tag: 'kotka z dzwoneczkiem', draw: drawCat },
 ];
 
+// ───────────── własne postacie (obrazki gracza – skins.js) ─────────────
+
+/** 12 klatek: obrazek dobrany do stanu bohatera (skinpack.js → pickFrame), stopy w punkcie (0, 0). */
+function drawFrames(c, skin, role) {
+  const f = skin.frames[resolveFrame(role, (k) => !!skin.frames[k])];
+  if (!f) return;
+  c.drawImage(f.src, 0, 0, f.sw, f.sh, -f.ax * f.s, -f.ay * f.s, f.sw * f.s, f.sh * f.s);
+}
+
+/** Ręka człowieka: rękaw w kolorze koszuli i pięść; back = ręka za tułowiem (ruch w przeciwfazie). */
+function humanArm(c, p, { x, y, len, shirt, skin, back = false, cheer = false }) {
+  const swing = Math.sin(p.ph + (back ? Math.PI : 0)) * 0.9 * p.run;
+  const a = cheer ? (back ? -2 : -1.15) : p.air ? (p.rise > 0 ? (back ? -1.9 : -1.2) : (back ? 0.2 : 0.6)) : 1.25 + swing;
+  const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
+  c.save();
+  c.strokeStyle = INK; c.lineWidth = 7.6; c.beginPath(); c.moveTo(x, y); c.lineTo(ex, ey); c.stroke();
+  c.strokeStyle = shirt; c.lineWidth = 5; c.beginPath(); c.moveTo(x, y); c.lineTo(ex, ey); c.stroke();
+  c.restore();
+  c.fillStyle = skin; c.beginPath(); c.arc(ex + Math.cos(a) * 1.5, ey + Math.sin(a) * 1.5, 3.4, 0, 7); c.fill(); c.stroke();
+}
+
+/** Sama głowa: obrazek gracza na ciele chibi rysowanym kodem (kolory z kreatora). Zachowuje się jak wbudowane postacie. */
+function drawHeadBody(c, p, skin) {
+  const col = skin.colors, h = skin.head;
+  const shade = 'rgba(0,0,0,.18)';
+  humanArm(c, p, { x: -2, y: -24, len: 9, shirt: col.shirt, skin: col.skin, back: true, cheer: p.cheer });
+  legs(c, p, { color: col.pants, w: 8, len: 10, gap: 4, r: 3, foot: { color: col.shoes, h: 4.5, ext: 3.5 } });
+  c.fillStyle = col.shirt; rr(-9, -30, 18, 21, 6); c.fill(); c.stroke();          // tułów
+  c.fillStyle = col.pants; rr(-9, -13, 18, 5, 2); c.fill(); c.stroke();           // pasek spodni
+  c.save(); c.strokeStyle = shade; c.lineWidth = 1.2;                              // plisa koszuli
+  c.beginPath(); c.moveTo(3, -28); c.lineTo(3, -14); c.stroke(); c.restore();
+  if (h) {
+    const bob = p.run ? Math.abs(Math.sin(p.ph)) * 1.4 : 0;
+    const tilt = p.air ? -0.1 * p.rise : p.run * 0.07;
+    c.save();
+    c.translate(2, -40 - bob); c.rotate(tilt);
+    c.drawImage(h.src, 0, 0, h.sw, h.sh, -h.ax * h.s, -h.ay * h.s, h.sw * h.s, h.sh * h.s);
+    c.restore();
+  }
+  humanArm(c, p, { x: 1, y: -25, len: 9, shirt: col.shirt, skin: col.skin, cheer: p.cheer });
+}
+
 /**
- * @param h   bohater z symulacji (x, y, vx, vy, face, onFloor, spin)
- * @param fx  stan czysto wizualny: { angle, squash, runPhase }
+ * @param h     bohater z symulacji (x, y, vx, vy, face, onFloor, spin)
+ * @param fx    stan czysto wizualny: { angle, squash, runPhase }
+ * @param kind  numer wbudowanej postaci albo własna postać (skins.js → buildSkin)
+ * @param pose  null | 'dead' (koniec gry: leży) | 'cheer' (radość: skacze z rękami w górze)
  */
-export function drawHero(h, fx, t, kind) {
+export function drawHero(h, fx, t, kind, pose = null) {
   const c = ctx;
-  const air = h.onFloor < 0;
-  const run = air ? 0 : Math.min(1, Math.abs(h.vx) / 220);
-  const sq = fx.squash + (air || run > 0.05 ? 0 : Math.sin(t * 3) * 0.035);
+  const skin = typeof kind === 'object' && kind ? kind : null;
+  const air = pose === 'cheer' || (pose !== 'dead' && h.onFloor < 0);
+  const run = air || pose ? 0 : Math.min(1, Math.abs(h.vx) / 220);
+  const sq = fx.squash + (air || run > 0.05 || pose ? 0 : Math.sin(t * 3) * 0.035);
   c.save();
   c.translate(h.x, h.y);
   c.scale(h.face * (1 + 0.22 * sq), 1 - 0.25 * sq);
-  if (h.spin) { c.translate(0, -24); c.rotate(fx.angle); c.translate(0, 24); }
+  const mid = skin?.type === 'frames' ? skin.mid : 24;
+  if (h.spin && !pose) { c.translate(0, -mid); c.rotate(fx.angle); c.translate(0, mid); }
   c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = 1.6;
-  CHARS[kind].draw(c, { t, air, run, ph: fx.runPhase, rise: clamp(-h.vy / 1000, -1, 1), vxl: h.vx * h.face, speed: Math.abs(h.vx), vy: h.vy });
+  if (skin?.type === 'frames') {
+    drawFrames(c, skin, pickFrame({ pose, air, vy: h.vy, run, phase: fx.runPhase, squash: fx.squash }));
+  } else {
+    if (pose === 'dead') { c.translate(0, -17); c.rotate(Math.PI / 2); }    // leży na brzuchu (ogon i plecy w górze, nic pod podłogą)
+    const p = {
+      t, air, run, ph: fx.runPhase, rise: pose === 'cheer' ? 1 : clamp(-h.vy / 1000, -1, 1), vxl: h.vx * h.face, speed: Math.abs(h.vx), vy: h.vy,
+      closed: pose === 'dead', cheer: pose === 'cheer',
+    };
+    if (skin) drawHeadBody(c, p, skin); else CHARS[kind].draw(c, p);
+  }
   c.restore();
 }

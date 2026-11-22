@@ -5,6 +5,39 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.19.0', date: '2026-11-22',
+    pl: [
+      'Nowość: KREATOR postaci (przycisk na ekranie tytułowym, klawisz K). Wczytaj 12 obrazków PNG – każdy ruch osobno – albo samą głowę, a gra zrobi z nich postać do biegu.',
+      'Pliki nazwane jak w zasadach (idle.png, run1.png…) kreator przypisze do ruchów sam. W podglądzie obejrzysz animację i poprawisz wielkość każdej klatki.',
+      'Postać zapisuje się na tym urządzeniu, a przycisk ZIP przeniesie ją na inne. W „Zasadach tworzenia” jest gotowe polecenie do wklejenia w czacie AI.',
+      'Na ekranie KONIEC GRY bohater leży obok wyników, a przy nowym rekordzie skacze z radości.',
+    ],
+    en: [
+      'New: the character CREATOR (button on the title screen, K key). Load 12 PNG images – one per move – or just a head, and the game turns them into a character you can run with.',
+      'Files named as in the rules (idle.png, run1.png…) are assigned to moves automatically. In the preview you can watch the animation and adjust the size of each frame.',
+      'Your character is saved on this device, and the ZIP button moves it to another one. “How to make one” has a ready prompt to paste into an AI chat.',
+      'On the GAME OVER screen the hero lies next to the results, and jumps for joy when you set a new record.',
+    ],
+    de: [
+      'Neu: der Figuren-EDITOR (Knopf auf dem Titelbildschirm, Taste K). Lade 12 PNG-Bilder – jede Bewegung einzeln – oder nur einen Kopf, und das Spiel macht daraus eine Figur zum Laufen.',
+      'Dateien, die wie in den Regeln heißen (idle.png, run1.png…), ordnet der Editor selbst den Bewegungen zu. In der Vorschau siehst du die Animation und passt die Größe jedes Bildes an.',
+      'Die Figur wird auf diesem Gerät gespeichert, der Knopf ZIP bringt sie auf ein anderes. Unter „So geht’s“ findest du einen fertigen Befehl für einen KI-Chat.',
+      'Auf dem Bildschirm SPIEL VORBEI liegt der Held neben den Ergebnissen und springt bei einem neuen Rekord vor Freude.',
+    ],
+    fr: [
+      'Nouveau : le CRÉATEUR de personnage (bouton sur l’écran titre, touche K). Chargez 12 images PNG – un mouvement par image – ou seulement une tête, et le jeu en fait un personnage jouable.',
+      'Les fichiers nommés comme dans les règles (idle.png, run1.png…) sont attribués automatiquement aux mouvements. L’aperçu montre l’animation et permet d’ajuster la taille de chaque image.',
+      'Le personnage est enregistré sur cet appareil, et le bouton ZIP le transfère sur un autre. « Comment faire » contient une consigne prête à coller dans un chat IA.',
+      'Sur l’écran PARTIE TERMINÉE, le héros est allongé à côté des résultats, et saute de joie en cas de nouveau record.',
+    ],
+    es: [
+      'Novedad: el CREADOR de personajes (botón en la pantalla de título, tecla K). Carga 12 imágenes PNG – un movimiento en cada una – o solo una cabeza, y el juego las convierte en un personaje para correr.',
+      'Los archivos con los nombres de las reglas (idle.png, run1.png…) se asignan solos a los movimientos. En la vista previa ves la animación y ajustas el tamaño de cada imagen.',
+      'El personaje se guarda en este dispositivo y el botón ZIP lo lleva a otro. En «Cómo crearlo» hay una instrucción lista para pegar en un chat de IA.',
+      'En la pantalla FIN DE LA PARTIDA el héroe aparece tumbado junto a los resultados y salta de alegría si consigues un nuevo récord.',
+    ],
+  },
+  {
     v: '0.18.3', date: '2026-11-22',
     pl: ['W trybie pełnoekranowym na komputerze ESC wraca do poprzedniego menu, zamiast wyłączać pełny ekran. Pełny ekran zamkniesz klawiszem F, przyciskiem w rogu albo przytrzymując ESC.'],
     en: ['In full screen on a computer, ESC now goes back to the previous menu instead of leaving full screen. To leave full screen, press F, use the button in the corner or hold ESC.'],

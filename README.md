@@ -4,6 +4,11 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 
 - Canvas 2D, Web Audio, Pointer Events, Gamepad API – bez silnika i bez plików graficznych czy dźwiękowych.
 - 5 postaci, 5 map (stylów graficznych).
+- **Własne postacie** (KREATOR na ekranie tytułowym, klawisz **K**, RT na padzie; `src/game/creator.js`): 12 obrazków PNG
+  (każdy ruch osobno: `idle.png`, `run1.png` … `cheer.png`) albo sama głowa (`head.png`) na ciele rysowanym kodem.
+  Zapis w IndexedDB na urządzeniu, eksport i import pliku ZIP, podgląd animacji i ręczne poprawki skali.
+  Zasady tworzenia i polecenie dla czatu AI: [`docs/POSTACIE.md`](docs/POSTACIE.md). Wygląd nie zmienia rozgrywki.
+  Wszystkie postacie mają też pozy na ekran KONIEC GRY: leżenie, a przy nowym rekordzie – radość.
 - Sterowanie: klawiatura i gamepad działają zawsze, a na telefonie do wyboru jest 6 trybów (OPCJE → STEROWANIE
   albo dotknięcie „STEROWANIE: …” na ekranie tytułowym; `src/game/input.js`):
   - **przyciski ekranowe** ◀ ▶ + ▲ (układ prawo- / leworęczny w opcjach),
@@ -55,8 +60,8 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
     zamknięcie liczone jak `server/src/periods.ts` – pilnuje tego `tests/format.test.ts`),
   - gałka i machnięcie czytają też surowe ruchy palca (`pointerrawupdate`), obok zwykłych `pointermove`,
   - OPCJE → Przywróć domyślne ustawienia (bez języka, postaci, mapy i rankingu),
-  - **testy E2E** (Playwright, `tests/e2e/`, `npm run e2e`): sześć trybów dotyku na emulowanym telefonie, układ leworęczny
-    i własny układ przycisków. Uruchamiają własny serwer deweloperski na porcie 5174 i nie łączą się z rankingiem online.
+  - **testy E2E** (Playwright, `tests/e2e/`, `npm run e2e`): sześć trybów dotyku na emulowanym telefonie, układ leworęczny,
+    własny układ przycisków i KREATOR postaci (wczytanie 12 klatek, zapis, eksport i ponowny import ZIP). Uruchamiają własny serwer deweloperski na porcie 5174 i nie łączą się z rankingiem online.
 - Ekran NOWOŚCI rysuje sam tekst na jednolitym tle, bez mapy i efektów pod spodem.
 - **ZASADY GRY** (przycisk pod NOWOŚCIAMI, klawisz **H**, LT na padzie; `src/game/rules.js`): dokładny opis mechaniki –
   cel, bieg i skok, piętra, wynik, combo, przedmioty, ranking. Teksty w `strings.js` (klucze `rules.*`), liczby w nich

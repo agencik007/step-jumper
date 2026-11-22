@@ -13,7 +13,9 @@ import { fmt, fmtLeft, fmtWhen, periodEnd } from './format.js';
 import { BTN, glyphOf } from './gamepad.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
-import { ARROW_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, isTextPage, noteLine, rowBox, sliderBar, slotX } from './layout.js';
+import {
+  ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, charX, isTextPage, noteLine, rowBox, sliderBar, slotX,
+} from './layout.js';
 import { VERSION, update } from './update.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
@@ -652,6 +654,7 @@ function drawTitle(g) {
   button(UIBOX.rank, hm === 'keys' ? `${t('title.rank')} · R` : t('title.rank'), { size: 11, glyph: hm === 'pad' ? BTN.Y : null });
   button(UIBOX.news, hm === 'keys' ? `${t('title.news')} · N` : t('title.news'), { size: 11, glyph: hm === 'pad' ? BTN.LB : null });
   button(UIBOX.rules, hm === 'keys' ? `${t('title.rules')} · H` : t('title.rules'), { size: 11, glyph: hm === 'pad' ? BTN.LT : null });
+  button(UIBOX.creator, hm === 'keys' ? `${t('title.creator')} · K` : t('title.creator'), { size: 11, glyph: hm === 'pad' ? BTN.RT : null });
   text(`v${VERSION}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
   if (update.available) drawUpdateButton(time, hm);
   const wob = reduceMotion ? 1 : 1 + Math.sin(time * 2) * 0.02;
@@ -666,17 +669,29 @@ function drawTitle(g) {
   panel(120, 98, 400, 128);
   text(t('title.char'), 138, 112, { size: 11, color: ui.label, align: 'left', sw: 0 });
   text('←  →', 502, 112, { size: 11, color: ui.label, align: 'right', sw: 0 });
-  CHARS.forEach((ch, i) => {
-    const x = slotX(i), on = i === g.charIdx;
-    rr(x - 32, UIBOX.chars.y, 64, UIBOX.chars.h, 10);
+  // 5 wbudowanych postaci i miejsce na własną (KREATOR): pusta = „+ NOWA”, do czasu wczytania z bazy – pierwsza wbudowana
+  const custom = CHARS.length;
+  for (let i = 0; i <= custom; i++) {
+    const x = charX(i), on = i === g.charIdx, w = CHAR_W;
+    rr(x - w / 2, UIBOX.chars.y, w, UIBOX.chars.h, 10);
+    if (i === custom && !g.customId) {
+      c.fillStyle = 'rgba(128,128,160,.10)'; c.fill();
+      c.save(); c.setLineDash([4, 4]); c.strokeStyle = ui.line; c.lineWidth = 1.5; c.stroke(); c.restore();
+      text('+', x, UIBOX.chars.y + 30, { size: 30, color: ui.label, sw: 0 });
+      text(t('char.new'), x, UIBOX.chars.y + 58, { size: 10, color: ui.label, sw: 0, maxW: w - 6 });
+      continue;
+    }
     c.fillStyle = on ? ui.sel : 'rgba(128,128,160,.10)'; c.fill();
     if (on) { c.strokeStyle = ui.gold; c.lineWidth = 2.5; c.stroke(); }
     const hop = on && !reduceMotion ? Math.abs(Math.sin(time * 4)) * 4 : 0;
-    drawHero({ x: x - 2, y: UIBOX.chars.y + 68 - hop, vx: on ? 260 : 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: on ? time * 22 : 0 }, time + i * 0.7, i);
+    const kind = i === custom ? (g.custom ?? 0) : i;
+    c.save(); c.beginPath(); c.rect(x - w / 2 - 6, UIBOX.chars.y - 30, w + 12, UIBOX.chars.h + 30); c.clip();   // szeroka postać nie wchodzi na sąsiada
+    drawHero({ x: x - 2, y: UIBOX.chars.y + 68 - hop, vx: on ? 260 : 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: on ? time * 22 : 0 }, time + i * 0.7, kind);
+    c.restore();
     if (on && g.crown) drawCrown(x - 1, UIBOX.chars.y + 9 - hop * 0.6, g.crown, time, 0.62);   // nagroda: korona nad wybraną postacią
-  });
+  }
   const ch = CHARS[g.charIdx];
-  text(`${ch.name} – ${t(`char.${ch.id}`)}`, W / 2, 212, { size: 13, sw: 0, maxW: 370 });
+  text(ch ? `${ch.name} – ${t(`char.${ch.id}`)}` : `${g.custom?.name ?? '…'} – ${t('char.custom')}`, W / 2, 212, { size: 13, sw: 0, maxW: 370 });
 
   // mapy
   panel(120, 236, 400, 98);
@@ -750,6 +765,12 @@ function drawPause(g) {
 function drawOver(g) {
   const c = ctx, k = clamp(g.overT / 0.35, 0, 1);
   dim(0.6 * k);
+  // bohater obok wyników: leży albo – przy nowym rekordzie – skacze z radości
+  const hop = g.newBest && !reduceMotion ? Math.abs(Math.sin(g.t * 5)) * 8 : 0;
+  const kind = g.heroIdx, sprite = typeof kind === 'object' && kind?.type === 'frames';   // klatka dead.png ma zaczepienie przy głowie, rysowana leży głową w prawo
+  c.save(); c.globalAlpha = k;
+  drawHero({ x: g.newBest ? 133 : sprite ? 158 : 106, y: 310 - hop, vx: 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: 0 }, g.t, g.heroIdx, g.newBest ? 'cheer' : 'dead');
+  c.restore();
   c.save(); c.globalAlpha = k; c.translate(0, (1 - easeOutBack(k)) * -40);
   text(t('over.title'), W / 2, 100, { size: 50, color: ui.warn, sw: 8, maxW: 430 });
   panel(170, 142, 300, 170);

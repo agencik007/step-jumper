@@ -44,7 +44,10 @@ function flush() {
 /** Łączy zdania kropką, ale bez podwójnej, gdy zdanie już kończy się znakiem interpunkcyjnym. */
 const joinSentences = (list) => list.filter(Boolean).map((x, i, a) => (i < a.length - 1 && !/[.!?…:]$/.test(x.trim()) ? `${x}.` : x)).join(' ');
 const clean = (s) => String(s ?? '').replace(/[›◀▶]/g, '').replace(/\s+/g, ' ').trim();
-const charLine = (g) => { const ch = CHARS[g.charIdx]; return `${t('title.char')}: ${ch.name} – ${t(`char.${ch.id}`)}`; };
+const charLine = (g) => {
+  const ch = CHARS[g.charIdx];
+  return `${t('title.char')}: ${ch ? `${ch.name} – ${t(`char.${ch.id}`)}` : `${g.custom?.name ?? ''} – ${t('char.custom')}`}`;
+};
 const mapLine = (g) => { const id = STYLES[g.styleIdx].id; return `${t('title.map')}: ${t(`style.${id}.name`)} – ${t(`style.${id}.desc`)}`; };
 const name = (e) => e.nick ?? t('board.player', { tag: e.tag });
 

@@ -1,7 +1,10 @@
 // Układ ekranów – wspólny dla rysowania i obsługi dotyku.
 import { textK } from './access.js';
 
-export const slotX = (i) => 168 + i * 76;
+export const slotX = (i) => 168 + i * 76;                // mapy
+/** Postacie: 5 wbudowanych + miejsce na własną (z KREATORA). */
+export const CHAR_SLOTS = 6, CHAR_W = 56;
+export const charX = (i) => 165 + i * 62;
 export const UIBOX = {
   chars: { y: 124, h: 74 }, maps: { y: 262, h: 40 }, play: { x: 200, y: 346, w: 240, h: 38 },
   ctrl: { x: 150, y: 391, w: 340, h: 27 }, menu: { x: 180, y: 384, w: 280, h: 30 },
@@ -10,6 +13,7 @@ export const UIBOX = {
   opts: { x: 10, y: 10, w: 92, h: 28 }, rank: { x: 538, y: 10, w: 92, h: 28 },
   news: { x: 10, y: 44, w: 92, h: 28 },                   // NOWOŚCI (lista zmian)
   rules: { x: 10, y: 78, w: 92, h: 28 },                  // ZASADY GRY
+  creator: { x: 10, y: 112, w: 92, h: 28 },               // KREATOR postaci
   update: { x: 538, y: 44, w: 92, h: 38 },                // PRZEŁADUJ – tylko gdy na serwerze jest nowa wersja
   // ranking
   tab: (i) => ({ x: 104 + i * 110, y: 64, w: 102, h: 28 }),
