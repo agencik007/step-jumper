@@ -204,6 +204,12 @@
   .cr-list .who span { color: #9fb4ee; font-size: 12px; }
   .cr-list .acts { display: flex; gap: 6px; flex-wrap: wrap; }
   .cr-empty { color: #9fb4ee; margin: 10px 0; }
+  .cr-example { margin: 0 0 8px; color: #9fb4ee; font-size: 12.5px; }
+  .cr-example a { color: #ffe066; font-weight: 800; }
+  .cr-example a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .cr-check { display: flex; align-items: flex-start; gap: 8px; color: #fff; font-size: 12.5px; line-height: 1.35; cursor: pointer; }
+  .cr-check input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: #ffd24a; }
+  .cr-check input:focus-visible { outline: 2px solid #ffe066; outline-offset: 2px; }
   .cr-empty[hidden] { display: none; }
   .cr-msg { min-height: 1.3em; margin: 8px 0 0; color: #7ef0c0; font-size: 13px; white-space: pre-line; }
   .cr-msg.err { color: #ff9a7f; }
@@ -365,6 +371,7 @@
     <section id="crListView">
       <h2 id="crTitle" data-i18n="cr.title">KREATOR POSTACI</h2>
       <p class="lead" data-i18n="cr.lead"></p>
+      <p class="cr-example"><a href="postac-test.zip" download="postac-test.zip" data-i18n="cr.exampleLink">Pobierz przykładową postać (ZIP)</a> <span data-i18n="cr.exampleHint"></span></p>
       <ul id="crList" class="cr-list"></ul>
       <p id="crEmpty" class="cr-empty" data-i18n="cr.empty" hidden></p>
       <p id="crMsg" class="cr-msg" role="status"></p>
@@ -382,6 +389,7 @@
         <canvas id="crPreview" aria-hidden="true"></canvas>
         <div class="cr-side">
           <label class="cr-field"><span data-i18n="cr.name">Nazwa</span><input id="crName" maxlength="16" spellcheck="false" autocomplete="off" enterkeyhint="done"></label>
+          <label class="cr-check"><input type="checkbox" id="crShare"><span data-i18n="cr.share"></span></label>
           <div class="cr-seg" id="crType" role="group">
             <button type="button" class="alt small" data-type="frames" data-i18n="cr.type.frames">12 klatek</button>
             <button type="button" class="alt small" data-type="head" data-i18n="cr.type.head">Sama głowa</button>
@@ -417,6 +425,7 @@
     <section id="crRulesView" hidden>
       <h2 data-i18n="cr.rules.title">ZASADY TWORZENIA POSTACI</h2>
       <ol id="crRulesList"></ol>
+      <p class="cr-example"><a href="postac-test.zip" download="postac-test.zip" data-i18n="cr.exampleLink">Pobierz przykładową postać (ZIP)</a> <span data-i18n="cr.exampleHint"></span></p>
       <h3 data-i18n="cr.prompt.frames"></h3>
       <textarea id="crAiFrames" readonly></textarea>
       <div class="row"><button type="button" class="alt small" data-copy="crAiFrames" data-i18n="cr.copy">Kopiuj</button></div>

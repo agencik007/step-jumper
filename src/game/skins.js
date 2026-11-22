@@ -4,7 +4,8 @@
 // Zapis postaci (rekord bazy):
 //   { id, name, type: 'frames' | 'head', created, updated, files: { idle: Blob, run1: Blob, … } albo { head: Blob },
 //     adjust: { klatka: { k, dx, dy } }, colors: { skin, shirt, pants, shoes }, headK,
-//     source?: skrót paczki z rankingu (postać wczytana z najlepszej trójki), author?: nick jej właściciela }
+//     source?: skrót paczki z rankingu (postać wczytana z najlepszej trójki), author?: nick jej właściciela,
+//     share: zgoda gracza na udostępnienie (pole w edycji postaci) – bez niej postać nie trafia na serwer }
 // Obrazki są już przycięte do sylwetki i najwyżej MAX_SIDE px (prepareImage), zapisane jako PNG.
 //
 // Drugi magazyn – 'packs': paczki ZIP do wysłania na serwer (postać w najlepszej trójce rankingu), { hash, key, data, at }.
@@ -194,7 +195,7 @@ async function recordFromPack(bytes, hash, author) {
   const p = await readPack(await unpackZip(bytes));
   return {
     id: newId(), name: cleanName(p.cfg?.name || author, 'TOP3'), type: p.type, files: p.files, adjust: p.cfg?.adjust ?? {},
-    colors: p.cfg?.colors ?? { ...DEFAULT_COLORS }, headK: p.cfg?.headK ?? 1, created: Date.now(), source: hash, author: cleanName(author),
+    colors: p.cfg?.colors ?? { ...DEFAULT_COLORS }, headK: p.cfg?.headK ?? 1, created: Date.now(), source: hash, author: cleanName(author), share: false,
   };
 }
 
@@ -243,12 +244,13 @@ export async function packZip(rec, scale = 1) {
 
 /**
  * Skrót paczki postaci do rankingu (liczona raz i trzymana w magazynie 'packs'). Wszystkie klatki zmniejszone tym samym
- * mnożnikiem, więc skala klatek względem siebie się nie zmienia. Null, gdy postaci nie da się spakować w limicie serwera.
+ * mnożnikiem, więc skala klatek względem siebie się nie zmienia. Null, gdy gracz nie zgodził się udostępnić postaci
+ * albo nie da się jej spakować w limicie serwera – wtedy bieg idzie do rankingu bez skrótu i serwer o paczkę nie poprosi.
  */
 export async function sharePack(id) {
   try {
     const rec = await getChar(id);
-    if (!rec) return null;
+    if (!rec?.share) return null;
     const key = packKey(rec);
     const cached = (await tx('readonly', (s) => s.getAll(), PACKS)).find((p) => p.key === key);
     if (cached) return cached.hash;
@@ -264,10 +266,14 @@ export async function sharePack(id) {
   } catch { return null; }
 }
 
-/** Bajty paczki o danym skrócie (dla klienta rankingu, gdy serwer o nią prosi) albo null. */
+/**
+ * Bajty paczki o danym skrócie (dla klienta rankingu, gdy serwer o nią prosi) albo null – także wtedy, gdy gracz
+ * w międzyczasie cofnął zgodę na udostępnienie albo usunął postać.
+ */
 export async function packBytes(hash) {
   try {
     const p = await tx('readonly', (s) => s.get(hash), PACKS);
-    return p ? new Uint8Array(await p.data.arrayBuffer()) : null;
+    if (!p || !(await getChar(p.key.split(':')[0]))?.share) return null;
+    return new Uint8Array(await p.data.arrayBuffer());
   } catch { return null; }
 }

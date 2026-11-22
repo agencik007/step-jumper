@@ -7,7 +7,9 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 - **Własne postacie** (KREATOR na ekranie tytułowym, klawisz **K**, RT na padzie; `src/game/creator.js`): 12 obrazków PNG
   (każdy ruch osobno: `idle.png`, `run1.png` … `cheer.png`) albo sama głowa (`head.png`) na ciele rysowanym kodem.
   Zapis w IndexedDB na urządzeniu, eksport i import pliku ZIP, podgląd animacji i ręczne poprawki skali.
-  Zasady tworzenia i polecenie dla czatu AI: [`docs/POSTACIE.md`](docs/POSTACIE.md). Wygląd nie zmienia rozgrywki.
+  Zasady tworzenia i polecenie dla czatu AI: [`docs/POSTACIE.md`](docs/POSTACIE.md), przykładowa paczka do pobrania z kreatora:
+  `public/postac-test.zip`. Wygląd nie zmienia rozgrywki. Postać ze zgodą na udostępnienie (pole w edycji postaci),
+  która wejdzie do najlepszej trójki rankingu, trafia na serwer – inni wczytają ją w RANKINGU przyciskiem **⬇ POSTAĆ**.
   Wszystkie postacie mają też pozy na ekran KONIEC GRY: leżenie, a przy nowym rekordzie – radość.
 - Sterowanie: klawiatura i gamepad działają zawsze, a na telefonie do wyboru jest 6 trybów (OPCJE → STEROWANIE
   albo dotknięcie „STEROWANIE: …” na ekranie tytułowym; `src/game/input.js`):

@@ -7,12 +7,20 @@ pozwala grać własną postacią z obrazków. Postacie zapisują się tylko na u
 Wygląd nie zmienia rozgrywki: bohater biega, skacze i zderza się tak samo jak wbudowane postacie. Symulacja
 (`src/sim`) nic nie wie o obrazkach, a do rankingu idzie identyfikator `custom`.
 
+**Przykładowa postać:** [`public/postac-test.zip`](../public/postac-test.zip) – 12 klatek nazwanych według zasad. W grze
+link „Pobierz przykładową postać (ZIP)” jest na liście postaci w KREATORZE i w zasadach tworzenia; pobrany plik
+wczytuje się przyciskiem „Wczytaj ZIP / PNG”.
+
 Ten sam opis gracz widzi w grze: KREATOR → **Zasady tworzenia** (we wszystkich pięciu językach, z przyciskiem
 „Kopiuj” przy poleceniu dla czatu AI). Teksty są w `src/game/strings.js` (klucze `cr.rules.*`, `cr.ai.*`, `cr.pose.*`).
 
 ## Postacie z najlepszej trójki rankingu
 
-Bieg własną postacią idzie do rankingu z `char: "custom"` i skrótem SHA-256 paczki postaci (`skin`). Gdy wejdzie do
+**Zgoda:** w edycji postaci jest pole „Zgadzam się udostępnić tę postać…” (domyślnie odznaczone; postać z pliku albo
+z rankingu też zaczyna bez zgody). Bez zgody gra nie liczy paczki, bieg idzie do rankingu bez skrótu i postać nigdy
+nie trafia na serwer. Cofnięcie zgody blokuje też wysyłkę, która czekała na sieć (`packBytes` w `skins.js`).
+
+Bieg własną postacią (ze zgodą) idzie do rankingu z `char: "custom"` i skrótem SHA-256 paczki postaci (`skin`). Gdy wejdzie do
 najlepszej trójki któregoś okresu (DZIŚ, TYDZIEŃ, OGÓŁEM), serwer prosi o paczkę, a gra ją wysyła (bez sieci – przy
 następnej okazji). Paczka to ten sam ZIP co eksport z kreatora, z klatkami zmniejszonymi jednakowo do najwyżej 480 px
 (gra rysuje postać w ok. 180 px), do 1,5 MB.

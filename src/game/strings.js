@@ -316,7 +316,7 @@ const pl = {
   'char.custom': 'twoja postać',
   'char.new': 'NOWA',
   'cr.title': 'KREATOR POSTACI',
-  'cr.lead': 'Twoje postacie zapisują się na tym urządzeniu, a przycisk ZIP zapisze postać do pliku, który wczytasz na innym. Na serwer trafia tylko postać, którą wejdziesz do najlepszej trójki RANKINGU.',
+  'cr.lead': 'Twoje postacie zapisują się na tym urządzeniu, a przycisk ZIP zapisze postać do pliku, który wczytasz na innym. Na serwer trafia tylko postać ze zgodą na udostępnienie, i to dopiero gdy wejdziesz nią do najlepszej trójki RANKINGU.',
   'cr.empty': 'Nie masz jeszcze własnej postaci. Stwórz nową albo wczytaj plik ZIP z obrazkami.',
   'cr.new': 'Nowa postać',
   'cr.import': 'Wczytaj ZIP / PNG',
@@ -421,7 +421,12 @@ const pl = {
   'hint.loadChar': 'wczytaj postać',
   'sr.boardChar': 'L albo X na padzie – wczytaj postać tego gracza.',
   'cr.from': 'z rankingu: {nick}',
-  'cr.rules.8': 'Gdy twój bieg własną postacią wejdzie do najlepszej trójki RANKINGU, gra wyśle postać na serwer. Inni gracze zobaczą ją w powtórce i na podium, a przyciskiem ⬇ POSTAĆ wczytają ją do siebie.',
+  'cr.rules.8': 'Gdy w edycji postaci zaznaczysz zgodę na udostępnienie, a twój bieg tą postacią wejdzie do najlepszej trójki RANKINGU, gra wyśle postać na serwer. Bez zgody postać zostaje tylko u ciebie. Inni gracze zobaczą ją w powtórce i na podium, a przyciskiem ⬇ POSTAĆ wczytają ją do siebie.',
+  // kreator: zgoda na udostępnienie i przykładowa postać (public/postac-test.zip)
+  'cr.share': 'Zgadzam się udostępnić tę postać: gdy wejdę nią do najlepszej trójki RANKINGU, trafi na serwer, a inni gracze zobaczą ją w powtórce i będą mogli ją pobrać.',
+  'cr.shared': 'udostępniana',
+  'cr.exampleLink': 'Pobierz przykładową postać (ZIP)',
+  'cr.exampleHint': 'i wczytaj ją przyciskiem „Wczytaj ZIP / PNG”, żeby zobaczyć, jak to działa.',
 };
 
 const en = {
@@ -736,7 +741,7 @@ const en = {
   'char.custom': 'your character',
   'char.new': 'NEW',
   'cr.title': 'CHARACTER CREATOR',
-  'cr.lead': 'Your characters are saved on this device, and the ZIP button saves a character to a file you can load on another one. Only a character you reach the top three of the LEADERBOARD with is sent to the server.',
+  'cr.lead': 'Your characters are saved on this device, and the ZIP button saves a character to a file you can load on another one. Only a character you agreed to share is sent to the server, and only once you reach the top three of the LEADERBOARD with it.',
   'cr.empty': 'You don’t have your own character yet. Create a new one or load a ZIP file with images.',
   'cr.new': 'New character',
   'cr.import': 'Load ZIP / PNG',
@@ -841,7 +846,12 @@ const en = {
   'hint.loadChar': 'load character',
   'sr.boardChar': 'L or X on a gamepad – load this player’s character.',
   'cr.from': 'from the leaderboard: {nick}',
-  'cr.rules.8': 'When your run with your own character makes the top three of the LEADERBOARD, the game sends the character to the server. Other players will see it in the replay and on the podium, and can load it with the ⬇ CHARACTER button.',
+  'cr.rules.8': 'If you tick the consent to share in the character editor and your run with that character makes the top three of the LEADERBOARD, the game sends the character to the server. Without consent the character stays only with you. Other players will see it in the replay and on the podium, and can load it with the ⬇ CHARACTER button.',
+  // kreator: zgoda na udostępnienie i przykładowa postać (public/postac-test.zip)
+  'cr.share': 'I agree to share this character: if I reach the top three of the LEADERBOARD with it, it goes to the server, and other players will see it in the replay and can download it.',
+  'cr.shared': 'shared',
+  'cr.exampleLink': 'Download a sample character (ZIP)',
+  'cr.exampleHint': 'and load it with the “Load ZIP / PNG” button to see how it works.',
 };
 
 const de = {
@@ -1156,7 +1166,7 @@ const de = {
   'char.custom': 'deine Figur',
   'char.new': 'NEU',
   'cr.title': 'FIGUREN-EDITOR',
-  'cr.lead': 'Deine Figuren werden auf diesem Gerät gespeichert, der Knopf ZIP speichert eine Figur in eine Datei für ein anderes Gerät. An den Server geht nur eine Figur, mit der du unter die besten drei der RANGLISTE kommst.',
+  'cr.lead': 'Deine Figuren werden auf diesem Gerät gespeichert, der Knopf ZIP speichert eine Figur in eine Datei für ein anderes Gerät. An den Server geht nur eine Figur, die du teilen willst, und erst wenn du mit ihr unter die besten drei der RANGLISTE kommst.',
   'cr.empty': 'Du hast noch keine eigene Figur. Erstelle eine neue oder lade eine ZIP-Datei mit Bildern.',
   'cr.new': 'Neue Figur',
   'cr.import': 'ZIP / PNG laden',
@@ -1261,7 +1271,12 @@ const de = {
   'hint.loadChar': 'Figur laden',
   'sr.boardChar': 'L oder X am Gamepad – Figur dieses Spielers laden.',
   'cr.from': 'aus der Rangliste: {nick}',
-  'cr.rules.8': 'Wenn dein Lauf mit eigener Figur unter die besten drei der RANGLISTE kommt, schickt das Spiel die Figur an den Server. Andere sehen sie in der Wiederholung und auf dem Podest und können sie mit dem Knopf ⬇ FIGUR laden.',
+  'cr.rules.8': 'Wenn du beim Bearbeiten der Figur das Teilen erlaubst und dein Lauf mit ihr unter die besten drei der RANGLISTE kommt, schickt das Spiel die Figur an den Server. Ohne Erlaubnis bleibt die Figur nur bei dir. Andere sehen sie in der Wiederholung und auf dem Podest und können sie mit dem Knopf ⬇ FIGUR laden.',
+  // kreator: zgoda na udostępnienie i przykładowa postać (public/postac-test.zip)
+  'cr.share': 'Ich bin einverstanden, diese Figur zu teilen: Komme ich mit ihr unter die besten drei der RANGLISTE, geht sie an den Server, und andere sehen sie in der Wiederholung und können sie herunterladen.',
+  'cr.shared': 'geteilt',
+  'cr.exampleLink': 'Beispielfigur herunterladen (ZIP)',
+  'cr.exampleHint': 'und mit dem Knopf „ZIP / PNG laden“ laden, um zu sehen, wie es funktioniert.',
 };
 
 const fr = {
@@ -1576,7 +1591,7 @@ const fr = {
   'char.custom': 'votre personnage',
   'char.new': 'NOUVEAU',
   'cr.title': 'CRÉATEUR DE PERSONNAGE',
-  'cr.lead': 'Vos personnages sont enregistrés sur cet appareil, et le bouton ZIP enregistre un personnage dans un fichier à charger sur un autre. Seul un personnage avec lequel vous entrez dans les trois premiers du CLASSEMENT est envoyé au serveur.',
+  'cr.lead': 'Vos personnages sont enregistrés sur cet appareil, et le bouton ZIP enregistre un personnage dans un fichier à charger sur un autre. Seul un personnage que vous acceptez de partager est envoyé au serveur, et seulement quand vous entrez avec lui dans les trois premiers du CLASSEMENT.',
   'cr.empty': 'Vous n’avez pas encore de personnage à vous. Créez-en un ou chargez un fichier ZIP avec des images.',
   'cr.new': 'Nouveau personnage',
   'cr.import': 'Charger ZIP / PNG',
@@ -1681,7 +1696,12 @@ const fr = {
   'hint.loadChar': 'charger le perso',
   'sr.boardChar': 'L ou X à la manette – charger le personnage de ce joueur.',
   'cr.from': 'du classement : {nick}',
-  'cr.rules.8': 'Quand votre partie avec votre propre personnage entre dans les trois premiers du CLASSEMENT, le jeu envoie le personnage au serveur. Les autres le verront dans la rediffusion et sur le podium, et pourront le charger avec le bouton ⬇ PERSO.',
+  'cr.rules.8': 'Si vous cochez l’accord de partage en modifiant le personnage et que votre partie avec lui entre dans les trois premiers du CLASSEMENT, le jeu envoie le personnage au serveur. Sans accord, le personnage reste chez vous. Les autres le verront dans la rediffusion et sur le podium, et pourront le charger avec le bouton ⬇ PERSO.',
+  // kreator: zgoda na udostępnienie i przykładowa postać (public/postac-test.zip)
+  'cr.share': 'J’accepte de partager ce personnage : si j’entre avec lui dans les trois premiers du CLASSEMENT, il est envoyé au serveur, et les autres joueurs le verront dans la rediffusion et pourront le télécharger.',
+  'cr.shared': 'partagé',
+  'cr.exampleLink': 'Télécharger un personnage d’exemple (ZIP)',
+  'cr.exampleHint': 'et chargez-le avec le bouton « Charger ZIP / PNG » pour voir comment ça marche.',
 };
 
 const es = {
@@ -1996,7 +2016,7 @@ const es = {
   'char.custom': 'tu personaje',
   'char.new': 'NUEVO',
   'cr.title': 'CREADOR DE PERSONAJES',
-  'cr.lead': 'Tus personajes se guardan en este dispositivo y el botón ZIP guarda un personaje en un archivo para cargarlo en otro. Solo se envía al servidor el personaje con el que entres entre los tres primeros del RANKING.',
+  'cr.lead': 'Tus personajes se guardan en este dispositivo y el botón ZIP guarda un personaje en un archivo para cargarlo en otro. Solo se envía al servidor un personaje que aceptes compartir, y solo cuando entres con él entre los tres primeros del RANKING.',
   'cr.empty': 'Aún no tienes un personaje propio. Crea uno nuevo o carga un archivo ZIP con imágenes.',
   'cr.new': 'Nuevo personaje',
   'cr.import': 'Cargar ZIP / PNG',
@@ -2101,7 +2121,12 @@ const es = {
   'hint.loadChar': 'cargar personaje',
   'sr.boardChar': 'L o X en el mando: cargar el personaje de este jugador.',
   'cr.from': 'del ranking: {nick}',
-  'cr.rules.8': 'Cuando tu partida con un personaje propio entra entre los tres primeros del RANKING, el juego envía el personaje al servidor. Los demás lo verán en la repetición y en el podio, y podrán cargarlo con el botón ⬇ PERSONAJE.',
+  'cr.rules.8': 'Si al editar el personaje marcas que aceptas compartirlo y tu partida con él entra entre los tres primeros del RANKING, el juego envía el personaje al servidor. Sin tu permiso, el personaje se queda solo contigo. Los demás lo verán en la repetición y en el podio, y podrán cargarlo con el botón ⬇ PERSONAJE.',
+  // kreator: zgoda na udostępnienie i przykładowa postać (public/postac-test.zip)
+  'cr.share': 'Acepto compartir este personaje: si entro con él entre los tres primeros del RANKING, se enviará al servidor y los demás lo verán en la repetición y podrán descargarlo.',
+  'cr.shared': 'compartido',
+  'cr.exampleLink': 'Descargar un personaje de ejemplo (ZIP)',
+  'cr.exampleHint': 'y cárgalo con el botón «Cargar ZIP / PNG» para ver cómo funciona.',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

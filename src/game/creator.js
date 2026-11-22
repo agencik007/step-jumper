@@ -78,7 +78,8 @@ function listItem(rec) {
   const b = document.createElement('b'); b.textContent = rec.name;
   const n = FRAMES.filter((f) => rec.files?.[f]).length;
   const s = document.createElement('span');
-  s.textContent = (rec.type === 'head' ? t('cr.kind.head') : t('cr.kind.frames', { n })) + (rec.source ? ` · ${t('cr.from', { nick: rec.author || 'TOP3' })}` : '');
+  s.textContent = (rec.type === 'head' ? t('cr.kind.head') : t('cr.kind.frames', { n })) + (rec.source ? ` · ${t('cr.from', { nick: rec.author || 'TOP3' })}` : '')
+    + (rec.share ? ` · ${t('cr.shared')}` : '');
   who.append(b, s);
   const acts = document.createElement('div'); acts.className = 'acts';
   const use = btn(active ? t('cr.inUse') : t('cr.use'), () => useChar(rec));
@@ -122,7 +123,7 @@ async function roomForNew() {
 async function newChar() {
   try { await roomForNew(); } catch (e) { setMsg($('crMsg'), t(e.key, e.vars), true); return; }
   sfx.pick();
-  showEdit({ id: newId(), name: t('cr.defName'), type: 'frames', files: {}, adjust: {}, colors: { ...DEFAULT_COLORS }, headK: 1, created: Date.now() });
+  showEdit({ id: newId(), name: t('cr.defName'), type: 'frames', files: {}, adjust: {}, colors: { ...DEFAULT_COLORS }, headK: 1, created: Date.now(), share: false });
 }
 function editChar(rec) {
   showEdit({
@@ -181,6 +182,7 @@ async function importFiles(list, into = null) {
     showEdit({
       id: newId(), name: cleanName(cfg?.name || zipBase, t('cr.defName')), type: a.type, files: out,
       adjust: cfg?.adjust ?? {}, colors: cfg?.colors ?? { ...DEFAULT_COLORS }, headK: cfg?.headK ?? 1, created: Date.now(),
+      share: false,                                      // zgoda na udostępnienie – tylko z pola w edycji, nigdy z pliku
     }, msgs.join('\n'));
     setMsg($('crMsg'));
   } catch (e) {
@@ -210,6 +212,7 @@ function pickFor(role) {
 function showEdit(rec, msg = '') {
   draft = rec; sel = null; anim = 'auto'; skin = null;
   $('crName').value = rec.name;
+  $('crShare').checked = !!rec.share;
   renderEdit();
   show('edit');
   setMsg($('crEditMsg'), msg);
@@ -492,6 +495,8 @@ if (root) {
     exportChar(draft);
   });
   $('crName').addEventListener('input', () => { if (draft) draft.name = $('crName').value; });
+  // zgoda na udostępnienie: bez niej postać nigdy nie trafia na serwer, nawet w najlepszej trójce (skins.js → sharePack)
+  $('crShare').addEventListener('change', () => { if (draft) draft.share = $('crShare').checked; });
   for (const b of $('crType').querySelectorAll('button')) {
     b.addEventListener('click', () => {
       if (!draft || draft.type === b.dataset.type) return;
