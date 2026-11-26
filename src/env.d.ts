@@ -3,3 +3,5 @@
 declare const __APP_VERSION__: string;
 /** Identyfikator builda (commit); w trybie deweloperskim "dev". */
 declare const __BUILD_ID__: string;
+/** Wersja testowa (podgląd gałęzi na Vercelu, VERCEL_ENV=preview). */
+declare const __TEST_BUILD__: boolean;

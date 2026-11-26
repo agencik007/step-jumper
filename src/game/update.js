@@ -4,6 +4,8 @@
 
 /** Wersja tej gry (package.json). */
 export const VERSION = __APP_VERSION__;
+/** Napis przy numerze wersji: w wersji testowej z Vercela „TEST” i commit, w prawdziwej grze – nic. */
+export const BUILD_TAG = __TEST_BUILD__ ? ` · TEST ${__BUILD_ID__.slice(0, 7)}` : '';
 
 /** available – wersja na serwerze, gdy jest nowsza niż ta w pamięci przeglądarki (null = brak). */
 export const update = { available: null };
