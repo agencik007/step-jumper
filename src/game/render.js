@@ -17,7 +17,7 @@ import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
 import {
   ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, charX, isTextPage, noteLine, rowBox, sliderBar, slotX,
 } from './layout.js';
-import { VERSION, update } from './update.js';
+import { BUILD_TAG, VERSION, update } from './update.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
@@ -695,7 +695,7 @@ function drawTitle(g) {
   button(UIBOX.news, hm === 'keys' ? `${t('title.news')} · N` : t('title.news'), { size: 11, glyph: hm === 'pad' ? BTN.LB : null });
   button(UIBOX.rules, hm === 'keys' ? `${t('title.rules')} · H` : t('title.rules'), { size: 11, glyph: hm === 'pad' ? BTN.LT : null });
   button(UIBOX.creator, hm === 'keys' ? `${t('title.creator')} · K` : t('title.creator'), { size: 11, glyph: hm === 'pad' ? BTN.RT : null });
-  text(`v${VERSION}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
+  text(`v${VERSION}${BUILD_TAG}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
   if (update.available) drawUpdateButton(time, hm);
   const wob = reduceMotion ? 1 : 1 + Math.sin(time * 2) * 0.02;
   c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(wob, wob);

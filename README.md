@@ -6,6 +6,9 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
 - 5 postaci, 5 map (stylów graficznych).
 - **Własne postacie** (KREATOR na ekranie tytułowym, klawisz **K**, RT na padzie; `src/game/creator.js`): 12 obrazków PNG
   (każdy ruch osobno: `idle.png`, `run1.png` … `cheer.png`) albo sama głowa (`head.png`) na ciele rysowanym kodem.
+  **Głowa z aparatu**: przedni aparat z owalem i podpowiedziami jak przy weryfikacji twarzy w banku (MediaPipe w przeglądarce,
+  `src/game/facecam.js`, `src/game/facefit.js`), zdjęcie robi się samo, tło i szyja są wycinane, a powstaje `head.png`.
+  Zdjęcie nie wychodzi z urządzenia, a takich postaci gra nie udostępnia w rankingu.
   Zapis w IndexedDB na urządzeniu, eksport i import pliku ZIP, podgląd animacji i ręczne poprawki skali.
   Zasady tworzenia i polecenie dla czatu AI: [`docs/POSTACIE.md`](docs/POSTACIE.md), przykładowa paczka do pobrania z kreatora:
   `public/postac-test.zip`. Wygląd nie zmienia rozgrywki. Postać ze zgodą na udostępnienie (pole w edycji postaci),
@@ -54,6 +57,8 @@ Zręcznościówka: wspinaczka po wieży, w której wysokość skoku zależy od r
   po biegu, powtórka, podsumowanie tygodnia, najnowszy wpis NOWOŚCI), a komunikaty z `game.say` idą tą samą drogą.
   Klawisz **I** w biegu i w pauzie czyta wynik, piętro, combo i tempo. Tab dochodzi do przycisków pauzy i pełnego ekranu
   (Enter / spacja je naciskają), przyciski dotykowe są poza kolejnością Tab, a po zamknięciu okienek fokus wraca na płótno.
+- **Wersje testowe**: Vercel buduje każdą wypchniętą gałąź pod osobnym adresem; taki build ma przy numerze wersji
+  na ekranie tytułowym napis „TEST” i commit (`__TEST_BUILD__` w `vite.config.js`), żeby nie pomylić go z prawdziwą grą.
 - **Technicznie** (wersja 0.17.0):
   - ekran nie gaśnie w biegu i powtórce w każdym trybie (Screen Wake Lock, `src/game/wake.js`), poza grą blokada jest zwalniana,
   - **oszczędzanie baterii** (OPCJE, `src/game/power.js`): WYŁ. / AUTO / WŁ. – obraz najwyżej 30 kl./s i płótno do 1,5× DPR;

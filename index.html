@@ -252,6 +252,21 @@
     #crPreview { width: 100%; max-width: 300px; height: auto; aspect-ratio: 6 / 5; margin: 0 auto; }
     .cr-grid { grid-template-columns: repeat(4, 1fr); }
   }
+  /* aparat: podgląd odbity jak w lustrze, owal z nakładki (facecam.js), wynik – wycięta głowa */
+  .cam-box { position: relative; height: min(52dvh, 360px); aspect-ratio: 4 / 3; max-width: 100%; margin: 4px auto 0; border-radius: 12px; overflow: hidden; background: #141a36; }
+  .cam-box video, .cam-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .cam-box video { object-fit: cover; transform: scaleX(-1); }
+  .cam-box canvas[hidden] { display: none; }
+  #camOverlay { background: transparent; box-shadow: none; border-radius: 0; }
+  #camResult { background: #141a36; box-shadow: none; border-radius: 0; }
+  #crCamView[data-stage=done] video, #crCamView[data-stage=done] #camOverlay, #crCamView[data-stage=nocam] video { visibility: hidden; }
+  .cam-hint { min-height: 1.4em; margin: 8px 0 0; text-align: center; color: #ffe066; font: 800 16px/1.3 system-ui, sans-serif; }
+  .cam-hint.ok { color: #7ef0c0; }
+  .cam-hint.err { color: #ff9a7f; font-size: 14px; }
+  #creator button:disabled { opacity: .45; cursor: default; }
+  .cr-note { margin: 0; color: #9fb4ee; font-size: 12px; line-height: 1.35; }
+  .cr-note[hidden] { display: none; }
+  .cr-check.off { opacity: .5; cursor: default; }
   /* przyciski na dole (Zapisz, Anuluj…) przyklejone do dolnej krawędzi karty – widać je nawet, gdy treść się przewija */
   #creator .cr-foot { position: sticky; bottom: -14px; z-index: 1; margin: 8px -18px -14px; padding: 8px 18px 14px;
     background: #0c102c; border-top: 1.5px solid rgba(159,216,255,.25); }
@@ -261,6 +276,8 @@
     .cr-top { grid-template-columns: 150px 1fr; }
     .cr-grid { margin-top: 6px; gap: 4px; }
     .cr-cell canvas { aspect-ratio: auto; height: 52px; }
+    .cam-box { height: min(46dvh, 300px); }
+    .cam-hint { margin-top: 5px; font-size: 14px; }
     #creator .cr-foot { bottom: -10px; margin: 6px -16px -10px; padding: 6px 16px 10px; }
   }
 
@@ -390,6 +407,7 @@
         <button type="button" id="crRules" class="alt" data-i18n="cr.rulesBtn">Zasady tworzenia</button>
         <button type="button" id="crImport" class="alt" data-i18n="cr.import">Wczytaj ZIP / PNG</button>
         <button type="button" id="crNew" class="alt" data-i18n="cr.new">Nowa postać</button>
+        <button type="button" id="crCam" class="alt" data-i18n="cr.cam">Głowa z aparatu</button>
         <button type="button" id="crClose" data-i18n="cr.close">Zamknij</button>
       </div>
       <input type="file" id="crFile" accept=".zip,application/zip,image/png,image/webp" multiple hidden>
@@ -401,6 +419,7 @@
         <div class="cr-side">
           <label class="cr-field"><span data-i18n="cr.name">Nazwa</span><input id="crName" maxlength="16" spellcheck="false" autocomplete="off" enterkeyhint="done"></label>
           <label class="cr-check"><input type="checkbox" id="crShare"><span data-i18n="cr.share"></span></label>
+          <p id="crPhotoNote" class="cr-note" hidden data-i18n="cr.photoNoShare"></p>
           <div class="cr-seg" id="crType" role="group">
             <button type="button" class="alt small" data-type="frames" data-i18n="cr.type.frames">12 klatek</button>
             <button type="button" class="alt small" data-type="head" data-i18n="cr.type.head">Sama głowa</button>
@@ -421,6 +440,7 @@
       </div>
       <div id="crHeadOpts" class="cr-panel" hidden>
         <div class="cr-ranges"><label><span data-i18n="cr.headSize">Wielkość głowy</span><input type="range" id="crHeadK" min="40" max="250" step="1"><output id="crHeadKOut"></output></label></div>
+        <div class="row wrap" style="justify-content:flex-start;margin-top:8px"><button type="button" class="alt small" id="crCamHead" data-i18n="cr.cam.head">Zdjęcie twarzy z aparatu</button></div>
         <p style="margin-top:8px" data-i18n="cr.colors">Kolory ciała</p>
         <div class="cr-colors" id="crColors"></div>
       </div>
@@ -432,6 +452,24 @@
         <button type="button" id="crSave" data-i18n="cr.save">Zapisz</button>
       </div>
       <input type="file" id="crFrameFile" accept="image/png,image/webp" hidden>
+    </section>
+    <section id="crCamView" hidden>
+      <h2 data-i18n="cr.cam.title">GŁOWA Z APARATU</h2>
+      <p class="lead" data-i18n="cr.cam.lead"></p>
+      <div class="cam-box">
+        <video id="camVideo" playsinline muted aria-hidden="true"></video>
+        <canvas id="camOverlay" aria-hidden="true"></canvas>
+        <canvas id="camResult" hidden aria-hidden="true"></canvas>
+      </div>
+      <p id="camHint" class="cam-hint" role="status" aria-live="polite"></p>
+      <div class="row wrap cr-foot">
+        <button type="button" class="alt" id="camCancel" data-i18n="cr.cancel">Anuluj</button>
+        <button type="button" class="alt" id="camGallery" data-i18n="cr.cam.gallery">Z galerii</button>
+        <button type="button" class="alt" id="camAgain" hidden data-i18n="cr.cam.again">Jeszcze raz</button>
+        <button type="button" id="camShot" disabled data-i18n="cr.cam.shot">Zrób zdjęcie</button>
+        <button type="button" id="camUse" hidden data-i18n="cr.cam.use">Użyj</button>
+      </div>
+      <input type="file" id="camFile" accept="image/*" hidden>
     </section>
     <section id="crRulesView" hidden>
       <h2 data-i18n="cr.rules.title">ZASADY TWORZENIA POSTACI</h2>

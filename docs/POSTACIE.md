@@ -37,6 +37,24 @@ API: `server/README.md`.
 | **12 klatek** | 12 obrazków PNG, każdy ruch osobno | podmienia obrazki zależnie od stanu bohatera |
 | **Sama głowa** | jeden obrazek `head.png` | dorysowuje kodem ciało chibi (kolory koszuli, spodni, butów i dłoni wybiera się w kreatorze) i animuje je jak wbudowane postacie |
 
+## Głowa z aparatu
+
+Przycisk **Głowa z aparatu** na liście postaci (albo **Zdjęcie twarzy z aparatu** w edycji „samej głowy”) robi
+`head.png` ze zdjęcia twarzy – bez rysowania i bez czatu AI (`src/game/facecam.js`, obliczenia: `src/game/facefit.js`):
+
+1. Włącza się przedni aparat z owalem. MediaPipe Face Landmarker (478 punktów twarzy) co klatkę sprawdza, czy twarz
+   jest jedna, w owalu, w dobrej odległości, patrzy prosto, nie jest przechylona i nie jest za ciemno – i podpowiada,
+   co poprawić. Gdy wszystko się zgadza przez 1,2 s, zdjęcie robi się samo (można też nacisnąć **Zrób zdjęcie**).
+2. MediaPipe Image Segmenter (`selfie_segmenter`) daje maskę człowieka. Z niej zostaje tylko to, co jest nad linią żuchwy
+   (bez szyi i ramion), w ramce wokół twarzy i w jednym kawałku z twarzą (bez rąk i drugiej osoby obok).
+3. Wycięta głowa (PNG, do 512 px) trafia do postaci „sama głowa” z kolorem dłoni wziętym z policzków i czoła
+   i z większą głową (150%), żeby twarz była czytelna w grze.
+
+Bez aparatu (komputer, brak zgody) to samo robi **Z galerii** na dowolnym zdjęciu. Wszystko liczy przeglądarka
+(WebAssembly), zdjęcie nie wychodzi z urządzenia. Biblioteka i modele (`src/assets/models/`) ładują się dopiero po
+wejściu w aparat. **Postaci z głową ze zdjęcia nie udostępniamy w rankingu** – pole zgody jest wyłączone, a `sharePack`
+w `skins.js` ich nie wysyła; znacznik `"head": { "photo": true }` przechodzi też przez eksport ZIP.
+
 ## Nazwy plików
 
 Po nazwie pliku kreator wie, co jest czym, więc przy wczytaniu sam przypisze obrazki do ruchów. Wielkość liter nie
@@ -96,7 +114,8 @@ z ustawieniami. Przy wczytaniu ten plik jest opcjonalny.
 
 - `type`: `"frames"` albo `"head"`.
 - `adjust` (12 klatek): poprawki z kreatora – `k` wielkość (0,4–2,5), `dx` w prawo, `dy` w górę (−30…30 jednostek planszy).
-- Dla głowy zamiast `adjust`: `"head": { "k": 1 }` (wielkość głowy) i `"colors": { "skin", "shirt", "pants", "shoes" }` (`#rrggbb`).
+- Dla głowy zamiast `adjust`: `"head": { "k": 1 }` (wielkość głowy; `"photo": true` – głowa ze zdjęcia twarzy, nieudostępniana)
+  i `"colors": { "skin", "shirt", "pants", "shoes" }` (`#rrggbb`).
 
 Limity: do 10 własnych postaci, obrazek do 8 MB przed obróbką, ZIP do 48 MB. Kreator przycina każdy obrazek
 do sylwetki, zmniejsza do 1024 px i zapisuje od nowa jako PNG (bez metadanych).

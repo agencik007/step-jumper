@@ -5,7 +5,8 @@
 //   { id, name, type: 'frames' | 'head', created, updated, files: { idle: Blob, run1: Blob, … } albo { head: Blob },
 //     adjust: { klatka: { k, dx, dy } }, colors: { skin, shirt, pants, shoes }, headK,
 //     source?: skrót paczki z rankingu (postać wczytana z najlepszej trójki), author?: nick jej właściciela,
-//     share: zgoda gracza na udostępnienie (pole w edycji postaci) – bez niej postać nie trafia na serwer }
+//     share: zgoda gracza na udostępnienie (pole w edycji postaci) – bez niej postać nie trafia na serwer,
+//     photo: głowa ze zdjęcia twarzy (KREATOR → aparat) – takiej postaci nie udostępniamy nigdy, nawet ze zgodą }
 // Obrazki są już przycięte do sylwetki i najwyżej MAX_SIDE px (prepareImage), zapisane jako PNG.
 //
 // Drugi magazyn – 'packs': paczki ZIP do wysłania na serwer (postać w najlepszej trójce rankingu), { hash, key, data, at }.
@@ -229,6 +230,8 @@ export async function saveFromPack(bytes, hash, author) {
 }
 
 // ───────────────────────── paczki: wysyłanie (najlepsza trójka) ─────────────────────────
+/** Postać może trafić na serwer: gracz się zgodził i nie jest to głowa ze zdjęcia twarzy (prywatność). */
+export const canShare = (rec) => !!rec?.share && !(rec.photo && rec.type === 'head');
 /** Paczka na serwer: klatki zmniejszone jednakowo do najwyżej SHARE_SIDE px (gra rysuje postać w ok. 180 px). */
 const SHARE_SIDE = 480, SHARE_MAX = 1_400_000, PACKS_KEEP = 8;
 const packKey = (rec) => `${rec.id}:${rec.updated ?? rec.created}`;
@@ -260,7 +263,7 @@ export async function packZip(rec, scale = 1) {
 export async function sharePack(id) {
   try {
     const rec = await getChar(id);
-    if (!rec?.share) return null;
+    if (!canShare(rec)) return null;
     const key = packKey(rec);
     const cached = (await tx('readonly', (s) => s.getAll(), PACKS)).find((p) => p.key === key);
     if (cached) return cached.hash;
@@ -283,7 +286,7 @@ export async function sharePack(id) {
 export async function packBytes(hash) {
   try {
     const p = await tx('readonly', (s) => s.get(hash), PACKS);
-    if (!p || !(await getChar(p.key.split(':')[0]))?.share) return null;
+    if (!p || !canShare(await getChar(p.key.split(':')[0]))) return null;
     return new Uint8Array(await p.data.arrayBuffer());
   } catch { return null; }
 }

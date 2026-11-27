@@ -1,6 +1,7 @@
 // KREATOR POSTACI: okienko HTML nad grą (jak formularz nicku), bo potrzebuje plików, pól tekstowych, suwaków i kolorów.
-// Trzy widoki: lista własnych postaci, edycja jednej postaci (12 klatek albo sama głowa) i zasady tworzenia z poleceniem
-// dla czatu AI. Postacie zapisuje skins.js (IndexedDB), format paczki opisuje skinpack.js i docs/POSTACIE.md.
+// Cztery widoki: lista własnych postaci, edycja jednej postaci (12 klatek albo sama głowa), zasady tworzenia z poleceniem
+// dla czatu AI i aparat (głowa ze zdjęcia twarzy – facecam.js, ładowany dopiero przy pierwszym użyciu).
+// Postacie zapisuje skins.js (IndexedDB), format paczki opisuje skinpack.js i docs/POSTACIE.md.
 import { sfx } from './audio.js';
 import { drawHero } from './characters.js';
 import { ctx, focusGame, setCtx } from './gfx.js';
@@ -12,7 +13,7 @@ import { bakeSkin, buildSkin, deleteChar, failure, listChars, newId, packZip, pr
 
 const $ = (id) => document.getElementById(id);
 const root = $('creator');
-const VIEWS = { list: 'crListView', edit: 'crEditView', rules: 'crRulesView' };
+const VIEWS = { list: 'crListView', edit: 'crEditView', rules: 'crRulesView', cam: 'crCamView' };
 
 let game = null;
 let view = 'list', rulesFrom = 'list';
@@ -21,6 +22,10 @@ let sel = null;                    // wybrana klatka w edycji
 let anim = 'auto';                 // co pokazuje podgląd: 'auto', 'idle', 'run', 'jump', 'fall', 'dead', 'cheer' albo 'frame' (wybrana klatka)
 let skin = null, buildN = 0;       // podgląd edytowanej postaci (skins.js → buildSkin)
 let raf = 0, delArm = null, frameFor = null;
+// aparat: moduł facecam.js, działający aparat, skąd przyszliśmy, czy głowa trafi do edytowanej postaci, gotowe zdjęcie
+let camMod = null, cam = null, camFrom = 'list', camInto = false, shot = null, camBusy = false, camN = 0;
+/** Głowa ze zdjęcia jest od razu większa niż ze zwykłego obrazka – twarz w grze ma kilkanaście pikseli. */
+const PHOTO_HEAD_K = 1.5;
 
 export const creatorOpen = () => !!root && !root.hidden;
 
@@ -33,13 +38,14 @@ export function openCreator(g) {
 export function closeCreator() {
   if (!creatorOpen()) return;
   root.hidden = true;
-  stopAnim(); draft = null; skin = null;
+  stopCam(); stopAnim(); draft = null; skin = null;
   focusGame();                                         // klawiatura i czytnik ekranu wracają do gry
 }
 /** Esc / B na padzie: z edycji i zasad – wstecz, z listy – zamknięcie. */
 export function creatorBack() {
   sfx.pick();
   if (view === 'rules') show(rulesFrom);
+  else if (view === 'cam') leaveCam();
   else if (view === 'edit') showList();
   else closeCreator();
 }
@@ -47,6 +53,7 @@ export function creatorBack() {
 // ───────────────────────── widoki ─────────────────────────
 function show(name) {
   view = name;
+  if (name !== 'cam') stopCam();
   for (const [k, id] of Object.entries(VIEWS)) $(id).hidden = k !== name;
   if (name === 'edit') startAnim(); else stopAnim();
   root.querySelector('.card').scrollTop = 0;
@@ -78,7 +85,7 @@ function listItem(rec) {
   const b = document.createElement('b'); b.textContent = rec.name;
   const n = FRAMES.filter((f) => rec.files?.[f]).length;
   const s = document.createElement('span');
-  s.textContent = (rec.type === 'head' ? t('cr.kind.head') : t('cr.kind.frames', { n })) + (rec.source ? ` · ${t('cr.from', { nick: rec.author || 'TOP3' })}` : '')
+  s.textContent = (rec.type === 'head' ? t(isPhoto(rec) ? 'cr.kind.photo' : 'cr.kind.head') : t('cr.kind.frames', { n })) + (rec.source ? ` · ${t('cr.from', { nick: rec.author || 'TOP3' })}` : '')
     + (rec.share ? ` · ${t('cr.shared')}` : '');
   who.append(b, s);
   const acts = document.createElement('div'); acts.className = 'acts';
@@ -123,7 +130,7 @@ async function roomForNew() {
 async function newChar() {
   try { await roomForNew(); } catch (e) { setMsg($('crMsg'), t(e.key, e.vars), true); return; }
   sfx.pick();
-  showEdit({ id: newId(), name: t('cr.defName'), type: 'frames', files: {}, adjust: {}, colors: { ...DEFAULT_COLORS }, headK: 1, created: Date.now(), share: false });
+  showEdit({ id: newId(), name: t('cr.defName'), type: 'frames', files: {}, adjust: {}, colors: { ...DEFAULT_COLORS }, headK: 1, created: Date.now(), share: false, photo: false });
 }
 function editChar(rec) {
   showEdit({
@@ -175,6 +182,7 @@ async function importFiles(list, into = null) {
       Object.assign(into.files, out);
       for (const k of Object.keys(out)) delete into.adjust[k];
       if (cfg) { Object.assign(into.adjust, cfg.adjust); if (a.type === 'head') { into.colors = cfg.colors; into.headK = cfg.headK; } }
+      if (out[HEAD]) into.photo = !!cfg?.photo;
       renderEdit(); rebuild();
       setMsg(msgEl, msgs.join('\n'));
       return;
@@ -183,6 +191,7 @@ async function importFiles(list, into = null) {
       id: newId(), name: cleanName(cfg?.name || zipBase, t('cr.defName')), type: a.type, files: out,
       adjust: cfg?.adjust ?? {}, colors: cfg?.colors ?? { ...DEFAULT_COLORS }, headK: cfg?.headK ?? 1, created: Date.now(),
       share: false,                                      // zgoda na udostępnienie – tylko z pola w edycji, nigdy z pliku
+      photo: a.type === 'head' && !!cfg?.photo,
     }, msgs.join('\n'));
     setMsg($('crMsg'));
   } catch (e) {
@@ -198,6 +207,7 @@ async function setFrame(role, file) {
     if (file.size > MAX_FILE) throw failure('cr.err.big');
     try { draft.files[role] = await prepareImage(file); } catch { throw failure('cr.err.image', { file: baseName(file.name) }); }
     delete draft.adjust[role];
+    if (role === HEAD) { draft.photo = false; renderShare(); }
     setMsg(msgEl, '');
     selectCell(role);
     rebuild();
@@ -212,7 +222,6 @@ function pickFor(role) {
 function showEdit(rec, msg = '') {
   draft = rec; sel = null; anim = 'auto'; skin = null;
   $('crName').value = rec.name;
-  $('crShare').checked = !!rec.share;
   renderEdit();
   show('edit');
   setMsg($('crEditMsg'), msg);
@@ -220,6 +229,7 @@ function showEdit(rec, msg = '') {
 }
 function renderEdit() {
   for (const b of $('crType').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.type === draft.type));
+  renderShare();
   renderAnimButtons();
   renderCells();
   renderPanels();
@@ -270,6 +280,16 @@ function selectCell(role) {
   renderCells();
   renderPanels();
 }
+
+/** Zgoda na udostępnienie – postaci z głową ze zdjęcia twarzy nie udostępniamy wcale (skins.js → sharePack). */
+function renderShare() {
+  const photo = isPhoto(draft);
+  $('crShare').checked = !photo && !!draft.share;
+  $('crShare').disabled = photo;
+  $('crShare').closest('label').classList.toggle('off', photo);
+  $('crPhotoNote').hidden = !photo;
+}
+const isPhoto = (rec) => !!rec?.photo && rec.type === 'head';
 
 function renderPanels() {
   const frames = draft.type === 'frames';
@@ -330,12 +350,140 @@ async function save() {
   // zapisujemy tylko obrazki wybranego rodzaju
   const keep = draft.type === 'head' ? [HEAD] : FRAMES;
   const rec = { ...draft, files: Object.fromEntries(keep.filter((k) => draft.files[k]).map((k) => [k, draft.files[k]])), updated: Date.now() };
+  rec.photo = isPhoto(rec);
+  if (rec.photo) rec.share = false;
   try { await putChar(rec); } catch { setMsg(msgEl, t('cr.err.store'), true); return; }
   const sk = await buildSkin(rec).catch(() => null);
   if (sk) game.setCustom(bakeSkin(sk));
   sfx.pick();
   showList(t('cr.saved', { name: rec.name }));
 }
+
+// ───────────────────────── aparat: głowa ze zdjęcia twarzy ─────────────────────────
+/**
+ * Widok aparatu. into = true: głowa trafi do edytowanej postaci (przycisk w edycji), inaczej powstanie nowa postać.
+ * Biblioteka i modele (kilka MB) ładują się dopiero tutaj. Zdjęcie nie opuszcza urządzenia.
+ */
+async function openCam(into = false, from = view) {
+  if (!into) { try { await roomForNew(); } catch (e) { setMsg($('crMsg'), t(e.key, e.vars), true); return; } }
+  sfx.pick();
+  camFrom = from; camInto = into; shot = null;
+  show('cam');
+  camStage('live');
+  camHint(t('cr.cam.starting'));
+  const n = ++camN;
+  try {
+    camMod ??= await import('./facecam.js');
+  } catch { if (n === camN) camHint(t('cr.cam.err.load'), true); return; }
+  if (n !== camN || view !== 'cam') return;
+  cam = new camMod.FaceCam($('camVideo'), $('camOverlay'), {
+    onState: (a) => { if (!camBusy) camHint(t(`cr.cam.${a.hint}`), false, a.hint === 'ok'); $('camShot').disabled = a.hint === 'noFace'; },
+    onAuto: () => takeShot(),
+  });
+  try { await cam.start(); } catch (e) {
+    if (n !== camN) return;
+    stopCam();
+    camStage('nocam');
+    camHint(t(`cr.cam.err.${e.cam ?? 'none'}`), true);
+    return;
+  }
+  if (n !== camN) return;
+  camHint(t('cr.cam.loading'));
+  try { await cam.run(); } catch { if (n === camN) { stopCam(); camStage('nocam'); camHint(t('cr.cam.err.load'), true); } }
+}
+function stopCam() {
+  camN++;
+  cam?.stop(); cam = null; camBusy = false;
+}
+function leaveCam() {
+  stopCam();
+  if (camFrom === 'edit' && draft) show('edit'); else showList();
+}
+/** Co widać w okienku: 'live' – podgląd z aparatu, 'nocam' – brak aparatu (zostaje galeria), 'done' – wycięta głowa. */
+function camStage(stage) {
+  $('crCamView').dataset.stage = stage;
+  $('camShot').hidden = stage !== 'live';
+  $('camAgain').hidden = stage !== 'done';
+  $('camUse').hidden = stage !== 'done';
+  $('camResult').hidden = stage !== 'done';
+  $('camShot').disabled = true;
+}
+function camHint(text, err = false, ok = false) {
+  const el = $('camHint');
+  if (el.textContent !== text) el.textContent = text;
+  el.classList.toggle('err', !!err);
+  el.classList.toggle('ok', !!ok);
+}
+
+/** Zdjęcie z aparatu (przycisk albo samo, gdy twarz stoi dobrze) → wycięta głowa. */
+async function takeShot() {
+  if (!cam || camBusy) return;
+  camBusy = true;
+  cam.pause();
+  sfx.pick();
+  const frame = cam.grab();
+  await cutFrom(frame, true, () => { if (cam) { camBusy = false; cam.run().catch(() => {}); } });
+}
+/** Zdjęcie z galerii – ta sama droga co z aparatu (przydaje się na komputerze bez kamery). */
+async function fromGallery(file) {
+  if (!file || camBusy) return;
+  if (file.size > MAX_FILE * 2) { camHint(t('cr.err.big'), true); return; }
+  camBusy = true;
+  cam?.pause();
+  camHint(t('cr.cam.loading'));
+  try {
+    camMod ??= await import('./facecam.js');
+    const frame = await camMod.imageCanvas(file);
+    await cutFrom(frame, false, () => { camBusy = false; if (cam) cam.run().catch(() => {}); });
+  } catch (e) {
+    camBusy = false;
+    camHint(t(`cr.cam.err.${e.cam ?? 'load'}`), true);
+    cam?.run().catch(() => {});
+  }
+}
+async function cutFrom(frame, live, resume) {
+  const n = camN;
+  camHint(t('cr.cam.working'));
+  try {
+    const out = await camMod.cutHead(frame, live);
+    if (n !== camN) return;
+    shot = out;
+    camBusy = false;
+    cam?.stop(); cam = null;                           // aparat wyłączony, gdy oglądamy wynik (gaśnie lampka aparatu)
+    camStage('done');
+    await drawShot(out.blob);
+    camHint(t('cr.cam.done'), false, true);
+    setTimeout(() => $('camUse').focus({ preventScroll: true }), 0);
+  } catch (e) {
+    if (n !== camN) return;
+    camHint(t(`cr.cam.err.${e.cam ?? 'load'}`), true);
+    resume();
+  }
+}
+async function drawShot(blob) {
+  const cv = $('camResult'), bmp = await createImageBitmap(blob);
+  drawFit(cv, bmp);
+}
+async function useShot() {
+  if (!shot) return;
+  sfx.pick();
+  const head = await prepareImage(shot.blob).catch(() => shot.blob);
+  if (camInto && draft) {
+    draft.type = 'head'; draft.files[HEAD] = head; draft.photo = true; draft.colors = { ...draft.colors, skin: shot.skin };
+    if ((draft.headK ?? 1) === 1) draft.headK = PHOTO_HEAD_K;
+    sel = null; anim = 'auto'; shot = null;
+    show('edit'); renderEdit(); rebuild();
+    setMsg($('crEditMsg'), t('cr.cam.added'));
+    return;
+  }
+  const s = shot; shot = null;
+  showEdit({
+    id: newId(), name: t('cr.cam.defName'), type: 'head', files: { [HEAD]: head }, adjust: {},
+    colors: { ...DEFAULT_COLORS, skin: s.skin }, headK: PHOTO_HEAD_K, created: Date.now(), share: false, photo: true,
+  }, t('cr.cam.added'));
+}
+/** Ponowne zdjęcie: ten sam cel i ten sam powrót co za pierwszym razem. */
+const camAgain = () => openCam(camInto, camFrom);
 
 // ───────────────────────── eksport ─────────────────────────
 async function exportChar(rec) {
@@ -480,6 +628,14 @@ function stopAnim() { cancelAnimationFrame(raf); raf = 0; }
 if (root) {
   $('crClose').addEventListener('click', () => { sfx.pick(); closeCreator(); });
   $('crNew').addEventListener('click', newChar);
+  $('crCam').addEventListener('click', () => openCam(false));
+  $('crCamHead').addEventListener('click', () => openCam(true));
+  $('camShot').addEventListener('click', takeShot);
+  $('camAgain').addEventListener('click', camAgain);
+  $('camUse').addEventListener('click', useShot);
+  $('camCancel').addEventListener('click', () => { sfx.pick(); leaveCam(); });
+  $('camGallery').addEventListener('click', () => { const i = $('camFile'); i.value = ''; i.click(); });
+  $('camFile').addEventListener('change', (e) => fromGallery(e.target.files?.[0]));
   $('crImport').addEventListener('click', () => { const i = $('crFile'); i.value = ''; i.click(); });
   $('crFile').addEventListener('change', (e) => importFiles(e.target.files));
   $('crFrameFile').addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f && frameFor) setFrame(frameFor, f); });
@@ -512,7 +668,7 @@ if (root) {
   $('crReplace').addEventListener('click', () => { if (sel) pickFor(sel); });
 
   // upuszczenie plików: na liście – nowa postać, w edycji – dopisanie klatek (na pole – ta jedna klatka)
-  root.addEventListener('dragover', (e) => { if (view === 'rules') return; e.preventDefault(); root.classList.add('dropping'); });
+  root.addEventListener('dragover', (e) => { if (view === 'rules' || view === 'cam') return; e.preventDefault(); root.classList.add('dropping'); });
   root.addEventListener('dragleave', (e) => { if (e.target === root) root.classList.remove('dropping'); });
   root.addEventListener('drop', (e) => {
     e.preventDefault(); root.classList.remove('dropping');

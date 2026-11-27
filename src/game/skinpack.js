@@ -193,7 +193,7 @@ export function parsePackJson(text) {
   for (const f of FRAMES) if (j.adjust?.[f]) adjust[f] = cleanAdjust(j.adjust[f]);
   return {
     name: cleanName(j.name), type: j.type === 'head' ? 'head' : j.type === 'frames' ? 'frames' : null,
-    adjust, colors, headK: clampN(j.head?.k, ADJ.kMin, ADJ.kMax, 1),
+    adjust, colors, headK: clampN(j.head?.k, ADJ.kMin, ADJ.kMax, 1), photo: j.head?.photo === true,
   };
 }
 
@@ -206,7 +206,9 @@ export function packJson(rec) {
   }
   return {
     format: PACK_FORMAT, game: 'step-jumper', name: rec.name, type: rec.type,
-    ...(rec.type === 'head' ? { head: { k: rec.headK ?? 1 }, colors: { ...DEFAULT_COLORS, ...rec.colors } } : { adjust }),
+    ...(rec.type === 'head'
+      ? { head: { k: rec.headK ?? 1, ...(rec.photo ? { photo: true } : {}) }, colors: { ...DEFAULT_COLORS, ...rec.colors } }
+      : { adjust }),
   };
 }
 

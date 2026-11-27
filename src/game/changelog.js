@@ -5,6 +5,29 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.21.0', date: '2026-11-26',
+    pl: [
+      'Nowość w KREATORZE: przycisk „Głowa z aparatu”. Ustaw twarz w owalu, a gra podpowie, co poprawić („Podejdź bliżej”, „Patrz prosto w aparat”…), sama zrobi zdjęcie, wytnie tło i wstawi twoją głowę na postać. Dłonie dostają kolor twojej skóry.',
+      'Bez aparatu wybierz zdjęcie przyciskiem „Z galerii”. Zdjęcie nie opuszcza telefonu, a postaci z twarzą nigdy nie udostępniamy w RANKINGU.',
+    ],
+    en: [
+      'New in the CREATOR: the “Head from camera” button. Put your face in the oval and the game tells you what to fix (“Come closer”, “Look straight at the camera”…), takes the photo itself, cuts out the background and puts your head on a character. The hands get your skin colour.',
+      'No camera? Pick a photo with the “From gallery” button. The photo never leaves your phone, and characters with your face are never shared on the LEADERBOARD.',
+    ],
+    de: [
+      'Neu im EDITOR: der Knopf „Kopf per Kamera“. Bring dein Gesicht ins Oval, und das Spiel sagt dir, was du ändern sollst („Komm näher“, „Schau direkt in die Kamera“…), macht das Foto selbst, schneidet den Hintergrund aus und setzt deinen Kopf auf eine Figur. Die Hände bekommen deine Hautfarbe.',
+      'Ohne Kamera wählst du ein Foto mit „Aus Galerie“. Das Foto verlässt dein Handy nicht, und Figuren mit deinem Gesicht werden in der RANGLISTE nie geteilt.',
+    ],
+    fr: [
+      'Nouveau dans le CRÉATEUR : le bouton « Tête par caméra ». Placez votre visage dans l’ovale et le jeu vous dit quoi corriger (« Rapprochez-vous », « Regardez droit vers la caméra »…), prend la photo tout seul, découpe le fond et pose votre tête sur un personnage. Les mains prennent la couleur de votre peau.',
+      'Sans caméra, choisissez une photo avec « Depuis la galerie ». La photo ne quitte pas votre téléphone, et les personnages avec votre visage ne sont jamais partagés dans le CLASSEMENT.',
+    ],
+    es: [
+      'Novedad en el CREADOR: el botón «Cabeza con cámara». Pon la cara en el óvalo y el juego te dice qué corregir («Acércate», «Mira de frente a la cámara»…), hace la foto solo, recorta el fondo y pone tu cabeza en un personaje. Las manos toman el color de tu piel.',
+      'Sin cámara, elige una foto con «De la galería». La foto no sale de tu teléfono y los personajes con tu cara nunca se comparten en el RANKING.',
+    ],
+  },
+  {
     v: '0.20.0', date: '2026-11-22',
     pl: [
       'Booster wyrzutu to teraz piwo, a od 200. piętra – wódka. Działają tak samo jak dawniej, za to po każdym łyku gra komentuje: „Ale dzisiaj lecisz!”, „Nie za dużo tego?”, „Przestań tyle pić!”…',

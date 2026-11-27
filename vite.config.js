@@ -4,6 +4,8 @@
 // __APP_VERSION__, a obok niej __BUILD_ID__ – identyfikator tego konkretnego builda (commit z Vercela albo z gita).
 // Ten sam opis ląduje w dist/version.json: działająca gra co jakiś czas go pobiera i gdy identyfikator jest inny
 // niż jej własny, pokazuje przycisk PRZEŁADUJ (src/game/update.js).
+// __TEST_BUILD__: wersja testowa z Vercela (każda gałąź poza main dostaje swój adres) – na ekranie tytułowym obok
+// numeru wersji widać „TEST” i commit, żeby nie pomylić jej z prawdziwą grą.
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
@@ -22,6 +24,7 @@ export default defineConfig(({ command }) => {
     define: {
       __APP_VERSION__: JSON.stringify(version),
       __BUILD_ID__: JSON.stringify(build),
+      __TEST_BUILD__: JSON.stringify(process.env.VERCEL_ENV === 'preview'),
     },
     plugins: [{
       name: 'version-json',
