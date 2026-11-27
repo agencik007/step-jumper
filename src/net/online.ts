@@ -8,6 +8,7 @@
 import { SIM_VERSION, decodeInputs, encodeInputs } from '../sim';
 import { sha256hex } from '../../server/src/auth';
 import { weekKey } from '../../server/src/periods';
+import { MATCH_GRACE_MS } from '../../server/src/match';
 
 const DAY = 86_400_000;
 export const TICKET_RESERVE = 3;
@@ -59,11 +60,32 @@ export interface Board { period: string; entries: Entry[] }
 export interface Around extends Board { rank: number | null }
 
 export type SubmitResult =
-  | { status: 'verified'; score: number; floor: number; combo: number; ticks: number; improved: Record<PeriodKind, boolean>; ranks: Record<PeriodKind, number>; needSkin?: boolean }
+  | {
+    status: 'verified'; score: number; floor: number; combo: number; ticks: number; improved: Record<PeriodKind, boolean>; ranks: Record<PeriodKind, number>; needSkin?: boolean;
+    /** Bieg z wyścigu: mój wynik w tabeli wyścigu (wg jego punktacji), liczba biegów i miejsce – wtedy bez improved/ranks. */
+    match?: { id: string; score: number; runs: number; place: number | null };
+  }
   | { status: 'queued' }                       // brak sieci – wyślę później
   | { status: 'rejected'; reason: string };    // serwer nie przyjął biegu (albo bieg przepadł razem z kontem)
 
-export interface FinishedRun { ticket: Ticket; ticks: Uint8Array; score: number; char: string; style: string; control: string; skin?: string }
+export interface FinishedRun {
+  ticket: Ticket | MatchTicket; ticks: Uint8Array; score: number; char: string; style: string; control: string; skin?: string;
+  /** Bieg z wyścigu ucięty zegarem (timeUp) – ostatnia porcja idzie z ?end=time. */
+  cut?: boolean;
+}
+
+/** Wyścig w pokoju znajomych (server/src/match.ts). Czasy w zegarze serwera – serverNow(). */
+export interface MatchInfo {
+  id: string; scoring: 'best' | 'sum'; minutes: number; startsAt: number; endsAt: number;
+  by: { nick: string | null; tag: string };
+}
+/** Bilet na bieg w wyścigu: wieża wyścigu i najwięcej kroków (do końca wyścigu). */
+export interface MatchTicket extends Ticket { match: string; maxTicks: number; startsAt: number; endsAt: number }
+export interface MatchEntry { place: number; nick: string | null; tag: string; score: number; runs: number; floor: number; combo: number; me?: boolean }
+/** Tabela wyścigu; final – po czasie na wysłanie ostatnich biegów (już się nie zmieni). */
+export interface MatchTable { match: MatchInfo; final: boolean; entries: MatchEntry[] }
+export type MatchResult = { ok: true; match: MatchInfo; existing: boolean } | { ok: false; error: string };
+
 
 /** Zapis biegu do obejrzenia: ziarno wieży + wejście w każdym kroku fizyki. */
 export interface Replay {
@@ -83,7 +105,12 @@ export interface RoomBoard { top: Board; me: Around }
 export interface Crown { week: string; rank: number }
 
 interface Account { playerId: string; token: string; nick: string | null }
-interface QueuedRun { runId: string; chunks: string[]; nextSeq: number; score: number; char: string; style: string; control: string; appVersion: string; skin?: string }
+interface QueuedRun {
+  runId: string; chunks: string[]; nextSeq: number; score: number; char: string; style: string; control: string; appVersion: string; skin?: string;
+  cut?: boolean;
+  /** Bieg z wyścigu: po tej chwili (zegar urządzenia) serwer go już nie przyjmie – przepada z kolejki. */
+  deadline?: number;
+}
 
 export interface OnlineOptions {
   baseUrl: string;
@@ -130,6 +157,8 @@ export class Online {
   private roomSaved: Room | null = null;
   private skinsWaiting: string[] = [];   // paczki postaci, o które prosił serwer, a których nie udało się jeszcze wysłać
   private refilling: Promise<void> | null = null;
+  /** Zegar serwera minus zegar urządzenia (ms) – z ostatniej odpowiedzi z polem now (wyścigi). */
+  private offset = 0;
   private flushing: Promise<void> | null = null;
   private readonly fetchFn: typeof fetch;
   private readonly now: () => number;
@@ -189,9 +218,12 @@ export class Online {
     const { ticket } = run;
     const chunks: string[] = [];
     for (let i = 0; i < run.ticks.length; i += ticket.chunkTicks) chunks.push(toB64(encodeInputs(run.ticks.subarray(i, i + ticket.chunkTicks))));
+    if (!chunks.length) return { status: 'rejected', reason: 'empty' };
+    const m = 'match' in ticket ? ticket : null;
     this.queue.push({
       runId: ticket.runId, chunks, nextSeq: 0, score: run.score, char: run.char, style: run.style, control: run.control, appVersion: this.o.appVersion,
       ...(run.skin && HASH_RE.test(run.skin) ? { skin: run.skin } : {}),
+      ...(m ? { deadline: m.endsAt + MATCH_GRACE_MS - this.offset, ...(run.cut ? { cut: true } : {}) } : {}),
     });
     while (this.queue.length > MAX_QUEUE) this.queue.shift();
     await this.saveQueue();
@@ -357,6 +389,69 @@ export class Online {
     if (room) await this.o.store.set(KEY.room, JSON.stringify(room)); else await this.o.store.remove(KEY.room);
   }
 
+  // ───────────────────────── wyścigi w pokoju ─────────────────────────
+
+  /** Czas serwera (ms) według zegara urządzenia i ostatniej odpowiedzi serwera – zegar wyścigu. */
+  serverNow(): number { return this.now() + this.offset; }
+
+  private sync(serverNow: unknown, sentAt: number): void {
+    if (typeof serverNow === 'number' && Number.isFinite(serverNow)) this.offset = serverNow - (sentAt + this.now()) / 2;   // środek drogi tam i z powrotem
+  }
+
+  /** Nowy wyścig w moim pokoju; gdy ktoś już założył (409), dostajemy jego wyścig (existing: true) i do niego dołączamy. */
+  async createMatch(minutes: number, scoring: 'best' | 'sum'): Promise<MatchResult> {
+    if (!this.enabled || !this.account) return { ok: false, error: 'offline' };
+    try {
+      const at = this.now();
+      const r = await this.req('POST', '/v1/rooms/me/matches', { auth: true, json: { minutes, scoring } });
+      this.sync(r.data?.now, at);
+      if (r.status === 201) return { ok: true, match: r.data.match, existing: false };
+      if (r.status === 409 && r.data?.error === 'match_running') return { ok: true, match: r.data.match, existing: true };
+      if (r.status === 401) await this.forgetAccount();
+      return { ok: false, error: r.data?.error ?? 'error' };
+    } catch { return { ok: false, error: 'offline' }; }
+  }
+
+  /** Bieżący (albo niedawno skończony) wyścig pokoju; null – brak; undefined – brak sieci. */
+  async currentMatch(): Promise<MatchInfo | null | undefined> {
+    if (!this.enabled || !this.account) return undefined;
+    try {
+      const at = this.now();
+      const r = await this.req('GET', '/v1/rooms/me/match', { auth: true });
+      if (r.status !== 200) return undefined;
+      this.sync(r.data.now, at);
+      return (r.data.match as MatchInfo | null) ?? null;
+    } catch { return undefined; }
+  }
+
+  /** Bilet na bieg w wyścigu (sieć jest potrzebna – wieża i limit kroków przychodzą od serwera); null – nie da się. */
+  async matchTicket(matchId: string): Promise<MatchTicket | null> {
+    if (!this.enabled || !this.account || this.outdated) return null;
+    try {
+      const at = this.now();
+      const r = await this.req('POST', '/v1/runs', { auth: true, json: { simVersion: this.simVersion, mode: 'match', match: matchId } });
+      if (r.status !== 201) {
+        if (r.status === 409 && r.data?.error === 'update_required' && Number(r.data.simVersion) > this.simVersion) this.outdated = true;
+        return null;
+      }
+      this.sync(r.data.now, at);
+      const d = r.data;
+      return { runId: d.runId, seed: d.seed, simVersion: d.simVersion, chunkTicks: d.chunkTicks, issuedAt: this.now(), match: d.match, maxTicks: d.maxTicks, startsAt: d.startsAt, endsAt: d.endsAt };
+    } catch { return null; }
+  }
+
+  /** Tabela wyścigu; null bez sieci (albo gdy to nie wyścig mojego pokoju). */
+  async matchResults(matchId: string): Promise<MatchTable | null> {
+    if (!this.enabled || !this.account) return null;
+    try {
+      const at = this.now();
+      const r = await this.req('GET', `/v1/rooms/me/matches/${encodeURIComponent(matchId)}`, { auth: true });
+      if (r.status !== 200) return null;
+      this.sync(r.data.now, at);
+      return { match: r.data.match, final: !!r.data.final, entries: r.data.entries };
+    } catch { return null; }
+  }
+
   /** Usuwa konto i wyniki z serwera oraz wszystkie dane rankingu z urządzenia. False = brak sieci, nic nie zmieniono. */
   async deleteData(): Promise<boolean> {
     if (!this.loaded) return false;
@@ -411,7 +506,8 @@ export class Online {
     while (this.queue.length) {
       const e = this.queue[0];
       let result: SubmitResult | 'retry';
-      try { result = await this.sendOne(e); } catch (err) { if (err instanceof Offline) return; throw err; }
+      if (e.deadline !== undefined && this.now() > e.deadline) result = { status: 'rejected', reason: 'match_closed' };   // wyścig już rozliczony
+      else try { result = await this.sendOne(e); } catch (err) { if (err instanceof Offline) return; throw err; }
       if (result === 'retry') { await this.saveQueue(); return; }
       this.queue.shift();
       await this.saveQueue();
@@ -451,7 +547,8 @@ export class Online {
       return null;
     };
     while (e.nextSeq < e.chunks.length) {
-      const r = await this.req('PUT', `/v1/runs/${e.runId}/chunks/${e.nextSeq}`, { auth: true, body: fromB64(e.chunks[e.nextSeq]) });
+      const end = e.cut && e.nextSeq === e.chunks.length - 1 ? '?end=time' : '';   // bieg z wyścigu ucięty zegarem
+      const r = await this.req('PUT', `/v1/runs/${e.runId}/chunks/${e.nextSeq}${end}`, { auth: true, body: fromB64(e.chunks[e.nextSeq]) });
       if (r.status === 200 || (r.status === 409 && r.data?.error === 'seq')) {
         e.nextSeq = r.data.nextSeq;
         await this.saveQueue();

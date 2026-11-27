@@ -32,6 +32,12 @@ export const UIBOX = {
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
   // ranking, lewy górny róg: WSZYSCY / POKÓJ – tylko dla gracza w pokoju znajomych
   scope: { x: 10, y: 10, w: 92, h: 60 },                  // jeden przełącznik: górna połowa WSZYSCY, dolna POKÓJ
+  // WYŚCIG (stan 'race'): ustawienia – czas (MATCH_MINUTES) i punktacja (SCORINGS), START, WRÓĆ; wyniki – REWANŻ, MENU
+  raceMin: (i) => ({ x: 148 + i * 88, y: 146, w: 80, h: 36 }),
+  raceScore: (i) => ({ x: 148 + i * 176, y: 232, w: 168, h: 36 }),
+  raceGo: { x: 200, y: 334, w: 240, h: 38 }, raceBack: { x: 240, y: 392, w: 160, h: 28 },
+  raceAgain: { x: 160, y: 418, w: 150, h: 32 }, raceMenu: { x: 330, y: 418, w: 150, h: 32 },
+  overRace: { x: 180, y: 420, w: 280, h: 28 },             // koniec biegu: DOŁĄCZ DO WYŚCIGU, gdy w pokoju trwa wyścig
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
 /** Ekran tytułowy: najwyżej tylu znajomych w panelu pokoju (reszta jako „+n”). */

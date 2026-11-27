@@ -18,7 +18,8 @@ import {
   ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, charX, isTextPage, noteLine, rowBox, sliderBar, slotX,
 } from './layout.js';
 import { BUILD_TAG, VERSION, update } from './update.js';
-import { live } from '../net';
+import { MATCH_GRACE_MS, MATCH_MINUTES, SCORINGS, live, online } from '../net';
+import { fmtClock } from './race.js';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
@@ -63,6 +64,7 @@ export function render(g) {
   else if (g.state === 'settings') drawSettings(g);
   else if (g.state === 'replay') drawReplay(g);
   else if (g.state === 'recap') drawRecap(g);
+  else if (g.state === 'race') drawRace(g);
   drawMessages(g);
   drawFeed(g);
   if (access.fx) style.post?.(g);                     // ziarno, rysy, linie – wyłączane w OPCJE → DOSTĘPNOŚĆ
@@ -525,6 +527,8 @@ function drawHud(g) {
     text(`▲ ${t('hud.autoJump')}`, cx, 462.5, { size: 10, color: ui.gold, sw: 0, maxW: 68 });
   }
 
+  if (g.race && (g.state === 'play' || g.state === 'pause' || g.state === 'over')) drawRaceHud(g);
+
   // wskaźnik przechyłu: kropka pokazuje, jak mocno i w którą stronę gra „czyta” telefon
   if (tilt.active && g.state === 'play') {
     const bx = W / 2, by = H - 13;
@@ -534,6 +538,107 @@ function drawHud(g) {
     c.fillStyle = ui.gold; c.beginPath(); c.arc(bx + tilt.axis * 58, by, 6, 0, 7); c.fill();
     c.strokeStyle = ui.frame; c.lineWidth = 1.5; c.stroke();
   }
+}
+
+/** WYŚCIG w biegu: zegar do końca wyścigu i tabela (trójka + ja) w prawej kolumnie, pod wynikiem. */
+function drawRaceHud(g) {
+  const r = g.race, x = RIGHT + 9, w = WALL - 18, rx = x + w / 2, y = 196, rows = r.top(3);
+  const h = 50 + Math.max(1, rows.length) * 26;
+  ctx.fillStyle = ui.panel; rr(x, y, w, h, 10); ctx.fill();
+  ctx.strokeStyle = ui.gold; ctx.lineWidth = 1.5; ctx.stroke();
+  text(t('race.hud'), rx, y + 12, { size: 10, color: ui.gold, sw: 0, weight: 700, maxW: w - 8 });
+  const left = r.left, late = left < 10_000;
+  text(fmtClock(left), rx, y + 32, { size: 20, color: late ? ui.warn : ui.text, sw: 3, maxW: w - 8 });
+  if (!rows.length) text(t('race.noScore'), rx, y + 62, { size: 9, color: ui.label, sw: 0, maxW: w - 8 });
+  rows.forEach((e, i) => {
+    const ry = y + 54 + i * 26, col = e.me ? ui.gold : ui.text;
+    text(`${e.place}. ${e.nick ?? t('board.player', { tag: e.tag })}`, x + 5, ry, { size: 9, color: col, sw: 0, weight: 700, align: 'left', maxW: w - 8 });
+    text(fmt(e.score), x + w - 5, ry + 12, { size: 11, color: e.me ? ui.gold : ui.mint, sw: 0, align: 'right', maxW: w - 8 });
+  });
+}
+
+/** Tabela wyścigu (czekanie na wyniki i wyniki): miejsce, gracz, wynik, biegi, najwyższe piętro. */
+function drawRaceTable(g, r, y0, maxRows) {
+  const rows = r.table.slice(0, maxRows), x = 110, w = 420;
+  panel(x, y0, w, 30 + Math.max(1, rows.length) * 26);
+  const head = { size: 10, color: ui.label, sw: 0, weight: 700 };
+  text(t('race.colPlayer'), x + 46, y0 + 15, { ...head, align: 'left' });
+  text(t(r.info.scoring === 'sum' ? 'race.colSum' : 'race.colBest'), x + 300, y0 + 15, { ...head, align: 'right', maxW: 110 });
+  text(t('race.colRuns'), x + 350, y0 + 15, { ...head, maxW: 60 });
+  text(t('race.colFloor'), x + 396, y0 + 15, { ...head, maxW: 52 });
+  if (!rows.length) text(t(r.final ? 'race.noRuns' : 'race.noScore'), x + w / 2, y0 + 43, { size: 12, color: ui.label, sw: 0, maxW: w - 20 });
+  rows.forEach((e, i) => {
+    const y = y0 + 43 + i * 26, col = e.me ? ui.gold : ui.text;
+    if (e.me) { ctx.fillStyle = ui.sel; rr(x + 6, y - 12, w - 12, 24, 7); ctx.fill(); }
+    if (e.place <= 3) {
+      const m = MEDALS[e.place];
+      ctx.fillStyle = m.mid; ctx.beginPath(); ctx.arc(x + 24, y, 10, 0, 7); ctx.fill();
+      ctx.strokeStyle = m.lo; ctx.lineWidth = 1.5; ctx.stroke();
+      text(String(e.place), x + 24, y + 1, { size: 11, color: '#fff', stroke: m.lo, sw: 3 });
+    } else text(String(e.place), x + 24, y + 1, { size: 12, color: ui.label, sw: 0 });
+    text(e.nick ?? t('board.player', { tag: e.tag }), x + 46, y + 1, { size: 13, color: col, sw: 0, weight: 700, align: 'left', maxW: 170 });
+    text(fmt(e.score), x + 300, y + 1, { size: 14, color: e.me ? ui.gold : ui.mint, sw: 0, align: 'right', maxW: 110 });
+    text(String(e.runs ?? '–'), x + 350, y + 1, { size: 12, color: ui.hint, sw: 0 });
+    text(e.floor != null ? fmt(e.floor) : '–', x + 396, y + 1, { size: 12, color: ui.hint, sw: 0, maxW: 52 });
+  });
+}
+
+/** Ekrany WYŚCIGU: ustawienia, odliczanie (lobby), liczenie wyników, wyniki. */
+function drawRace(g) {
+  dim(0.72);
+  const page = g.racePage, r = g.race, hm = g.hint, keys = hm === 'keys', pad = hm === 'pad';
+  const title = page === 'results' ? 'race.results' : page === 'wait' ? 'race.timeUp' : 'race.title';
+  text(t(title), W / 2, 48, { size: 40, color: page === 'wait' ? ui.warn : ui.gold, sw: 7, maxW: 440 });
+  const sub = { size: 12, color: ui.hint, sw: 3, weight: 700, maxW: 460 };
+  const label = { size: 11, color: ui.label, sw: 3, weight: 700, maxW: 440 };
+
+  if (page === 'setup') {
+    text(t('race.setupSub', { room: g.online.room?.name ?? '' }), W / 2, 86, sub);
+    text(t('race.time'), W / 2, 128, label);
+    MATCH_MINUTES.forEach((m, i) => { const on = i === g.raceSetup.min; button(UIBOX.raceMin(i), t('race.min', { n: m }), { on, accent: on, size: 14 }); });
+    text(t('race.scoring'), W / 2, 214, label);
+    SCORINGS.forEach((k, i) => { const on = i === g.raceSetup.scoring; button(UIBOX.raceScore(i), t(`race.${k}`), { on, accent: on, size: 12 }); });
+    text(t(`race.${g.raceScoring}.desc`), W / 2, 290, { size: 12, color: ui.note, sw: 3, weight: 600, maxW: 460 });
+    text(t('race.setupNote'), W / 2, 310, { size: 11, color: ui.label, sw: 3, weight: 600, maxW: 460 });
+    button(UIBOX.raceGo, g.raceBusy ? '…' : keys ? `${t('race.go')} · ENTER` : t('race.go'), { accent: true, size: 17, glyph: pad ? BTN.A : null });
+    button(UIBOX.raceBack, keys ? `${t('race.back')} · ESC` : t('race.back'), { size: 12, glyph: pad ? BTN.B : null });
+    if (keys) text(t('race.setupKeys'), W / 2, 448, { size: 11, color: ui.note, sw: 3, weight: 700, maxW: 460 });
+    else if (pad) padHints([['dpad', 'hint.pick'], [BTN.A, 'race.go'], [BTN.B, 'race.back']], 448, { size: 11 });
+    return;
+  }
+  if (!r) return;
+  const by = r.info.by.nick ?? t('board.player', { tag: r.info.by.tag });
+  if (page === 'lobby') {
+    text(t('race.info', { min: r.info.minutes, scoring: t(`race.${r.info.scoring}`), name: by }), W / 2, 86, sub);
+    if (r.toStart > 0) {
+      text(t('race.startsIn'), W / 2, 150, { size: 16, color: ui.hint, sw: 4, maxW: 440 });
+      const n = Math.ceil(r.toStart / 1000), k = reduceMotion ? 1 : 1 + 0.15 * clamp(1 - (n * 1000 - r.toStart) / 300, 0, 1);
+      ctx.save(); ctx.translate(W / 2, 228); ctx.scale(k, k);
+      text(String(n), 0, 0, { size: 96, color: n <= 3 ? ui.warn : ui.gold, sw: 10 });
+      ctx.restore();
+    } else text(t(r.noTicket ? 'race.noTicket' : 'race.loading'), W / 2, 220, { size: 16, color: r.noTicket ? ui.warn : ui.hint, sw: 4, maxW: 440 });
+    const others = live.players.filter((p) => !p.me).map((p) => p.nick ?? t('board.player', { tag: p.tag }));
+    text(t('race.lobbyHint'), W / 2, 312, { size: 12, color: ui.note, sw: 3, weight: 600, maxW: 460 });
+    if (others.length) text(t('race.inRoom', { list: others.slice(0, 8).join(', ') }), W / 2, 334, { size: 11, color: ui.label, sw: 3, weight: 600, maxW: 460 });
+    button(UIBOX.raceBack, keys ? `${t('race.leave')} · ESC` : t('race.leave'), { size: 12, glyph: pad ? BTN.B : null });
+    return;
+  }
+  if (page === 'wait') {
+    const s = Math.max(0, Math.ceil((r.info.endsAt + MATCH_GRACE_MS - online.serverNow()) / 1000));
+    text(t('race.wait'), W / 2, 84, { size: 16, color: ui.text, sw: 4, maxW: 440 });
+    text(t('race.waitSub', { s }), W / 2, 104, sub);
+    drawRaceTable(g, r, 120, 9);
+    button(UIBOX.raceBack, keys ? `${t('race.menu')} · ESC` : t('race.menu'), { size: 12, glyph: pad ? BTN.B : null });
+    return;
+  }
+  // wyniki
+  const win = r.table[0];
+  const line = !win ? t('race.noRuns') : win.me ? t('race.youWin') : t('race.winner', { name: win.nick ?? t('board.player', { tag: win.tag }) });
+  text(line, W / 2, 84, { size: 16, color: win?.me ? ui.gold : ui.text, sw: 4, maxW: 440 });
+  text(t('race.info', { min: r.info.minutes, scoring: t(`race.${r.info.scoring}`), name: by }), W / 2, 104, sub);
+  drawRaceTable(g, r, 120, 9);
+  button(UIBOX.raceAgain, g.raceBusy ? '…' : keys ? `${t('race.again')} · ENTER` : t('race.again'), { accent: true, size: 13, glyph: pad ? BTN.A : null });
+  button(UIBOX.raceMenu, keys ? `${t('race.menu')} · ESC` : t('race.menu'), { size: 13, glyph: pad ? BTN.B : null });
 }
 
 function drawMessages(g) {
@@ -841,7 +946,8 @@ function drawPause(g) {
   if (hm === 'pad') padHints([[BTN.A, 'hint.resume'], [BTN.Y, 'hint.menu']], 262, { size: 14 });
   else text(t(hm === 'touch' ? 'pause.tap' : 'pause.resume', { key: keysHint().pause }), W / 2, 258, { size: 15, color: ui.hint, sw: 4, maxW: 430 });
   if (hm === 'keys') text(t('pause.menu'), W / 2, 284, { size: 13, color: ui.label, sw: 4, maxW: 430 });
-  button(UIBOX.pmenu, t('pause.menuBtn'), { size: 13 });
+  button(UIBOX.pmenu, t(g.race ? 'race.leave' : 'pause.menuBtn'), { size: 13 });
+  if (g.race) text(t('race.pauseNote'), W / 2, 372, { size: 13, color: ui.warn, sw: 4, maxW: 430 });
 }
 
 function drawOver(g) {
@@ -854,9 +960,16 @@ function drawOver(g) {
   drawHero({ x: g.newBest ? 133 : sprite ? 158 : 106, y: 310 - hop, vx: 0, vy: 0, face: 1, onFloor: 0, spin: false }, { angle: 0, squash: 0, runPhase: 0 }, g.t, g.heroIdx, g.newBest ? 'cheer' : 'dead');
   c.restore();
   c.save(); c.globalAlpha = k; c.translate(0, (1 - easeOutBack(k)) * -40);
-  text(t('over.title'), W / 2, 100, { size: 50, color: ui.warn, sw: 8, maxW: 430 });
+  const race = g.race;
+  text(t(g.raceCut ? 'race.timeUp' : 'over.title'), W / 2, race ? 92 : 100, { size: g.raceCut ? 44 : 50, color: ui.warn, sw: 8, maxW: 430 });
+  if (race) {
+    const line = g.raceCut && g.raceCutCombo ? t('race.timeUpCombo', { floors: g.raceCutCombo })
+      : race.over ? t('race.ended') : t('race.left', { time: fmtClock(race.left) });
+    text(line, W / 2, 128, { size: 13, color: ui.gold, sw: 4, maxW: 430 });
+  }
   panel(170, 142, 300, 170);
-  const rows = [[t('over.score'), g.score, ui.gold], [t('over.floor'), g.sim.maxFloor, ui.text], [t('over.combo'), g.sim.bestCombo, ui.text], [t('over.best'), g.best.score, ui.mint]];
+  const rows = [[t('over.score'), g.score, ui.gold], [t('over.floor'), g.sim.maxFloor, ui.text], [t('over.combo'), g.sim.bestCombo, ui.text],
+    race ? [t(race.info.scoring === 'sum' ? 'race.inRaceSum' : 'race.inRace'), race.mine?.score ?? 0, ui.mint] : [t('over.best'), g.best.score, ui.mint]];
   rows.forEach(([l, v, col], i) => {
     text(l, 196, 172 + i * 36, { size: 15, color: ui.label, align: 'left', sw: 0, weight: 600, maxW: 180 });
     text(fmt(v), 444, 172 + i * 36, { size: i ? 20 : 26, color: col, align: 'right', sw: 0 });
@@ -870,11 +983,16 @@ function drawOver(g) {
   const net = netLine(g.net);
   if (net) text(net[0], W / 2, 328, { size: 13, color: net[1], sw: 3, maxW: 440 });
   if (g.overT > 0.6) {
-    if (g.hint === 'pad') padHints([[BTN.A, 'hint.again'], [BTN.Y, 'hint.menu']], 354, { size: 14, color: ui.text });
-    else if (reduceMotion || Math.sin(g.t * 5) > -0.3) text(t('over.again'), W / 2, 352, { size: 18, sw: 5, maxW: 430 });
+    const results = race?.over;
+    if (g.hint === 'pad') padHints([[BTN.A, results ? 'race.toResultsPad' : 'hint.again'], [BTN.Y, race ? 'race.leave' : 'hint.menu']], 354, { size: 14, color: ui.text });
+    else if (reduceMotion || Math.sin(g.t * 5) > -0.3) text(t(results ? 'race.toResults' : 'over.again'), W / 2, 352, { size: 18, sw: 5, maxW: 430 });
     const b = UIBOX.menu;
     c.fillStyle = ui.panel; rr(b.x, b.y, b.w, b.h, 10); c.fill(); c.strokeStyle = ui.line; c.lineWidth = 1.5; c.stroke();
-    text(t('over.menu'), W / 2, b.y + b.h / 2 + 1, { size: 12, color: ui.hint, sw: 0, maxW: b.w - 20 });
+    text(t(race ? 'race.leave' : 'over.menu'), W / 2, b.y + b.h / 2 + 1, { size: 12, color: ui.hint, sw: 0, maxW: b.w - 20 });
+    if (g.raceOpen) {                                     // w pokoju trwa wyścig – można dołączyć prosto stąd
+      const m = g.raceInvite, label = t('race.joinOver', { time: fmtClock(m.endsAt - online.serverNow()) });
+      button(UIBOX.overRace, g.hint === 'keys' ? `${label} · V` : label, { accent: true, size: 12, glyph: g.hint === 'pad' ? BTN.X : null });
+    }
   }
   c.restore();
 }
@@ -907,6 +1025,19 @@ function drawRoomPanel(g) {
       { size: 9, color: play ? ui.gold : ui.label, sw: 0, align: 'left', maxW: P.w - 22 });
   });
   if (P.others.length > P.shown.length) text(t('live.more', { n: P.others.length - P.shown.length }), cx, P.y + 34 + P.shown.length * 30 - 4, { size: 9, color: ui.label, sw: 0 });
+  // WYŚCIG: założenie nowego albo – gdy w pokoju trwa wyścig – dołączenie do niego (pulsuje, z czasem do końca)
+  const R = P.race, glyph = g.hint === 'pad' ? BTN.B : null;
+  if (g.raceOpen) {
+    const glow = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(g.t * 5), m = g.raceInvite, st = m.startsAt - online.serverNow();
+    ctx.save(); ctx.shadowColor = ui.gold; ctx.shadowBlur = 4 + glow * 10;
+    ctx.fillStyle = ui.btn; rr(R.x, R.y, R.w, R.h, 9); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = ui.frame; ctx.lineWidth = 2; rr(R.x, R.y, R.w, R.h, 9); ctx.stroke();
+    const gw = glyph != null ? padGlyph(glyph, R.x + 4, R.y + R.h / 2, 14) + 2 : 0, rcx = cx + gw / 2;
+    text(keys ? `${t('race.joinBtn')} · V` : t('race.joinBtn'), rcx, R.y + 12, { size: 10, color: ui.btnText, sw: 0, weight: 800, maxW: R.w - 8 - gw });
+    text(st > 0 ? t('race.inSec', { s: Math.ceil(st / 1000) }) : `⏱ ${fmtClock(m.endsAt - online.serverNow())}`, rcx, R.y + 27,
+      { size: 10, color: ui.btnText, sw: 0, maxW: R.w - 8 - gw });
+  } else button(R, keys ? `${t('race.btn')} · V` : t('race.btn'), { size: 11, accent: true, glyph });
   // wyjście: pierwsze dotknięcie pyta NA PEWNO?, drugie wychodzi (game.leaveRoom)
   const armed = g.leaveArmed, L = P.leave;
   ctx.fillStyle = armed ? ui.warn : ui.panel; rr(L.x, L.y, L.w, L.h, 9); ctx.fill();
@@ -920,9 +1051,11 @@ export function netLine(n) {
   if (!n) return null;
   switch (n.status) {
     case 'sending': return [t('net.sending'), ui.hint];
-    case 'verified': return [t('net.verified', n.ranks), ui.mint];
+    case 'verified':
+      if (n.match) return [t('race.net', { score: fmt(n.match.score), place: n.match.place ?? '–' }), ui.mint];   // bieg z wyścigu
+      return [t('net.verified', n.ranks), ui.mint];
     case 'queued': return [t('net.queued'), ui.hint];
-    case 'rejected': return [t('net.rejected'), ui.warn];
+    case 'rejected': return [t(n.reason === 'match_closed' ? 'race.lost' : 'net.rejected'), ui.warn];
     case 'unranked': return [t(`net.${n.reason}`), ui.label];
     default: return null;
   }

@@ -53,6 +53,7 @@ export type SimEvent =
   | { type: 'boostEnd' }                               // wyrzut się skończył, dalej zwykły lot – trzeba wylądować
   | { type: 'slow' }                                   // złapane spowolnienie
   | { type: 'slowEnd' }
+  | { type: 'timeup'; combo: number }                 // bieg ucięty zegarem wyścigu (timeUp); combo – zaliczone na koniec piętra combo
   | { type: 'over' };
 
 /** Krzywa skoku ≈ k^1.4 dla k w 0…1, liczona z tablicy (patrz jumpTable.ts). */
@@ -139,6 +140,19 @@ function endCombo(s: SimState, events?: SimEvent[]): void {
     events?.push({ type: 'combo', floors: c.floors, points });
   }
   c.floors = 0; c.jumps = 0; c.timer = 0;
+}
+
+/**
+ * Koniec czasu wyścigu: bieg kończy się w tej chwili (bez upadku), a trwające combo zostaje zaliczone – tak jak przy
+ * złapaniu boostera (combo z co najmniej 2 skoków; pojedynczy skok przepada). Nie należy do step(): gra i serwer wołają
+ * ją po ostatnim kroku biegu uciętego zegarem, więc zwykłe biegi odtwarzają się bez zmian.
+ */
+export function timeUp(s: SimState, events?: SimEvent[]): void {
+  if (s.over) return;
+  const floors = s.combo.jumps >= 2 ? s.combo.floors : 0;
+  endCombo(s, events);
+  s.over = true;
+  events?.push({ type: 'timeup', combo: floors });
 }
 
 function land(s: SimState, n: number, events?: SimEvent[]): void {

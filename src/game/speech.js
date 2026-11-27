@@ -14,7 +14,8 @@ import { lang, t } from './i18n.js';
 import { binds, ctrl, keyLabel } from './input.js';
 import { netLine } from './render.js';
 import { update } from './update.js';
-import { live } from '../net';
+import { MATCH_GRACE_MS, live, online } from '../net';
+import { fmtClock } from './race.js';
 
 let polite = null, alert = null, flip = false;
 const pending = { polite: [], alert: [] };
@@ -62,8 +63,39 @@ function liveLine(g) {
     ? t('sr.live', { name: room.name, list: others.map((p) => t(p.s === 'play' ? 'sr.livePlay' : 'sr.liveMenu', { name: name(p) })).join(', ') })
     : t('sr.liveNone', { name: room.name });
 }
-/** Ekran tytułowy: pokój (kto gra) i klawisz wyjścia z niego. */
-const roomLine = (g) => { const l = liveLine(g); return g.online.room && live.connected ? `${l} ${t('sr.roomLeave')}` : l; };
+/** Ekran tytułowy: pokój (kto gra) i klawisz wyjścia z niego, a w pokoju także WYŚCIG (V). */
+const roomLine = (g) => {
+  const l = liveLine(g);
+  if (!g.online.room || !live.connected) return l;
+  const race = g.raceOpen ? t('sr.raceOpen', { min: g.raceInvite.minutes, time: fmtClock(g.raceInvite.endsAt - online.serverNow()) }) : t('sr.raceNew');
+  return `${l} ${race} ${t('sr.roomLeave')}`;
+};
+/** Tabela wyścigu słowami (najwyżej 5 pierwszych). */
+const raceRows = (r) => r.table.slice(0, 5).map((e) => t('sr.raceRow', { place: e.place, name: name(e), score: fmt(e.score), runs: e.runs ?? 0 })).join('; ');
+
+/** Ekrany WYŚCIGU (stan 'race'). Zegar nie jest czytany co sekundę – tylko po wejściu na ekran i klawiszem I. */
+function describeRace(g) {
+  const page = g.racePage, r = g.race;
+  if (page === 'setup') {
+    return [['screen', `${t('race.title')}. ${t('race.setupSub', { room: g.online.room?.name ?? '' })} ${t('race.setupKeys')}`],
+      ['min', `${t('race.time')}: ${t('race.min', { n: g.raceMinutes })}`],
+      ['scoring', `${t('race.scoring')}: ${t(`race.${g.raceScoring}`)}. ${t(`race.${g.raceScoring}.desc`)}`]];
+  }
+  if (!r) return [];
+  const info = t('race.info', { min: r.info.minutes, scoring: t(`race.${r.info.scoring}`), name: name(r.info.by) });
+  if (page === 'lobby') {
+    const n = Math.ceil(r.toStart / 1000);
+    return [['screen', `${t('race.title')}. ${info}. ${t('race.lobbyHint')}`],
+      ['count', n > 0 ? (n <= 3 || n % 5 === 0 ? `${t('race.startsIn')} ${n}` : '') : t(r.noTicket ? 'race.noTicket' : 'race.loading')]];
+  }
+  if (page === 'wait') {
+    const s = Math.max(0, Math.ceil((r.info.endsAt + MATCH_GRACE_MS - online.serverNow()) / 1000));
+    return [['screen', `${t('race.timeUp')} ${t('race.wait')} ${t('race.waitSub', { s })}`], ['list', raceRows(r)]];
+  }
+  const win = r.table[0];
+  return [['screen', `${t('race.results')}. ${!win ? t('race.noRuns') : win.me ? t('race.youWin') : t('race.winner', { name: name(win) })}`],
+    ['list', raceRows(r)], ['keys', t('sr.raceResults')]];
+}
 
 /** Wiersz opcji słowami: nazwa, wartość, a dla przypisań – klawisze w polach. */
 export function itemSpeech(g, it) {
@@ -94,13 +126,22 @@ function describe(g) {
   }
   if (s === 'play') return [['screen', t('sr.play')]];
   if (s === 'pause') return [['screen', `${t('pause.title')}. ${t('pause.resume', { key: binds.key.pause.filter(Boolean).map(keyLabel).join(' / ') || '—' })}. ${t('pause.menu')}`]];
+  if (s === 'over' && g.race) {
+    const sim = g.sim, r = g.race;
+    return [
+      ['screen', `${g.raceCut ? `${t('race.timeUp')} ${g.raceCutCombo ? t('race.timeUpCombo', { floors: g.raceCutCombo }) : ''}` : ''} ${t('sr.raceOver', { score: fmt(g.score), floor: fmt(sim.maxFloor), combo: sim.bestCombo })} ${r.over ? t('race.ended') : `${t('race.left', { time: fmtClock(r.left) })} ${t('sr.again')}`}`],
+      ['net', netLine(g.net)?.[0] ?? ''],
+    ];
+  }
   if (s === 'over') {
     const sim = g.sim;
     return [
       ['screen', `${t('sr.over', { score: fmt(g.score), floor: fmt(sim.maxFloor), combo: sim.bestCombo, best: fmt(g.best.score) })}${g.newBest ? ` ${t('sr.newBest')}` : ''} ${t('sr.again')}`],
       ['net', netLine(g.net)?.[0] ?? ''],
+      ['race', g.raceOpen ? t('sr.raceOpenOver', { min: g.raceInvite.minutes }) : ''],
     ];
   }
+  if (s === 'race') return describeRace(g);
   if (s === 'board') {
     const b = g.board, d = g.boardData, room = g.boardScope === 'room';
     let list = t('board.loading');
@@ -168,6 +209,7 @@ export function speakFrame(g) {
 
 /** Klawisz I w trakcie biegu: wynik, piętro, combo i tempo – od razu, przed kolejką. */
 export function speakStatus(g) {
-  const s = g.sim;
-  announce(t('sr.status', { score: fmt(g.score), floor: fmt(s.maxFloor), combo: s.combo.floors, tempo: s.scrolling ? s.level : '–' }), true);
+  const s = g.sim, r = g.race;
+  const race = r ? ` ${t('race.left', { time: fmtClock(r.left) })}. ${r.mine ? t('sr.raceMine', { score: fmt(r.mine.score), place: r.mine.place }) : ''}` : '';
+  announce(t('sr.status', { score: fmt(g.score), floor: fmt(s.maxFloor), combo: s.combo.floors, tempo: s.scrolling ? s.level : '–' }) + race, true);
 }

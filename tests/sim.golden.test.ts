@@ -22,7 +22,7 @@ function play(seed: number, pilot: Pilot, tune = LEGACY_TUNE) {
 }
 
 test('wersja symulacji, dla której zapisano złote biegi', () => {
-  expect(SIM_VERSION).toBe(4);
+  expect(SIM_VERSION).toBe(5);
 });
 
 test('układ pierwszych pięter wieży o ziarnie 2026', () => {

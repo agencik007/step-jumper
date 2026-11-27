@@ -2,9 +2,9 @@
 // Reguły rozgrywki są w src/sim – tutaj tylko podajemy im wejście i reagujemy na zdarzenia.
 import {
   AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, HW, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs,
-  narrowLevel, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
+  narrowLevel, packInput, runReplay, score, stateHash, step, timeUp, unpackAxis, unpackJump,
 } from '../sim';
-import { live, online } from '../net';
+import { MATCH_MINUTES, SCORINGS, live, online } from '../net';
 import { LIVE_COMBO, LIVE_FLOOR_EVERY } from '../net/live';
 import { VOL_STEPS, sfx } from './audio.js';
 import { access, fontSize, loadAccess } from './access.js';
@@ -29,6 +29,7 @@ import { announce, speakFrame, speakStatus } from './speech.js';
 import { fmt } from './format.js';
 import { keepAwake } from './wake.js';
 import { power, setPowerMode } from './power.js';
+import { Race } from './race.js';
 import { reloadForUpdate, update } from './update.js';
 import { clamp, loadJSON, mod, rand, reduceMotion, saveJSON } from './util.js';
 
@@ -44,6 +45,8 @@ const TIERS = [200, 140, 100, 70, 50, 35, 25, 15, 7, 4];
 const newSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
 const CHAR_ARM = 3;                      // s – „⬇ POSTAĆ”: tyle czeka na drugie dotknięcie (potwierdzenie)
 const BOARD_TTL = 30;                    // s – tyle samo serwer trzyma ranking w cache
+const RACE_CHECK = 15;                   // s – co tyle gra pyta serwer o wyścig w pokoju (gdy zaproszenie nie doszło na żywo)
+const RACE_OVER_WAIT = 3;                // s – po końcu czasu ekran końca biegu, potem liczenie wyników
 /** Numer miejsca własnej postaci na ekranie tytułowym (za pięcioma wbudowanymi). */
 export const CUSTOM = CHARS.length;
 
@@ -111,6 +114,15 @@ export class Game {
     this.pages = buildPages(this);       // strony opcji (options.js)
     this.recapSel = 0;                   // wybrane miejsce na podium (pad, strzałki)
     this.nickLater = false;              // bez sieci przy wyborze nicku: gramy, a o nick zapytamy przy następnym uruchomieniu
+    // WYŚCIG w pokoju znajomych (race.js): sesja, w której gracz bierze udział, i zaproszenie do trwającego (jeszcze bez udziału)
+    this.race = null;
+    this.raceInvite = null;              // MatchInfo wyścigu w pokoju, do którego można dołączyć
+    this.racePage = 'setup';             // stan 'race': setup – ustawienia, lobby – odliczanie / czekanie na bilet, wait – liczenie wyników, results – tabela
+    this.raceSetup = { min: MATCH_MINUTES.indexOf(3), scoring: 0 };
+    this.raceBusy = false;               // zakładanie wyścigu w toku
+    this.raceCheckT = -Infinity;
+    this.raceCut = false;                // ostatni bieg ucięty zegarem wyścigu
+    this.raceCutCombo = 0;               // i ile pięter trwającego combo zaliczył koniec czasu
     this.reset();
     this.state = 'title';
   }
@@ -255,6 +267,7 @@ export class Game {
 
   start() {
     if (nickOpen() || creatorOpen()) return;
+    if (this.race) { this.startRaceRun(); return; }        // w wyścigu: kolejny bieg na wieży wyścigu
     if (this.state === 'title' && this.needsNick) { this.askNick(); return; }
     // wieża z biletu rankingu (ziarno od serwera); bez biletu – losowa wieża i bieg poza rankingiem
     this.ticket = this.officialTune ? online.takeTicket() : null;
@@ -264,6 +277,7 @@ export class Game {
     sfx.music.reset();
   }
   toTitle() {
+    this.race = null;                                    // wyjście do menu = wyjście z wyścigu (wrócić można przyciskiem WYŚCIG)
     this.reset(); this.state = 'title';
     if (this.recapPending) this.openRecap();
   }
@@ -277,6 +291,7 @@ export class Game {
   /** Stan dla znajomych w pokoju: menu albo bieg z piętrem i wynikiem (live.ts wysyła go oszczędnie). */
   /** Zdarzenie z biegu znajomego (live.ts) → komunikat na górze ekranu i dla czytnika ekranu. */
   friendEvent(ev) {
+    if (ev.e === 'match' || ev.e === 'mscore') { this.raceEvent(ev); return; }
     if (!this.feedOn) return;
     const name = ev.nick ?? t('board.player', { tag: ev.tag });
     let key = 'feed.score', color = 'hint';
@@ -290,6 +305,12 @@ export class Game {
     if (this.feed.length > 4) this.feed.splice(1, 1);  // zaległe najstarsze przepadają (bieżący zostaje do końca)
     announce(text);
   }
+  /** Komunikat w pasku u góry ekranu (komunikaty znajomych) i dla czytnika ekranu. */
+  feedSay(text, color = 'hint', dur = 3.4) {
+    this.feed.push({ text, color, t: 0, dur });
+    if (this.feed.length > 4) this.feed.splice(1, 1);
+    announce(text);
+  }
   toggleFeed() { this.feedOn = !this.feedOn; if (!this.feedOn) this.feed = []; this.savePrefs(); sfx.pick(); }
   /** Własny bieg (tylko oficjalny, z biletem rankingu): setki pięter i duże combo idą do znajomych z pokoju. */
   liveFloor() {
@@ -301,6 +322,126 @@ export class Game {
   liveStatus() {
     if (this.state === 'play' || this.state === 'pause') live.setStatus('play', this.sim.maxFloor, this.score);
     else live.setStatus('menu');
+  }
+
+  // ── WYŚCIG w pokoju znajomych (race.js, server/src/match.ts) ──
+  /** Wyścig na żywo: ktoś założył wyścig (zaproszenie) albo zweryfikowano bieg w wyścigu (tabela). */
+  raceEvent(ev) {
+    const name = ev.nick ?? t('board.player', { tag: ev.tag });
+    if (ev.e === 'match') {
+      if (this.race?.id === ev.match.id) return;
+      this.raceInvite = ev.match;
+      const by = ev.match.by.nick ?? t('board.player', { tag: ev.match.by.tag });
+      this.feedSay(t('race.invite', { name: by, min: ev.match.minutes }), 'gold', 5);
+      sfx.pick();
+    } else if (this.race && this.race.applyScore(ev) && this.feedOn) {
+      this.feedSay(t('race.lead', { name, score: fmt(ev.score) }), 'warn');
+    }
+  }
+  /** Wyścig w pokoju, do którego można dołączyć (trwa albo zaraz się zacznie), a gracz jeszcze w nim nie jest. */
+  get raceOpen() {
+    const m = this.raceInvite;
+    return !!(m && online.room && !this.race && m.endsAt > online.serverNow());
+  }
+  /** Raz na RACE_CHECK s (w menu, w pokoju): czy w pokoju trwa wyścig – na wypadek, gdy zaproszenie nie doszło na żywo. */
+  raceCheck() {
+    if (this.race || !online.room || !online.enabled || this.t - this.raceCheckT < RACE_CHECK) return;
+    if (this.state !== 'title' && this.state !== 'over') return;
+    this.raceCheckT = this.t;
+    online.currentMatch().then((m) => {
+      if (m === undefined || this.race) return;
+      this.raceInvite = m && m.endsAt > online.serverNow() ? m : null;
+    });
+  }
+  /** Przycisk WYŚCIG w panelu pokoju (klawisz V, B na padzie): dołącz do trwającego albo załóż nowy. */
+  raceButton() {
+    if (!online.room || !online.enabled || nickOpen() || roomOpen() || creatorOpen()) return;
+    if (this.raceOpen) { this.joinRace(this.raceInvite); return; }
+    sfx.pick();
+    this.state = 'race'; this.racePage = 'setup';
+  }
+  /** Ustawienia wyścigu: ← → czas, ↑ ↓ punktacja (abs – od razu podana wartość). */
+  raceSetupSet(what, d, abs = false) {
+    const st = this.raceSetup, n = what === 'min' ? MATCH_MINUTES.length : SCORINGS.length;
+    const v = abs ? d : clamp(st[what] + d, 0, n - 1);
+    if (v === st[what]) return;
+    st[what] = v; sfx.pick();
+  }
+  get raceMinutes() { return MATCH_MINUTES[this.raceSetup.min]; }
+  get raceScoring() { return SCORINGS[this.raceSetup.scoring]; }
+  /** START w ustawieniach (albo REWANŻ – te same ustawienia co skończony wyścig): nowy wyścig w pokoju. */
+  async raceCreate(minutes = this.raceMinutes, scoring = this.raceScoring) {
+    if (this.raceBusy) return;
+    sfx.pick();
+    this.raceBusy = true;
+    const r = await online.createMatch(minutes, scoring);
+    this.raceBusy = false;
+    if (this.state !== 'race') return;                   // gracz w międzyczasie wyszedł
+    if (!r.ok) { this.say(t(r.error === 'offline' ? 'race.offline' : 'race.fail'), '', 'warn', 2.4); return; }
+    if (r.existing) this.say(t('race.joined'), '', 'mint', 2);   // ktoś był szybszy – dołączamy do jego wyścigu
+    this.joinRace(r.match);
+  }
+  raceRematch() { const m = this.race?.info; if (m) this.raceCreate(m.minutes, m.scoring); }
+  /** Udział w wyścigu: odliczanie do startu (lobby), a po starcie od razu bieg. */
+  joinRace(info) {
+    sfx.pick();
+    this.raceInvite = null;
+    const r = this.race = new Race(info);
+    r.prefetch();
+    r.refresh(this.t, 0);
+    if (r.over) { this.raceWait(); return; }
+    this.reset(); this.state = 'race'; this.racePage = 'lobby';
+  }
+  /** Kolejny bieg w wyścigu: bilet z zapasu; bez biletu – czekamy na niego na ekranie odliczania (lobby). */
+  startRaceRun() {
+    const r = this.race;
+    if (!r) return;
+    if (r.over) { this.raceWait(); return; }
+    const ticket = r.toStart <= 0 ? r.takeTicket() : null;
+    if (!ticket) { r.prefetch(); this.state = 'race'; this.racePage = 'lobby'; return; }
+    this.ticket = ticket; this.raceCut = false;
+    this.reset(ticket.seed); this.state = 'play';
+    this.tier = this.crown;
+    if (!r.started) { r.started = true; this.say(t('race.goMsg'), t('race.goSub', { min: r.info.minutes }), 'gold', 1.6); sfx.hurry(); }
+    sfx.music.reset();
+  }
+  /** Czas wyścigu minął w trakcie biegu: bieg kończy się teraz, a trwające combo zostaje zaliczone (sim: timeUp). */
+  raceTimeUp() {
+    const events = [];
+    timeUp(this.sim, events);
+    this.raceCut = true;
+    // ekran końca biegu sam mówi „KONIEC CZASU!” i ile pięter combo zaliczono (render.js – drawOver)
+    this.raceCutCombo = events.find((e) => e.type === 'timeup')?.combo ?? 0;
+    this.gameOver();
+    if (this.raceCutCombo) sfx.combo(2);
+  }
+  /** Czy trwający bieg trzeba uciąć: koniec czasu wyścigu albo limit kroków z biletu. */
+  get raceCutDue() {
+    return !!(this.race && this.ticket?.match && (this.race.over || this.sim.tick >= this.ticket.maxTicks));
+  }
+  /** Koniec wyścigu: liczenie wyników (czekamy na ostatnie biegi), potem tabela. */
+  raceWait() {
+    if (!this.race) return;
+    this.reset(); this.state = 'race'; this.racePage = 'wait';
+    this.race.pollT = -Infinity;
+  }
+  /** Co klatkę w stanie 'race' i w biegu wyścigu. */
+  raceFrame(edge) {
+    const r = this.race, page = this.racePage;
+    if (page === 'setup') { if (edge) this.raceCreate(); return; }
+    if (!r) { this.toTitle(); return; }
+    if (page === 'lobby') {
+      const sec = Math.ceil(r.toStart / 1000);
+      if (sec !== r.beep) { r.beep = sec; if (sec > 0 && sec <= 3) sfx.pick(); }   // odliczanie 3, 2, 1
+      if (r.over) this.raceWait();
+      else if (r.toStart <= 0 && r.ticket) this.startRaceRun();
+      else if (r.toStart <= 0 && !r.fetching && this.t - r.pollT > 3) { r.pollT = this.t; r.prefetch(); }   // bilet nie przyszedł – ponów
+    } else if (page === 'wait') {
+      r.refresh(this.t);
+      if (r.final) { this.racePage = 'results'; sfx.combo(4); }
+    } else if (page === 'results') {
+      if (edge) this.raceRematch();
+    }
   }
 
   openBoard() {
@@ -355,7 +496,9 @@ export class Game {
     const others = live.players.filter((p) => !p.me), shown = live.connected ? others.slice(0, LIVE_ROWS) : [];
     const rows = Math.max(1, shown.length) + (others.length > shown.length ? 0.6 : 0);
     const top = B.y + 26 + rows * 30;
-    return { ...B, h: top - B.y + 34, others, shown, leave: { x, y: top + 2, w, h: 26 } };
+    // WYŚCIG: założenie albo dołączenie do trwającego (wtedy wyższy, z czasem do końca)
+    const raceH = this.raceOpen ? 38 : 28;
+    return { ...B, h: top - B.y + raceH + 38, others, shown, race: { x, y: top + 2, w, h: raceH }, leave: { x, y: top + raceH + 8, w, h: 26 } };
   }
   /** Wejście do pokoju, wyjście albo zniknięcie pokoju: stary ranking pokoju idzie do kosza. */
   roomChanged() {
@@ -748,6 +891,7 @@ export class Game {
         if (P.join && inBox(x, y, P.join)) return this.openRoomForm('join');
         if (P.create && inBox(x, y, P.create)) return this.openRoomForm('create');
         if (P.leave && inBox(x, y, P.leave)) return this.leaveRoom();
+        if (P.race && inBox(x, y, P.race)) return this.raceButton();
       }
       if (inBox(x, y, UIBOX.play)) this.start();
       else if (inBox(x, y, UIBOX.rank)) this.openBoard();
@@ -792,8 +936,27 @@ export class Game {
     } else if (this.state === 'pause') {
       if (inBox(x, y, UIBOX.pmenu)) { sfx.pick(); this.toTitle(); } else this.togglePause();
     } else if (this.state === 'over' && this.overT > 0.6) {
-      if (inBox(x, y, UIBOX.menu)) this.toTitle(); else this.start();
+      if (inBox(x, y, UIBOX.menu)) this.toTitle();
+      else if (this.raceOpen && inBox(x, y, UIBOX.overRace)) this.joinRace(this.raceInvite);
+      else if (this.race?.over) this.raceWait();
+      else this.start();
+    } else if (this.state === 'race') {
+      this.racePointer(x, y);
     }
+  }
+
+  /** Dotknięcie na ekranach wyścigu. */
+  racePointer(x, y) {
+    const page = this.racePage;
+    if (page === 'setup') {
+      for (let i = 0; i < MATCH_MINUTES.length; i++) if (inBox(x, y, UIBOX.raceMin(i))) return this.raceSetupSet('min', i, true);
+      for (let i = 0; i < SCORINGS.length; i++) if (inBox(x, y, UIBOX.raceScore(i))) return this.raceSetupSet('scoring', i, true);
+      if (inBox(x, y, UIBOX.raceGo)) return this.raceCreate();
+      if (inBox(x, y, UIBOX.raceBack)) { sfx.pick(); this.toTitle(); }
+    } else if (page === 'results') {
+      if (inBox(x, y, UIBOX.raceAgain)) this.raceRematch();
+      else if (inBox(x, y, UIBOX.raceMenu)) { sfx.pick(); this.toTitle(); }
+    } else if (inBox(x, y, UIBOX.raceBack)) { sfx.pick(); this.toTitle(); }
   }
 
   /** OPCJE → Przywróć domyślne ustawienia: sterowanie, dostępność, dźwięk, wibracje, ręka, bateria. Język, postać, mapa i ranking zostają. */
@@ -827,11 +990,14 @@ export class Game {
     this.state = 'over'; this.overT = 0; this.msgs = [];
     sfx.over();
     const b = this.best, s = this.sim;
-    this.newBest = this.score > b.score && this.score > 0;
-    b.score = Math.max(b.score, this.score);
-    b.floor = Math.max(b.floor, s.maxFloor);
-    b.combo = Math.max(b.combo, s.bestCombo);
-    saveJSON(STORE, b);
+    // bieg z wyścigu nie jest rekordem gracza – jak w rankingu, liczy się tylko w tabeli wyścigu
+    this.newBest = !this.race && this.score > b.score && this.score > 0;
+    if (!this.race) {
+      b.score = Math.max(b.score, this.score);
+      b.floor = Math.max(b.floor, s.maxFloor);
+      b.combo = Math.max(b.combo, s.bestCombo);
+      saveJSON(STORE, b);
+    }
 
     haptics.buzz(120);
     if (this.retuned) { this.lastRun = null; this.sendRun(null); return; }   // strojenie zmieniało się po drodze, więc zapis nie opisuje tego biegu
@@ -841,6 +1007,7 @@ export class Game {
     this.lastRun = { simVersion: SIM_VERSION, seed: s.seed, tune: { ...s.tune }, ranked, ticks: ticks.length, score: this.score, inputs: encodeInputs(ticks) };
     if (import.meta.env.DEV) {                           // kontrola determinizmu: zapis odtworzony od zera musi dać ten sam stan
       const again = runReplay(s.seed, ticks, createState(s.seed, s.tune));
+      if (this.raceCut) timeUp(again);
       if (stateHash(again) !== stateHash(s)) console.error('Symulacja nie jest deterministyczna: odtworzenie zapisu dało inny stan', { live: s, again });
     }
     this.sendRun(ranked ? ticks : null);
@@ -858,14 +1025,17 @@ export class Game {
     // statystyka serwera: dawne „touch” to dzisiejsze przyciski ekranowe
     const control = tilt.active ? 'tilt' : ctrl.mode === 'one' ? 'one' : this.hint === 'pad' ? 'pad' : !isTouch ? 'keys' : ctrl.mode === 'buttons' ? 'touch' : ctrl.mode;
     const custom = this.charIdx === CUSTOM;
+    const race = ticket.match ? this.race : null;
     online.submit({
       ticket, ticks: ticks.slice(), score: this.score, char: custom ? 'custom' : CHARS[this.charIdx].id, style: STYLES[this.styleIdx].id, control,
       ...(custom && this.customHash ? { skin: this.customHash } : {}),
+      ...(this.raceCut ? { cut: true } : {}),
     })
       .catch(() => ({ status: 'queued' }))
       .then((r) => {
         if (this.net?.runId === ticket.runId) this.net = { ...r, runId: ticket.runId };
-        this.board.at = {};              // ranking się zmienił
+        if (r.status === 'verified' && r.match) race?.applyMine(r.match);   // mój wynik w tabeli wyścigu
+        else this.board.at = {};         // ranking się zmienił
       });
   }
 
@@ -926,6 +1096,8 @@ export class Game {
         break;
       case 'over':
         if (this.state === 'replay') this.replayEnd(); else this.gameOver();
+        break;
+      case 'timeup':                     // koniec czasu wyścigu – komunikat pokazuje raceTimeUp
         break;
     }
   }
@@ -1035,9 +1207,18 @@ export class Game {
     this.liveStatus();
     const edge = input.takeEdge();
     const camBefore = this.sim.camY;
+    this.raceCheck();
     if (this.state === 'title') { if (edge) this.start(); }
-    else if (this.state === 'pause') { if (edge) this.togglePause(); }
-    else if (this.state === 'over') { this.overT += dt; if (edge && this.overT > 0.6) this.start(); }
+    else if (this.state === 'pause') {
+      if (this.raceCutDue) this.raceTimeUp();            // zegar wyścigu nie staje w pauzie
+      else if (edge) this.togglePause();
+    }
+    else if (this.state === 'over') {
+      this.overT += dt;
+      if (this.race?.over && (this.overT > RACE_OVER_WAIT || (edge && this.overT > 0.6))) this.raceWait();
+      else if (edge && this.overT > 0.6) this.start();
+    }
+    else if (this.state === 'race') this.raceFrame(edge);
     else if (this.state === 'board') { if (edge) this.boardConfirm(); }
     else if (this.state === 'settings') {
       const st = this.settings;
@@ -1056,7 +1237,10 @@ export class Game {
       }
     } else {
       this.acc += dt;
-      while (this.acc >= STEP && this.state === 'play') { this.tick(); this.acc -= STEP; }
+      while (this.acc >= STEP && this.state === 'play') {
+        if (this.raceCutDue) { this.raceTimeUp(); break; }
+        this.tick(); this.acc -= STEP;
+      }
     }
     // efekty niezależne od fizyki
     if (this.feed.length && (this.feed[0].t += dt) >= this.feed[0].dur) this.feed.shift();   // komunikaty znajomych po kolei
@@ -1091,10 +1275,11 @@ export class Game {
   /** Stan biegu dla muzyki: poziom tempa wieży, postęp do kolejnego przyspieszenia i jak blisko dołu jest bohater (0…1). */
   musicParams() {
     const s = this.sim;
+    const raceEnd = this.race && this.race.left < 10_000 ? 1 : 0;   // ostatnie 10 s wyścigu: tykanie jak przy dole ekranu
     return {
       level: s.scrolling ? s.level : 0,
       progress: s.hurries < MAX_HURRIES ? s.clock / HURRY_EVERY : 1,
-      danger: s.scrolling ? clamp((s.hero.y - s.camY - 320) / 180, 0, 1) : 0,
+      danger: Math.max(raceEnd, s.scrolling ? clamp((s.hero.y - s.camY - 320) / 180, 0, 1) : 0),
       slow: s.slow.t > 0,
     };
   }

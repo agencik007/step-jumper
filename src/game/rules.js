@@ -7,11 +7,12 @@ import {
   P, SLOW_EVERY, SLOW_FROM, SLOW_TIME, START_FLOOR, jumpCurve,
 } from '../sim';
 import { LIVE_COMBO, LIVE_FLOOR_EVERY } from '../net/live';
+import { MATCH_GRACE_MS, MATCH_LEAD_MS, MATCH_MINUTES } from '../../server/src/match';
 import { VODKA_FROM } from './drinks.js';
 import { t } from './i18n.js';
 
 /** @type {[string, number][]} ZASADY GRY: sekcja → liczba punktów (klucze 'rules.<sekcja>' i 'rules.<sekcja>.1…n' w strings.js). */
-export const RULES = [['goal', 4], ['move', 5], ['floors', 3], ['score', 2], ['combo', 4], ['items', 4], ['rank', 4]];
+export const RULES = [['goal', 4], ['move', 5], ['floors', 3], ['score', 2], ['combo', 4], ['items', 4], ['rank', 4], ['race', 5]];
 
 /** Wysokość skoku w piętrach przy rozpędzie k (0…1): szczyt lotu v²/2g, pełne piętra. */
 export const jumpFloors = (k) => Math.floor((P.jumpBase + P.jumpBoost * jumpCurve(k)) ** 2 / (2 * P.gravity) / GAP);
@@ -24,6 +25,8 @@ export const RULE_VARS = {
   boostFloors: BOOST_FLOORS, slowFrom: SLOW_FROM, slowEvery: SLOW_EVERY, slowTime: SLOW_TIME,
   liveFloors: LIVE_FLOOR_EVERY, liveCombo: LIVE_COMBO,  // pokój znajomych: co ogłaszamy znajomym (src/net/live.ts)
   vodkaFrom: VODKA_FROM,                                // wyjątek spoza symulacji: piwo czy wódka to tylko wygląd (drinks.js)
+  // WYŚCIG w pokoju: czasy do wyboru, odliczanie i czas na wysłanie ostatnich biegów (server/src/match.ts)
+  raceMin: MATCH_MINUTES[0], raceMax: MATCH_MINUTES[MATCH_MINUTES.length - 1], raceLead: MATCH_LEAD_MS / 1000, raceGrace: MATCH_GRACE_MS / 1000,
 };
 
 /** Teksty zasad w bieżącym języku: [[nagłówek, [punkty…]], …]. */

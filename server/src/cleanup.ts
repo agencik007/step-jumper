@@ -1,4 +1,5 @@
 // Sprzątanie bazy, uruchamiane raz na dobę przez cron (wrangler.jsonc → triggers).
+import { MATCH_TTL } from './match';
 import { dayKey, weekKey } from './periods';
 
 const DAY = 86_400_000;
@@ -20,6 +21,9 @@ export async function cleanup(db: D1Database, now: number): Promise<void> {
     db.prepare('DELETE FROM run_chunks WHERE run_id NOT IN (SELECT run_id FROM bests)'),
     // paczki własnych postaci, których nie używa już żaden wynik w rankingu
     db.prepare('DELETE FROM skins WHERE hash NOT IN (SELECT skin FROM bests WHERE skin IS NOT NULL)'),
+    // wyścigi w pokojach (z ich tabelami – ON DELETE CASCADE) po dwóch tygodniach; biegi z wyścigów znikają jak zwykłe
+    db.prepare('DELETE FROM match_results WHERE match_id IN (SELECT id FROM matches WHERE ends_at < ?)').bind(now - MATCH_TTL),
+    db.prepare('DELETE FROM matches WHERE ends_at < ?').bind(now - MATCH_TTL),
     // pokoje znajomych, w których nie został już nikt
     db.prepare('DELETE FROM rooms WHERE NOT EXISTS (SELECT 1 FROM players p WHERE p.room_id = rooms.id)'),
   ]);

@@ -141,6 +141,14 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
   **Komunikaty znajomych** (pasek u góry ekranu, `game.friendEvent`, OPCJE → Komunikaty znajomych): setka pięter i combo
   od 25 pięter w biegu znajomego (od jego gry) oraz zweryfikowany przez serwer wynik – najlepszy dziś, rekord, rekord pokoju
   albo „wyprzedza cię w tym tygodniu”.
+- **WYŚCIG w pokoju** (panel pokoju → WYŚCIG, klawisz **V**, B na padzie; `src/game/race.js`, stan `'race'` w `game.js`,
+  serwer: `server/src/match.ts`): kilka minut (2 / 3 / 5 / 10) na tej samej wieży dla całego pokoju, wygrywa więcej punktów –
+  NAJLEPSZY BIEG albo SUMA BIEGÓW (wybiera zakładający). Start po 15 s odliczania, dołączyć można do końca (z panelu pokoju
+  albo z ekranu KONIEC GRY – przycisk DOŁĄCZ DO WYŚCIGU). Każdy bieg to bilet z ziarnem wyścigu i limitem kroków do końca;
+  gra trzyma jeden bilet w zapasie, więc po upadku od razu rusza kolejny bieg. Na koniec czasu gra ucina trwający bieg
+  i woła `timeUp` (`src/sim/sim.ts`) – trwające combo zostaje zaliczone; serwer robi to samo przy porcji z `?end=time`.
+  W biegu: zegar wyścigu i tabela (trójka + ja) w prawej kolumnie, pauza nie zatrzymuje zegara. Po końcu 20 s na
+  wysłanie ostatnich biegów, potem WYNIKI WYŚCIGU i REWANŻ. Biegi z wyścigu nie idą do rankingu ani do rekordu gracza.
 - **Nick od razu**: gracz bez nicku dostaje okienko nicku zaraz po uruchomieniu gry (gdy serwer rankingu odpowiada);
   do pokoju znajomych wchodzi się tylko z nickiem.
 - W grze: RANKING (R), OPCJE (O) i NOWOŚCI (N) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, sterowanie, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
