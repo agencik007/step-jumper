@@ -54,12 +54,16 @@ const name = (e) => e.nick ?? t('board.player', { tag: e.tag });
 /** Ekran tytułowy: kto z pokoju znajomych jest w grze – bez pięter, żeby czytnik nie mówił przy każdym piętrze. */
 function liveLine(g) {
   const room = g.online.room;
-  if (!room || !live.connected) return '';
+  if (!g.online.enabled) return '';
+  if (!room) return t('sr.roomOut');                   // J – dołącz, C – utwórz
+  if (!live.connected) return `${t('room.boardTitle', { name: room.name })}. ${t('sr.roomLeave')}`;
   const others = live.players.filter((p) => !p.me);
   return others.length
     ? t('sr.live', { name: room.name, list: others.map((p) => t(p.s === 'play' ? 'sr.livePlay' : 'sr.liveMenu', { name: name(p) })).join(', ') })
     : t('sr.liveNone', { name: room.name });
 }
+/** Ekran tytułowy: pokój (kto gra) i klawisz wyjścia z niego. */
+const roomLine = (g) => { const l = liveLine(g); return g.online.room && live.connected ? `${l} ${t('sr.roomLeave')}` : l; };
 
 /** Wiersz opcji słowami: nazwa, wartość, a dla przypisań – klawisze w polach. */
 export function itemSpeech(g, it) {
@@ -86,7 +90,7 @@ function describe(g) {
   const s = g.state;
   if (s === 'title') {
     return [['screen', t('sr.title')], ['char', charLine(g)], ['map', mapLine(g)],
-      ['update', update.available ? t('sr.update', { v: update.available }) : ''], ['live', liveLine(g)]];
+      ['update', update.available ? t('sr.update', { v: update.available }) : ''], ['live', roomLine(g)]];
   }
   if (s === 'play') return [['screen', t('sr.play')]];
   if (s === 'pause') return [['screen', `${t('pause.title')}. ${t('pause.resume', { key: binds.key.pause.filter(Boolean).map(keyLabel).join(' / ') || '—' })}. ${t('pause.menu')}`]];
@@ -112,7 +116,7 @@ function describe(g) {
     const end = periodEnd(b.kind), tab = t(`period.${PERIODS.includes(b.kind) ? b.kind : 'week'}`);
     const ends = end && g.online.enabled ? t(b.kind === 'day' ? 'board.endsDay' : 'board.endsWeek', { when: fmtWhen(end), left: fmtLeft(end) }) : '';
     const screen = room ? t('room.boardTitle', { name: g.online.room.name }) : t('board.title');
-    return [['screen', `${screen}. ${t('sr.boardScope')}`], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
+    return [['screen', g.online.room ? `${screen}. ${t('sr.boardScope')}` : screen], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
       ['sel', sel ? `${t('sr.boardSel', { rank: sel.rank, name: name(sel) })}${sel.skin ? ` ${t('sr.boardChar')}` : ''}` : '']];
   }
   if (s === 'settings') {

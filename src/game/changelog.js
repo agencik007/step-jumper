@@ -5,6 +5,34 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.22.1', date: '2026-11-27',
+    pl: [
+      'Pokoje znajomych przeniosły się do menu głównego: pod RANKINGIEM są przyciski DOŁĄCZ i UTWÓRZ, a gdy jesteś w pokoju – lista znajomych w grze i OPUŚĆ POKÓJ.',
+      'W RANKINGU zostało tylko przełączanie WSZYSCY / POKÓJ, i to wtedy, gdy jesteś w pokoju.',
+      'Okienko pokoju mieści się na telefonie trzymanym poziomo. Komunikaty o znajomych w menu pojawiają się na dole ekranu, więc nie zasłaniają logo ani tytułu RANKINGU.',
+    ],
+    en: [
+      'Friends’ rooms moved to the main menu: under RANKING there are JOIN and CREATE buttons, and when you are in a room – the friends who are playing and LEAVE ROOM.',
+      'The LEADERBOARD now only switches between EVERYONE and ROOM, and only when you are in a room.',
+      'The room window fits on a phone held sideways. Messages about friends now appear at the bottom of the screen in menus, so they no longer cover the logo or the LEADERBOARD title.',
+    ],
+    de: [
+      'Räume für Freunde sind ins Hauptmenü gezogen: Unter RANGLISTE stehen die Knöpfe BEITRETEN und ANLEGEN, und wenn du in einem Raum bist – deine Freunde im Spiel und RAUM VERLASSEN.',
+      'In der RANGLISTE wechselst du nur noch zwischen ALLE und RAUM, und das nur, wenn du in einem Raum bist.',
+      'Das Raumfenster passt auf ein quer gehaltenes Handy. Meldungen über Freunde erscheinen in den Menüs unten am Bildschirm und verdecken weder das Logo noch den Titel der RANGLISTE.',
+    ],
+    fr: [
+      'Les salons d’amis passent au menu principal : sous CLASSEMENT se trouvent les boutons REJOINDRE et CRÉER, et quand vous êtes dans un salon – les amis en jeu et QUITTER LE SALON.',
+      'Le CLASSEMENT ne fait plus que basculer entre TOUS et SALON, et seulement quand vous êtes dans un salon.',
+      'La fenêtre du salon tient sur un téléphone tenu à l’horizontale. Dans les menus, les nouvelles des amis s’affichent en bas de l’écran et ne cachent plus le logo ni le titre du CLASSEMENT.',
+    ],
+    es: [
+      'Las salas de amigos pasan al menú principal: bajo RANKING están los botones ENTRAR y CREAR y, cuando estás en una sala, los amigos que juegan y SALIR DE LA SALA.',
+      'En el RANKING solo queda el cambio entre TODOS y SALA, y solo cuando estás en una sala.',
+      'La ventana de la sala cabe en un teléfono en horizontal. En los menús, los avisos de amigos aparecen abajo de la pantalla y ya no tapan el logo ni el título del RANKING.',
+    ],
+  },
+  {
     v: '0.22.0', date: '2026-11-27',
     pl: [
       'Pokoje znajomych: w RANKINGU dotknij ⚙ POKÓJ, załóż pokój z nazwą i hasłem i podaj je znajomym. Przycisk POKÓJ pokazuje ranking tylko waszej paczki – z okresami i powtórkami – a WSZYSCY wraca do rankingu świata.',

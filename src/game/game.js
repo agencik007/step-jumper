@@ -19,9 +19,9 @@ import { LANGS, detectLang, lang, setLang, t } from './i18n.js';
 import {
   CONTROLS, DEAD_STEPS, JUMP_MODES, OPTS_DEFAULT, SENS_MAX, TILT_ZERO_MAX, binds, ctrl, hintMode, input, isTouch, loadBinds, opts, resetBinds, setBind, setControl, tilt, touchAxis,
 } from './input.js';
-import { ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, charX, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
+import { ARROW_W, CHAR_W, LIST, LIST_BACK, LIVE_ROWS, NOTE_FONT, PERIODS, UIBOX, bindCell, charX, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
-import { openRoom, refreshRoomLive, roomOpen } from './roomform.js';
+import { openRoom, roomOpen } from './roomform.js';
 import { buildNews, buildPages, buildRules, selectable } from './options.js';
 import { loadPads, mirrorPads, resetPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
@@ -63,10 +63,11 @@ export class Game {
     this.remote = new Map();             // postacie z najlepszej trójki pobrane do obejrzenia (powtórki, podium): skrót → { skin, wait }
     this.charLoad = null;                // „⬇ POSTAĆ” w rankingu: pobieranie w toku
     this.charArm = null;                 // „⬇ POSTAĆ” dotknięte raz: { hash, until } – drugie dotknięcie do until wczytuje
+    this.leaveArm = 0;                   // OPUŚĆ POKÓJ dotknięte raz: do tej chwili (this.t) drugie dotknięcie wychodzi
+    this.leaving = false;                // wyjście z pokoju w toku
     online.skinSource = packBytes;
     // serwer zamknął połączenie z pokojem, bo gracz wyszedł z niego na innym urządzeniu: odśwież pokój i ranking
     live.onLeft = () => { online.roomInfo().then(() => this.roomChanged()); };
-    live.onChange = refreshRoomLive;
     live.onEvent = (ev) => this.friendEvent(ev);
     this.feed = [];                      // komunikaty o znajomych z pokoju: { text, color, t, dur }, pokazywane po kolei
     this.feedOn = prefs.feed !== false;  // OPCJE → Komunikaty znajomych
@@ -316,18 +317,45 @@ export class Game {
   /** Klucz rankingu w board.data i board.at: okres, a dla pokoju 'room:<okres>'. */
   boardKey(kind = this.board.kind) { return this.boardScope === 'room' ? `room:${kind}` : kind; }
   get boardData() { return this.board.data[this.boardKey()]; }
-  /** WSZYSCY / POKÓJ; pokój, gdy gracz w żadnym nie jest, otwiera okienko pokoju. */
+  /** WSZYSCY / POKÓJ – tylko dla gracza w pokoju (poza pokojem ranking jest jeden). */
   boardScopeSet(scope) {
-    if (scope === 'room' && !online.room) { this.openRoomForm(); return; }
-    if (scope === this.boardScope) return;
+    if (!online.room || scope === this.boardScope) return;
     this.board.scope = scope; this.board.sel = -1; sfx.pick(); this.loadBoard();
   }
   boardScopeToggle() { this.boardScopeSet(this.boardScope === 'room' ? 'world' : 'room'); }
-  /** Okienko pokoju znajomych: założenie, dołączenie, lista graczy, wyjście (roomform.js). */
-  openRoomForm() {
-    if (!online.enabled || roomOpen()) return;
+
+  // ── pokój znajomych w menu głównym: DOŁĄCZ / UTWÓRZ poza pokojem, OPUŚĆ POKÓJ w pokoju ──
+  /** Panel pokoju na ekranie tytułowym jest widoczny (ranking online włączony). */
+  get roomPanelOn() { return online.enabled && this.state === 'title'; }
+  /** Okienko pokoju (roomform.js): kind 'join' – dołączenie nazwą i hasłem, 'create' – nowy pokój. */
+  openRoomForm(kind) {
+    if (!this.roomPanelOn || online.room || roomOpen() || nickOpen() || creatorOpen()) return;
     sfx.pick();
-    openRoom(online, () => this.roomChanged());
+    openRoom(online, kind, () => this.roomChanged());
+  }
+  /** OPUŚĆ POKÓJ: pierwsze dotknięcie pyta (NA PEWNO?), drugie w ciągu kilku sekund wychodzi. */
+  leaveRoom() {
+    if (!this.roomPanelOn || !online.room || this.leaving) return;
+    sfx.pick();
+    if (this.t >= this.leaveArm) { this.leaveArm = this.t + CHAR_ARM; announce(t('room.leaveSure')); return; }
+    this.leaveArm = 0; this.leaving = true;
+    online.leaveRoom().then((ok) => {
+      this.leaving = false;
+      if (ok) this.roomChanged(); else this.say(t('room.err.offline'), '', 'warn', 2.4);
+    });
+  }
+  get leaveArmed() { return this.t < this.leaveArm; }
+  /**
+   * Układ panelu pokoju na ekranie tytułowym (prawa kolumna) – wspólny dla rysowania i dotyku.
+   * Poza pokojem: nagłówek i DOŁĄCZ / UTWÓRZ. W pokoju: nazwa, znajomi w grze (najwyżej LIVE_ROWS) i OPUŚĆ POKÓJ.
+   */
+  roomPanel() {
+    const B = UIBOX.live, x = B.x + 6, w = B.w - 12;
+    if (!online.room) return { ...B, h: 90, join: { x, y: B.y + 26, w, h: 26 }, create: { x, y: B.y + 58, w, h: 26 } };
+    const others = live.players.filter((p) => !p.me), shown = live.connected ? others.slice(0, LIVE_ROWS) : [];
+    const rows = Math.max(1, shown.length) + (others.length > shown.length ? 0.6 : 0);
+    const top = B.y + 26 + rows * 30;
+    return { ...B, h: top - B.y + 34, others, shown, leave: { x, y: top + 2, w, h: 26 } };
   }
   /** Wejście do pokoju, wyjście albo zniknięcie pokoju: stary ranking pokoju idzie do kosza. */
   roomChanged() {
@@ -715,6 +743,12 @@ export class Game {
       for (let i = 0; i < STYLES.length; i++) {
         if (Math.abs(x - slotX(i)) <= 34 && y >= UIBOX.maps.y - 4 && y <= UIBOX.maps.y + UIBOX.maps.h + 4) return this.pick('style', i, true);
       }
+      if (this.roomPanelOn && !roomOpen()) {             // pokój znajomych: DOŁĄCZ / UTWÓRZ albo OPUŚĆ POKÓJ
+        const P = this.roomPanel();
+        if (P.join && inBox(x, y, P.join)) return this.openRoomForm('join');
+        if (P.create && inBox(x, y, P.create)) return this.openRoomForm('create');
+        if (P.leave && inBox(x, y, P.leave)) return this.leaveRoom();
+      }
       if (inBox(x, y, UIBOX.play)) this.start();
       else if (inBox(x, y, UIBOX.rank)) this.openBoard();
       else if (inBox(x, y, UIBOX.opts)) this.openSettings();
@@ -725,9 +759,8 @@ export class Game {
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
       if (roomOpen()) return;                              // okienko pokoju na wierzchu
-      if (inBox(x, y, UIBOX.bWorld)) return this.boardScopeSet('world');
-      if (inBox(x, y, UIBOX.bRoom)) return this.boardScopeSet('room');
-      if (inBox(x, y, UIBOX.bRoomForm)) return this.openRoomForm();
+      const S = UIBOX.scope;                             // WSZYSCY / POKÓJ: górna i dolna połowa przełącznika
+      if (inBox(x, y, S)) return this.boardScopeSet(y < S.y + S.h / 2 ? 'world' : 'room');
       for (let i = 0; i < PERIODS.length; i++) if (inBox(x, y, UIBOX.tab(i))) return this.boardTab(i, true);
       const top = this.boardData?.top?.entries ?? [];
       for (let i = 0; i < 3; i++) if (top[i]?.skin && inBox(x, y, UIBOX.boardChar(i))) return this.loadBoardChar(top[i]);   // „⬇ POSTAĆ”

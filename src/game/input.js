@@ -476,13 +476,16 @@ function onKey(e) {
     if (free && code === 'KeyH') { game.openRules(); return; }
     if (free && code === 'KeyK') { game.openCreator(); return; }
     if (free && code === 'KeyU') { game.reloadGame(); return; }
+    // pokój znajomych: J – dołącz, C – utwórz (poza pokojem), L – opuść (w pokoju, dwa razy)
+    if (free && code === 'KeyJ') { game.openRoomForm('join'); return; }
+    if (free && code === 'KeyC') { game.openRoomForm('create'); return; }
+    if (free && code === 'KeyL') { game.leaveRoom(); return; }
   } else if (s === 'board') {
     if (left || right) { game.boardTab(left ? -1 : 1); return; }
     if (up || dn) { game.boardMove(up ? -1 : 1); return; }
     if (free && code === 'KeyN') { game.editNick(); return; }
     if (free && code === 'KeyL') { game.boardLoadChar(); return; }
-    if (free && code === 'KeyG') { game.boardScopeToggle(); return; }     // WSZYSCY / POKÓJ
-    if (free && code === 'KeyJ') { game.openRoomForm(); return; }         // okienko pokoju znajomych
+    if (free && code === 'KeyG') { game.boardScopeToggle(); return; }     // WSZYSCY / POKÓJ (tylko w pokoju)
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.boardReplay(Number(code.slice(-1))); return; }
   } else if (s === 'recap') {
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.recapReplay(Number(code.slice(-1))); return; }
