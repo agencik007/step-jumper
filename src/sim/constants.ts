@@ -1,6 +1,6 @@
 // Stałe rozgrywki. Każda zmiana tutaj zmienia przebieg biegów, więc wymaga podbicia SIM_VERSION –
 // serwer odtwarza zapis biegu tą samą wersją symulacji, którą grał gracz.
-export const SIM_VERSION = 4;   // 2: mocniejsze sterowanie i hamowanie w locie (DEFAULT_TUNE); 3: booster wyrzutu i spowolnienie wieży; 4: piętra węższe co 100 pięter
+export const SIM_VERSION = 5;   // 2: mocniejsze sterowanie i hamowanie w locie (DEFAULT_TUNE); 3: booster wyrzutu i spowolnienie wieży; 4: piętra węższe co 100 pięter; 5: koniec czasu wyścigu (timeUp) zalicza combo
 
 export const W = 640, H = 480;
 export const WALL = 96, LEFT = WALL, RIGHT = W - WALL, FIELD = RIGHT - LEFT;

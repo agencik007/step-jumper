@@ -386,6 +386,18 @@ function handlePad(p, B) {
       else if (LT) game.openRules();
       else if (RT) game.openCreator();
       else if (RB) game.reloadGame();
+      else if (Bk) game.raceButton();                     // pokój znajomych: WYŚCIG (dołącz albo załóż)
+      break;
+    case 'race':
+      if (game.racePage === 'setup') {
+        if (nav === 'left' || nav === 'right') game.raceSetupSet('min', nav === 'left' ? -1 : 1);
+        else if (nav === 'up' || nav === 'down') game.raceSetupSet('scoring', nav === 'up' ? -1 : 1);
+        if (A || START) game.raceCreate();
+        else if (Bk) { sfx.pick(); game.toTitle(); }
+      } else if (game.racePage === 'results') {
+        if (A || START) game.raceRematch();
+        else if (Bk || Y) { sfx.pick(); game.toTitle(); }
+      } else if (Bk) { sfx.pick(); game.toTitle(); }
       break;
     case 'pause':
       if (A || Bk || START || binds.pad.pause.some(edge)) game.togglePause();
@@ -393,7 +405,8 @@ function handlePad(p, B) {
       break;
     case 'over':
       if (game.overT <= 0.6) break;
-      if (A || Bk || START) game.start();
+      if (X && game.raceOpen) game.joinRace(game.raceInvite);
+      else if (A || Bk || START) { if (game.race?.over) game.raceWait(); else game.start(); }
       else if (Y || SEL) game.toTitle();
       break;
     case 'board':
@@ -480,6 +493,15 @@ function onKey(e) {
     if (free && code === 'KeyJ') { game.openRoomForm('join'); return; }
     if (free && code === 'KeyC') { game.openRoomForm('create'); return; }
     if (free && code === 'KeyL') { game.leaveRoom(); return; }
+    if (free && code === 'KeyV') { game.raceButton(); return; }       // WYŚCIG w pokoju (dołącz albo załóż)
+  } else if (s === 'over') {
+    if (free && code === 'KeyV' && game.raceOpen) { game.joinRace(game.raceInvite); return; }
+  } else if (s === 'race') {
+    if (game.racePage === 'setup') {
+      if (left || right) { game.raceSetupSet('min', left ? -1 : 1); return; }
+      if (up || dn) { game.raceSetupSet('scoring', up ? -1 : 1); return; }
+    }
+    if (code === 'Escape') { sfx.pick(); game.toTitle(); return; }
   } else if (s === 'board') {
     if (left || right) { game.boardTab(left ? -1 : 1); return; }
     if (up || dn) { game.boardMove(up ? -1 : 1); return; }

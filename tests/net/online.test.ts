@@ -2,7 +2,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { MemoryStore, Online, TICKET_RESERVE } from '../../src/net/online';
 import type { Ticket } from '../../src/net/online';
-import { SIM_VERSION } from '../../src/sim';
+import { SIM_VERSION, createState, packInput, score, step, timeUp } from '../../src/sim';
+import { MATCH_GRACE_MS } from '../../server/src/match';
 import { sha256hex } from '../../server/src/auth';
 import { idleThen, momentumPilot } from '../helpers';
 import { playRun, startServer } from '../server/harness';
@@ -376,5 +377,77 @@ describe('pokoje znajomych', () => {
     net.down = true;
     await o.leaderboard('week');
     expect(o.reachable).toBe(false);
+  });
+});
+
+describe('wyścig w pokoju', () => {
+  /** Dwaj gracze w jednym pokoju. */
+  async function pair() {
+    const a = await ready(), b = await ready();
+    await a.setNick('Ala'); await b.setNick('Bartek');
+    await a.createRoom('Ekipa', 'tajne123'); await b.joinRoom('Ekipa', 'tajne123');
+    return { a, b };
+  }
+
+  test('założenie, dołączenie spóźnionego, bilety z wieżą wyścigu, bieg ucięty z ?end=time i tabela', async () => {
+    const { a, b } = await pair();
+    const made = await a.createMatch(2, 'best');
+    expect(made).toMatchObject({ ok: true, existing: false, match: { minutes: 2, scoring: 'best' } });
+    if (!made.ok) return;
+    // drugi gracz też chce założyć – dostaje bieżący wyścig
+    expect(await b.createMatch(5, 'sum')).toMatchObject({ ok: true, existing: true, match: { id: made.match.id } });
+    expect(await b.currentMatch()).toEqual(made.match);
+    expect(a.serverNow()).toBe(srv.clock.now);              // zegar wyścigu = zegar serwera
+
+    srv.clock.now = made.match.startsAt;
+    const ta = (await a.matchTicket(made.match.id))!, tb = (await b.matchTicket(made.match.id))!;
+    expect(ta.seed).toBe(tb.seed);
+    expect(ta.maxTicks).toBe(2 * 60 * 120);
+    expect(a.tickets).toBe(TICKET_RESERVE);                  // zapas biletów rankingu nietknięty
+
+    // bieg ucięty zegarem na końcu wyścigu (wynik po timeUp)
+    const cutAt = 30 * 120;
+    const s = createState(ta.seed), pilot = momentumPilot(3), ticks: number[] = [];
+    while (!s.over && s.tick < cutAt) { const i = pilot.next(s); ticks.push(packInput(i.axis, i.jump)); step(s, i.axis, i.jump); }
+    const cut = !s.over;
+    timeUp(s);
+    srv.clock.now = made.match.endsAt;
+    const r = await a.submit({ ticket: ta, ticks: Uint8Array.from(ticks), score: score(s), char: 'fox', style: 'ice', control: 'keys', cut });
+    expect(r).toMatchObject({ status: 'verified', score: score(s), match: { id: made.match.id, score: score(s), runs: 1, place: 1 } });
+
+    const table = (await b.matchResults(made.match.id))!;
+    expect(table).toMatchObject({ final: false, entries: [{ place: 1, nick: 'Ala', score: score(s), runs: 1 }] });
+    expect(await rows('SELECT * FROM bests')).toEqual([]);   // nie do rankingu
+  });
+
+  test('bieg z wyścigu, który nie zdążył przed rozliczeniem, przepada z kolejki', async () => {
+    const { a } = await pair();
+    const made = await a.createMatch(2, 'sum');
+    if (!made.ok) throw new Error('brak wyścigu');
+    srv.clock.now = made.match.startsAt;
+    const t = (await a.matchTicket(made.match.id))!;
+    net.down = true;
+    srv.clock.now += 20_000;
+    const run = playRun(t.seed, idleThen(0, momentumPilot(2)));
+    expect(await a.submit({ ticket: t, ticks: run.ticks, score: run.score, char: 'fox', style: 'ice', control: 'keys' })).toEqual({ status: 'queued' });
+    net.down = false;
+    srv.clock.now = made.match.endsAt + MATCH_GRACE_MS + 1;
+    const results: any[] = [];
+    a.onResult = (res) => results.push(res);
+    await a.flush();
+    expect(results).toEqual([{ status: 'rejected', reason: 'match_closed' }]);
+    expect(a.pending).toBe(0);
+  });
+
+  test('bez sieci i poza pokojem – nic się nie dzieje', async () => {
+    const o = await ready();
+    await o.setNick('Ala');
+    expect(await o.createMatch(2, 'best')).toEqual({ ok: false, error: 'no_room' });
+    expect(await o.currentMatch()).toBeNull();
+    net.down = true;
+    expect(await o.createMatch(2, 'best')).toEqual({ ok: false, error: 'offline' });
+    expect(await o.currentMatch()).toBeUndefined();
+    expect(await o.matchTicket('x')).toBeNull();
+    expect(await o.matchResults('x')).toBeNull();
   });
 });

@@ -157,3 +157,17 @@ describe('zdarzenia z biegów', () => {
     expect(received.filter((m) => m.t === 'ev')).toEqual([]);
   });
 });
+
+describe('wyścig w pokoju', () => {
+  test('zaproszenie i wynik w wyścigu trafiają do znajomych (od serwera)', async () => {
+    const a = client('ala'), b = client('bob'), gotA: any[] = [], gotB: any[] = [];
+    a.onEvent = (e) => gotA.push(e); b.onEvent = (e) => gotB.push(e);
+    a.start(); b.start(); await settle();
+    const match = { id: 'm1', scoring: 'best', minutes: 3, startsAt: 1, endsAt: 2, by: { nick: 'ala', tag: 'ALA' } };
+    hub.event({ t: 'ev', e: 'match', k: 'k-ala', match, now: 0 });
+    hub.event({ t: 'ev', e: 'mscore', k: 'k-ala', nick: 'ala', tag: 'ALA', match: 'm1', score: 700, runs: 2, last: 300 });
+    await settle();
+    expect(gotB).toEqual([expect.objectContaining({ e: 'match', match }), expect.objectContaining({ e: 'mscore', score: 700, runs: 2 })]);
+    expect(gotA).toEqual([]);                            // własne zdarzenia nie wracają
+  });
+});

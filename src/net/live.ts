@@ -11,7 +11,11 @@ export interface LivePlayer { k: string; nick: string | null; tag: string; s: 'm
 /** Zdarzenie z biegu znajomego (jak w server/src/hub.ts). 'score' – wynik zweryfikowany przez serwer. */
 export type LiveEvent =
   | { e: 'floor' | 'combo'; n: number; k: string; nick: string | null; tag: string }
-  | { e: 'score'; k: string; nick: string | null; tag: string; score: number; floor: number; best: boolean; roomBest: boolean; over: string[] };
+  | { e: 'score'; k: string; nick: string | null; tag: string; score: number; floor: number; best: boolean; roomBest: boolean; over: string[] }
+  /** Ktoś z pokoju założył wyścig (od serwera); now – czas serwera w chwili założenia. */
+  | { e: 'match'; k: string; match: import('./online').MatchInfo; now: number }
+  /** Zweryfikowany bieg w wyścigu: wynik gracza w tabeli wyścigu (score), liczba jego biegów i wynik tego biegu (last). */
+  | { e: 'mscore'; k: string; nick: string | null; tag: string; match: string; score: number; runs: number; last: number };
 
 /** Gra ogłasza znajomym każdą kolejną setkę pięter i combo od LIVE_COMBO pięter (zasady gry: RULE_VARS w rules.js). */
 export const LIVE_FLOOR_EVERY = 100, LIVE_COMBO = 25;
@@ -177,7 +181,7 @@ export class Live {
     try { m = JSON.parse(String(data)); } catch { return; }
     if (m.t === 'ev') {
       const ev = m as unknown as LiveEvent;
-      if (ev.k !== this.me && ['floor', 'combo', 'score'].includes(ev.e)) this.onEvent?.(ev);
+      if (ev.k !== this.me && ['floor', 'combo', 'score', 'match', 'mscore'].includes(ev.e)) this.onEvent?.(ev);
       return;
     }
     if (m.t === 'list' && Array.isArray(m.players)) {

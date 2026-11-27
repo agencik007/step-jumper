@@ -78,7 +78,7 @@ export async function startServer() {
   }
 
   async function reset() {
-    await db.batch(['DELETE FROM run_chunks', 'DELETE FROM skins', 'DELETE FROM bests', 'DELETE FROM runs', 'DELETE FROM players', 'DELETE FROM rooms'].map((s) => db.prepare(s)));
+    await db.batch(['DELETE FROM match_results', 'DELETE FROM matches', 'DELETE FROM run_chunks', 'DELETE FROM skins', 'DELETE FROM bests', 'DELETE FROM runs', 'DELETE FROM players', 'DELETE FROM rooms'].map((s) => db.prepare(s)));
     clock.now = START;
     roomEvents.length = 0;
   }

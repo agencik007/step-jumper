@@ -5,6 +5,39 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.23.0', date: '2026-11-27',
+    pl: [
+      'WYŚCIG w pokoju znajomych: w menu głównym, w panelu pokoju, przycisk WYŚCIG (klawisz V). Wybierz czas (2, 3, 5 albo 10 minut) i punktację – NAJLEPSZY BIEG albo SUMA BIEGÓW – a wszyscy z pokoju ścigają się na tej samej wieży. Kto zdobędzie więcej punktów, wygrywa.',
+      'Znajomi dostają zaproszenie i mogą dołączyć aż do końca – z menu albo prosto z ekranu KONIEC GRY. Po upadku od razu ruszasz w kolejny bieg, a w trakcie biegu widzisz zegar wyścigu i tabelę z prowadzącymi.',
+      'Gdy czas się skończy, trwający bieg zostaje ucięty, ale trwające combo się liczy. Potem WYNIKI WYŚCIGU z podium i przyciskiem REWANŻ.',
+      'Biegi z wyścigu nie trafiają do RANKINGU ani do twojego rekordu. Wszystko opisuje nowa część ZASAD GRY: WYŚCIG W POKOJU.',
+    ],
+    en: [
+      'RACE in a friends’ room: in the main menu, in the room panel, there is a RACE button (V key). Pick the time (2, 3, 5 or 10 minutes) and the scoring – BEST RUN or TOTAL OF RUNS – and everyone in the room races on the same tower. Most points wins.',
+      'Friends get an invitation and can join until the very end – from the menu or straight from the GAME OVER screen. After a fall the next run starts right away, and while running you see the race clock and a table of the leaders.',
+      'When time runs out, the run in progress is cut short, but its ongoing combo counts. Then come the RACE RESULTS with a podium and a REMATCH button.',
+      'Race runs do not go to the LEADERBOARD or to your personal best. A new part of HOW TO PLAY explains it all: RACE IN THE ROOM.',
+    ],
+    de: [
+      'RENNEN im Raum für Freunde: Im Hauptmenü, im Raum-Feld, gibt es den Knopf RENNEN (Taste V). Wähle die Zeit (2, 3, 5 oder 10 Minuten) und die Wertung – BESTER LAUF oder SUMME DER LÄUFE – und alle im Raum treten auf demselben Turm gegeneinander an. Die meisten Punkte gewinnen.',
+      'Deine Freunde bekommen eine Einladung und können bis zum Schluss einsteigen – aus dem Menü oder direkt vom Bildschirm SPIEL VORBEI. Nach einem Sturz geht es sofort in den nächsten Lauf, und im Lauf siehst du die Uhr des Rennens und eine Tabelle mit den Führenden.',
+      'Ist die Zeit um, wird der laufende Lauf abgebrochen, aber sein laufendes Combo zählt. Danach kommen die ERGEBNISSE mit Podest und dem Knopf REVANCHE.',
+      'Läufe aus dem Rennen kommen nicht in die RANGLISTE und nicht in deinen Rekord. Alles erklärt ein neuer Teil der SPIELREGELN: RENNEN IM RAUM.',
+    ],
+    fr: [
+      'COURSE dans un salon d’amis : dans le menu principal, dans le panneau du salon, un bouton COURSE (touche V). Choisissez la durée (2, 3, 5 ou 10 minutes) et le décompte – MEILLEURE PARTIE ou TOTAL DES PARTIES – et tout le salon s’affronte sur la même tour. Le plus de points gagne.',
+      'Vos amis reçoivent une invitation et peuvent rejoindre jusqu’à la fin – depuis le menu ou directement depuis l’écran PARTIE TERMINÉE. Après une chute, la partie suivante démarre aussitôt, et en jeu vous voyez le chrono de la course et le tableau des meneurs.',
+      'À la fin du temps, la partie en cours est coupée, mais son combo en cours compte. Viennent ensuite les RÉSULTATS avec un podium et le bouton REVANCHE.',
+      'Les parties de course ne vont ni au CLASSEMENT ni dans votre record. Une nouvelle partie des RÈGLES DU JEU explique tout : COURSE DANS LE SALON.',
+    ],
+    es: [
+      'CARRERA en una sala de amigos: en el menú principal, en el panel de la sala, hay un botón CARRERA (tecla V). Elige el tiempo (2, 3, 5 o 10 minutos) y la puntuación –MEJOR PARTIDA o SUMA DE PARTIDAS– y toda la sala compite en la misma torre. Gana quien sume más puntos.',
+      'Tus amigos reciben una invitación y pueden entrar hasta el final, desde el menú o directamente desde la pantalla FIN DE LA PARTIDA. Tras una caída, la siguiente partida empieza enseguida y, mientras juegas, ves el reloj de la carrera y una tabla con los líderes.',
+      'Cuando se acaba el tiempo, la partida en curso se corta, pero su combo en curso cuenta. Después llegan los RESULTADOS con un podio y el botón REVANCHA.',
+      'Las partidas de la carrera no van al RANKING ni a tu récord. Una nueva parte de REGLAS lo explica todo: CARRERA EN LA SALA.',
+    ],
+  },
+  {
     v: '0.22.1', date: '2026-11-27',
     pl: [
       'Pokoje znajomych przeniosły się do menu głównego: pod RANKINGIEM są przyciski DOŁĄCZ i UTWÓRZ, a gdy jesteś w pokoju – lista znajomych w grze i OPUŚĆ POKÓJ.',

@@ -40,9 +40,9 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | `GET /v1/me` | moje konto | `{playerId, nick, createdAt, room: {name} \| null}` |
 | `PATCH /v1/me` `{nick}` | nick 3–16 znaków, unikalny bez względu na wielkość liter | `{nick}` · `400 nick_length/nick_chars/nick_blocked` · `409 nick_taken` |
 | `DELETE /v1/me` | usuwa konto, biegi i wyniki | `204` |
-| `POST /v1/runs` `{simVersion}` | bilet: ziarno wieży; maks. 180/h, nadmiar ponad 5 niewykorzystanych przepada | `201 {runId, seed, simVersion, chunkTicks}` · `409 update_required` · `403 banned` · `429 too_many_runs` |
-| `PUT /v1/runs/:id/chunks/:seq` (binarnie, `encodeInputs`) | porcja zapisu: dokładnie `chunkTicks` kroków, krótsza tylko ostatnia (kończąca grę) | `{nextSeq, ticks, over}` · powtórka: `{nextSeq, duplicate: true}` · `409 seq` · `413` · `422 rejected` |
-| `POST /v1/runs/:id/finish` `{score, char, skin?, style?, control?, appVersion?}` | zatwierdzenie; `skin` – skrót SHA-256 paczki własnej postaci (tylko z `char: "custom"`) | `{status: "verified", score, floor, combo, ticks, improved, ranks, needSkin?}` (`needSkin` – bieg wszedł do trójki, a serwer nie ma tej paczki) · `422 rejected` |
+| `POST /v1/runs` `{simVersion, mode?, match?}` | bilet: ziarno wieży; maks. 180/h, nadmiar ponad 5 niewykorzystanych przepada. `mode: "match"` + `match` – bilet na bieg w wyścigu (wieża wyścigu, `maxTicks` do jego końca; nadmiar ponad 2 niewykorzystane przepada) | `201 {runId, seed, simVersion, chunkTicks}` (wyścig: także `match, maxTicks, startsAt, endsAt, now`) · `409 update_required` · `403 banned` · `429 too_many_runs` · `404 match_not_found` · `409 match_over` |
+| `PUT /v1/runs/:id/chunks/:seq[?end=time]` (binarnie, `encodeInputs`) | porcja zapisu: dokładnie `chunkTicks` kroków, krótsza tylko ostatnia (kończąca grę). `?end=time` – ostatnia porcja biegu z wyścigu uciętego zegarem: może być krótsza, a serwer kończy bieg `timeUp` (combo zaliczone); najwcześniej 3 s przed końcem wyścigu | `{nextSeq, ticks, over}` · powtórka: `{nextSeq, duplicate: true}` · `409 seq` · `413` · `422 rejected` |
+| `POST /v1/runs/:id/finish` `{score, char, skin?, style?, control?, appVersion?}` | zatwierdzenie; `skin` – skrót SHA-256 paczki własnej postaci (tylko z `char: "custom"`). Bieg z wyścigu nie trafia do rankingu (`bests`) i nie zostaje z niego powtórka | `{status: "verified", score, floor, combo, ticks, improved, ranks, needSkin?}` (`needSkin` – bieg wszedł do trójki, a serwer nie ma tej paczki); wyścig: `{status, score, floor, combo, ticks, match: {id, score, runs, place}}` · `422 rejected` |
 | `GET /v1/leaderboards/:okres?limit=50` | `all` / `week` / `day` / `lastweek` (zamknięty poprzedni tydzień), cache 30 s | `{period, entries: [{rank, nick, tag, score, floor, combo, char, country, replay?, skin?}]}` (bez nicku gra pokazuje „Gracz {tag}”; `replay` – identyfikator powtórki, `skin` – skrót paczki własnej postaci, oba tylko miejsca 1–3) |
 | `GET /v1/leaderboards/:okres/me` | moje miejsce ± 5 sąsiadów | `{period, rank, entries: [... , me]}` |
 | `GET /v1/replays/:id` | powtórka biegu z rankingu, cache 1 dzień | `{runId, seed, simVersion, ticks, score, floor, combo, char, style, nick, tag, finishedAt, skin?, chunks: [base64 encodeInputs]}` · `404` |
@@ -54,9 +54,27 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | `GET /v1/rooms/me` | mój pokój i jego gracze | `{room: null}` · `{room: {name, members: [{nick, tag, me?}]}}` |
 | `GET /v1/live` (WebSocket, token w podprotokole) | pokój na żywo: lista obecnych i ich stan – opis niżej | `101` |
 | `GET /v1/rooms/me/leaderboards/:okres` | ranking pokoju: te same najlepsze wyniki co w rankingu ogólnym, tylko graczy z pokoju (wszyscy) | `{period, room: {name}, rank, entries: [... , me?]}` · `404 no_room` |
+| `POST /v1/rooms/me/matches` `{minutes: 2\|3\|5\|10, scoring: "best"\|"sum"}` | nowy wyścig w moim pokoju; start za 15 s; naraz najwyżej jeden – wtedy `409` z bieżącym (gra do niego dołącza) | `201 {match, now}` · `400 bad_request` · `404 no_room` · `409 match_running {match, now}` |
+| `GET /v1/rooms/me/match` | bieżący wyścig pokoju (albo skończony w ostatnich 10 min) i czas serwera | `{match: M \| null, now}` |
+| `GET /v1/rooms/me/matches/:id` | tabela wyścigu; `final` po 20 s od końca (czas na ostatnie biegi) – wtedy zapisana w `match_results` i już się nie zmienia | `{match: M, final, now, entries: [{place, nick, tag, score, runs, floor, combo, me?}]}` · `404 match_not_found` |
 
 Powody odrzucenia biegu (`reason`): `corrupt`, `empty_chunk`, `chunk_too_long`, `short_chunk`, `inputs_after_end`,
-`not_over`, `score_mismatch`, `too_fast` (bieg krótszy w czasie rzeczywistym niż liczba kroków / 120), `sim_version`, `too_long`.
+`not_over`, `score_mismatch`, `too_fast` (bieg krótszy w czasie rzeczywistym niż liczba kroków / 120), `sim_version`, `too_long`
+(także bieg z wyścigu dłuższy niż `maxTicks`), `cut_early` (ucięcie zegarem przed końcem wyścigu), `match_closed` (bieg z wyścigu
+zatwierdzany po czasie na wysyłkę).
+
+`M = {id, scoring, minutes, startsAt, endsAt, by: {nick, tag}}` – czasy w ms od epoki, w zegarze serwera (`now` w odpowiedzi
+pozwala grze ustawić swój zegar wyścigu).
+
+### Wyścig w pokoju
+
+Logika: `src/match.ts` (bez bazy – testy `tests/server/match.test.ts`), tabele `matches` i `match_results` (migracja 0005),
+biegi to zwykłe wiersze `runs` z `mode = 'match'`, `match_id` i `max_ticks`. Wszyscy dostają tę samą wieżę (ziarno wyścigu),
+weryfikacja jest ta sama co w rankingu. Wynik gracza: najlepszy bieg albo suma biegów; remis wygrywa wcześniejszy wynik.
+**Budżet czasu**: biegi gracza liczą się w kolejności wydania biletów, póki suma ich kroków mieści się w długości wyścigu
+(+2 s zapasu) – dwa urządzenia na jednym koncie grające naraz nie podwoją sumy. Założenie wyścigu wysyła do pokoju
+`{t: 'ev', e: 'match', k, match: M, now}`, a każdy zatwierdzony bieg – `{t: 'ev', e: 'mscore', k, nick, tag, match, score, runs, last}`
+(`score` – wynik gracza w wyścigu, `last` – ten bieg). Sprzątanie usuwa wyścigi po 15 dniach.
 
 Tydzień i dzień liczone są w UTC (tydzień ISO, od poniedziałku). Remis rozstrzyga wcześniejszy wynik.
 
@@ -84,7 +102,7 @@ Błędy przed połączeniem: `401 unauthorized`, `403 banned/origin`, `404 no_ro
 | Kierunek | Wiadomość (JSON) |
 |---|---|
 | gra → serwer | `{t: 'status', s: 'menu'}` · `{t: 'status', s: 'play', floor, score}` (najwyżej co 5 s w biegu; serwer przyjmuje najwyżej 1/s) · `{t: 'ping'}` (po 30 s ciszy) · `{t: 'ev', e: 'floor' \| 'combo', n}` (setka pięter, combo od 25 pięter; najwyżej 1/s) |
-| serwer → gra | `{t: 'list', me, players: [P]}` po połączeniu · `{t: 'up', p: P}` · `{t: 'bye', k}` · `{t: 'ev', e: 'floor' \| 'combo', n, k, nick, tag}` (od gry znajomego) · `{t: 'ev', e: 'score', k, nick, tag, score, floor, best, roomBest, over: [k]}` (od serwera) |
+| serwer → gra | `{t: 'list', me, players: [P]}` po połączeniu · `{t: 'up', p: P}` · `{t: 'bye', k}` · `{t: 'ev', e: 'floor' \| 'combo', n, k, nick, tag}` (od gry znajomego) · `{t: 'ev', e: 'score', k, nick, tag, score, floor, best, roomBest, over: [k]}` (od serwera) · `{t: 'ev', e: 'match' \| 'mscore', …}` (wyścig – wyżej) |
 
 `P = {k, nick, tag, s, floor?, score?}`; `k` to stały klucz gracza (skrót identyfikatora – nie zdradza go). Piętro i wynik
 w biegu oraz zdarzenia `floor` / `combo` podaje gra i serwer ich nie sprawdza – to tylko podgląd, ranking liczy się z weryfikacji

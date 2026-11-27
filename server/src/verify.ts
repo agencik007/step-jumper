@@ -2,7 +2,7 @@
 //
 // Porcje są konieczne, bo darmowy plan Workers daje 10 ms procesora na jedno zapytanie, a długi bieg
 // to ponad 100 tys. kroków. Stan symulacji po każdej porcji trafia do bazy jako punkt kontrolny (JSON).
-import { createState, decodeInputs, step, unpackAxis, unpackJump } from '../../src/sim';
+import { createState, decodeInputs, step, timeUp, unpackAxis, unpackJump } from '../../src/sim';
 import type { SimState } from '../../src/sim';
 
 /**
@@ -29,8 +29,10 @@ export function splitChunks(ticks: Uint8Array): Uint8Array[] {
 /**
  * Odtwarza jedną porcję od punktu kontrolnego (null = początek biegu) i zwraca nowy punkt kontrolny.
  * Przekazany punkt kontrolny nie jest modyfikowany.
+ * cut – ostatnia porcja biegu z wyścigu uciętego zegarem: może być krótsza, a po niej bieg kończy timeUp
+ * (trwające combo zaliczone).
  */
-export function verifyChunk(seed: number, checkpoint: SimState | null, data: Uint8Array): SimState {
+export function verifyChunk(seed: number, checkpoint: SimState | null, data: Uint8Array, o: { cut?: boolean } = {}): SimState {
   let ticks: Uint8Array;
   try {
     ticks = decodeInputs(data, CHUNK_TICKS);
@@ -45,6 +47,10 @@ export function verifyChunk(seed: number, checkpoint: SimState | null, data: Uin
   for (let i = 0; i < ticks.length; i++) {
     if (s.over) throw new Rejected('inputs_after_end');
     step(s, unpackAxis(ticks[i]), unpackJump(ticks[i]));
+  }
+  if (o.cut) {
+    timeUp(s);                                         // upadek w ostatnim kroku – zostaje zwykłym końcem biegu
+    return s;
   }
   if (ticks.length < CHUNK_TICKS && !s.over) throw new Rejected('short_chunk');
   return s;

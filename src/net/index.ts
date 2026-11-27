@@ -14,4 +14,5 @@ export const online = new Online({ baseUrl: API_URL, store: new LocalStore(), pl
 export const live = new Live({ url: `${API_URL.replace(/^http/, 'ws')}/v1/live`, token: () => online.token });
 
 export type { LivePlayer } from './live';
-export type { Around, Board, Entry, PeriodKind, Room, RoomBoard, RoomMember, RoomResult, SubmitResult, Ticket } from './online';
+export type { Around, Board, Entry, MatchEntry, MatchInfo, MatchResult, MatchTable, MatchTicket, PeriodKind, Room, RoomBoard, RoomMember, RoomResult, SubmitResult, Ticket } from './online';
+export { MATCH_GRACE_MS, MATCH_LEAD_MS, MATCH_MINUTES, SCORINGS } from '../../server/src/match';
