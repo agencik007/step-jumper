@@ -20,6 +20,7 @@ import {
 } from './input.js';
 import { ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, charX, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
+import { openRoom, roomOpen } from './roomform.js';
 import { buildNews, buildPages, buildRules, selectable } from './options.js';
 import { loadPads, mirrorPads, resetPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
@@ -92,7 +93,7 @@ export class Game {
     this.online = online;
     this.ticket = null;                  // bilet rankingu trwającego biegu (null = bieg poza rankingiem)
     this.net = null;                     // los wyniku ostatniego biegu: wysyłanie / miejsce w rankingu / kolejka / poza rankingiem
-    this.board = { kind: 'week', data: {}, at: {}, loading: false };
+    this.board = { kind: 'week', scope: null, data: {}, at: {}, loading: false };   // scope: 'world' / 'room' (null = jeszcze nie wybrany)
     this.replay = null;                  // oglądana powtórka z rankingu (stan 'replay') albo jej wczytywanie
     this.recap = null;                   // wyniki zamkniętego tygodnia (stan 'recap')
     this.recapPending = false;           // podsumowanie czeka, aż gracz wróci na ekran tytułowy
@@ -189,7 +190,7 @@ export class Game {
   charArmed(hash) { return this.charArm?.hash === hash && this.t < this.charArm.until; }
   /** Wiersz rankingu z miejscem 1–3 i postacią do wczytania: wybrany (pad, strzałki) albo pierwszy taki. */
   boardLoadChar() {
-    const rows = this.board.data[this.board.kind]?.top?.entries ?? [];
+    const rows = this.boardData?.top?.entries ?? [];
     const e = this.board.sel >= 0 ? rows.find((x) => x.rank === this.board.sel + 1) : rows.find((x) => x.rank <= 3 && x.skin);
     this.loadBoardChar(e);
   }
@@ -258,7 +259,40 @@ export class Game {
   }
 
   // ── ranking ──
-  openBoard() { sfx.pick(); this.state = 'board'; this.board.sel = -1; this.loadBoard(); }
+  openBoard() {
+    sfx.pick(); this.state = 'board'; this.board.sel = -1;
+    this.board.scope ??= online.room ? 'room' : 'world';   // gracz w pokoju znajomych widzi najpierw ranking pokoju
+    this.loadBoard();
+    if (online.hasAccount) {                               // pokój mógł się zmienić na innym urządzeniu albo zniknąć
+      const before = online.room?.name;
+      online.roomInfo().then(() => { if (online.room?.name !== before) this.roomChanged(); });
+    }
+  }
+  /** Ranking wszystkich ('world') albo mojego pokoju znajomych ('room'). */
+  get boardScope() { return this.board.scope === 'room' && online.room ? 'room' : 'world'; }
+  /** Klucz rankingu w board.data i board.at: okres, a dla pokoju 'room:<okres>'. */
+  boardKey(kind = this.board.kind) { return this.boardScope === 'room' ? `room:${kind}` : kind; }
+  get boardData() { return this.board.data[this.boardKey()]; }
+  /** WSZYSCY / POKÓJ; pokój, gdy gracz w żadnym nie jest, otwiera okienko pokoju. */
+  boardScopeSet(scope) {
+    if (scope === 'room' && !online.room) { this.openRoomForm(); return; }
+    if (scope === this.boardScope) return;
+    this.board.scope = scope; this.board.sel = -1; sfx.pick(); this.loadBoard();
+  }
+  boardScopeToggle() { this.boardScopeSet(this.boardScope === 'room' ? 'world' : 'room'); }
+  /** Okienko pokoju znajomych: założenie, dołączenie, lista graczy, wyjście (roomform.js). */
+  openRoomForm() {
+    if (!online.enabled || roomOpen()) return;
+    sfx.pick();
+    openRoom(online, () => this.roomChanged());
+  }
+  /** Wejście do pokoju, wyjście albo zniknięcie pokoju: stary ranking pokoju idzie do kosza. */
+  roomChanged() {
+    const b = this.board;
+    for (const k of Object.keys(b.data)) if (k.startsWith('room:')) { delete b.data[k]; delete b.at[k]; }
+    b.scope = online.room ? 'room' : 'world'; b.sel = -1;
+    if (this.state === 'board') this.loadBoard(true);
+  }
   boardTab(d, abs = false) {
     const i = abs ? d : mod(PERIODS.indexOf(this.board.kind) + d, PERIODS.length);
     if (PERIODS[i] === this.board.kind) return;
@@ -266,7 +300,7 @@ export class Game {
   }
   /** Strzałki / pad w rankingu: wybór wiersza 1–3 z powtórką (−1 = żaden). */
   boardMove(d) {
-    const rows = (this.board.data[this.board.kind]?.top?.entries ?? []).filter((e) => e.rank <= 3 && (e.replay || e.skin)).map((e) => e.rank - 1);
+    const rows = (this.boardData?.top?.entries ?? []).filter((e) => e.rank <= 3 && (e.replay || e.skin)).map((e) => e.rank - 1);
     if (!rows.length) { this.board.sel = -1; return; }
     const opts2 = [-1, ...rows], i = opts2.indexOf(this.board.sel);
     this.board.sel = opts2[clamp((i < 0 ? 0 : i) + d, 0, opts2.length - 1)];
@@ -274,22 +308,29 @@ export class Game {
   }
   /** Enter / A w rankingu: powtórka wybranego wiersza albo powrót do tytułu. */
   boardConfirm() {
-    const e = this.board.data[this.board.kind]?.top?.entries.find((x) => x.rank === this.board.sel + 1);
+    const e = this.boardData?.top?.entries.find((x) => x.rank === this.board.sel + 1);
     if (this.board.sel >= 0 && e?.replay) this.boardReplay(this.board.sel + 1);
     else if (this.board.sel >= 0 && e?.skin) this.loadBoardChar(e);
     else { sfx.pick(); this.toTitle(); }
   }
   async loadBoard(force = false) {
-    const b = this.board, kind = b.kind;
-    if (!force && b.at[kind] != null && this.t - b.at[kind] < BOARD_TTL) return;
-    b.at[kind] = this.t; b.loading = true;
-    const [top, me] = await Promise.all([online.leaderboard(kind, 10), online.around(kind)]);
-    b.data[kind] = { top, me };
-    if (b.kind === kind) b.loading = false;
+    const b = this.board, kind = b.kind, key = this.boardKey(kind);
+    if (!force && b.at[key] != null && this.t - b.at[key] < BOARD_TTL) return;
+    b.at[key] = this.t; b.loading = true;
+    if (key.startsWith('room:')) {
+      // ranking pokoju: wszyscy gracze pokoju naraz, na ekranie 10 najlepszych, a moje miejsce – jak w rankingu ogólnym
+      const r = await online.roomBoard(kind);
+      if (!online.room) { this.roomChanged(); return; }       // pokój zniknął (serwer mówi: poza pokojem)
+      b.data[key] = r ? { top: { ...r.top, entries: r.top.entries.slice(0, 10) }, me: r.me } : { top: null, me: null };
+    } else {
+      const [top, me] = await Promise.all([online.leaderboard(kind, 10), online.around(kind)]);
+      b.data[key] = { top, me };
+    }
+    if (this.boardKey() === key) b.loading = false;
   }
   /** Wiersz rankingu z miejscem 1–3 (dotknięcie, klawisz 1–3): powtórka biegu. */
   boardReplay(rank) {
-    const e = this.board.data[this.board.kind]?.top?.entries.find((x) => x.rank === rank);
+    const e = this.boardData?.top?.entries.find((x) => x.rank === rank);
     if (e?.replay) this.openReplay(e, 'board');
   }
 
@@ -317,7 +358,7 @@ export class Game {
   }
   closeRecap() { sfx.pick(); this.toTitle(); }
   /** Z podsumowania do pełnego rankingu zeszłego tygodnia. */
-  recapBoard() { this.board.kind = 'lastweek'; this.openBoard(); }
+  recapBoard() { this.board.kind = 'lastweek'; this.board.scope = 'world'; this.openBoard(); }
   /** Strzałki / pad na podium: wybór miejsca (kolejność na ekranie: 2. – 1. – 3.). */
   recapMove(d) {
     const order = [1, 0, 2], i = order.indexOf(this.recapSel);
@@ -513,7 +554,7 @@ export class Game {
     st.note = 'set.deleting';
     online.deleteData().then((ok) => {
       st.note = ok ? 'set.deleted' : 'set.deleteFail';   // klucz tekstu – tłumaczony przy rysowaniu
-      this.board.at = {}; this.board.data = {};
+      this.board.at = {}; this.board.data = {}; this.board.scope = null;
     });
   }
 
@@ -625,8 +666,12 @@ export class Game {
       else if (update.available && inBox(x, y, UIBOX.update)) this.reloadGame();
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
+      if (roomOpen()) return;                              // okienko pokoju na wierzchu
+      if (inBox(x, y, UIBOX.bWorld)) return this.boardScopeSet('world');
+      if (inBox(x, y, UIBOX.bRoom)) return this.boardScopeSet('room');
+      if (inBox(x, y, UIBOX.bRoomForm)) return this.openRoomForm();
       for (let i = 0; i < PERIODS.length; i++) if (inBox(x, y, UIBOX.tab(i))) return this.boardTab(i, true);
-      const top = this.board.data[this.board.kind]?.top?.entries ?? [];
+      const top = this.boardData?.top?.entries ?? [];
       for (let i = 0; i < 3; i++) if (top[i]?.skin && inBox(x, y, UIBOX.boardChar(i))) return this.loadBoardChar(top[i]);   // „⬇ POSTAĆ”
       for (let i = 0; i < 3; i++) if (inBox(x, y, UIBOX.boardRow(i))) return this.boardReplay(i + 1);
       if (inBox(x, y, UIBOX.nick)) this.editNick();

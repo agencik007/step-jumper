@@ -37,7 +37,7 @@
   /* rozmiar (--pad-scale) i widoczność (--pad-alpha) przycisków ekranowych ustawia src/game/padlayout.js */
   :root { --pad-scale: 1; --pad-alpha: 1; --text-k: 1; }
   /* OPCJE → DOSTĘPNOŚĆ: rozmiar tekstu skaluje też okienka HTML (nick, instalacja, kreator postaci, edytor układu) */
-  .sheet .card, #nick, #padEdit { zoom: var(--text-k); }
+  .sheet .card, #nick, #room, #padEdit { zoom: var(--text-k); }
   /* wysoki kontrast: przyciski ekranowe i gałka z wyraźną krawędzią na ciemnym tle */
   body.hi-contrast .pad button, body.hi-contrast #stick { border: 3px solid #fff; background: rgba(0,0,0,.55); box-shadow: 0 0 0 2px #000; }
   body.hi-contrast .pad button.on { background: rgba(255,255,255,.4); }
@@ -281,28 +281,35 @@
     #creator .cr-foot { bottom: -10px; margin: 6px -16px -10px; padding: 6px 16px 10px; }
   }
 
-  /* okienko nicku (zwykły formularz nad canvasem) */
-  #nick[hidden] { display: none; }
-  #nick {
+  /* okienka nicku i pokoju znajomych (zwykłe formularze nad canvasem) */
+  #nick[hidden], #room[hidden] { display: none; }
+  #nick, #room {
     position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 10;
     width: min(360px, calc(100vw - 32px)); padding: 18px 18px 14px; border-radius: 14px;
     background: rgba(12,16,44,.96); border: 1.5px solid rgba(159,216,255,.45); color: #fff;
     box-shadow: 0 20px 60px rgba(0,0,0,.6); font: 600 14px/1.4 system-ui, sans-serif;
     -webkit-user-select: text; user-select: text; touch-action: auto;
   }
-  #nick label { display: block; margin-bottom: 8px; color: #9fb4ee; font-size: 13px; }
-  #nick input {
+  #nick label, #room label { display: block; margin-bottom: 8px; color: #9fb4ee; font-size: 13px; }
+  #nick input, #room input {
     width: 100%; padding: 10px 12px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45);
     background: #141a36; color: #fff; font: 700 18px/1.2 system-ui, sans-serif;
   }
-  #nick input:focus { outline: 2px solid #ffe066; outline-offset: 1px; }
-  #nick p { min-height: 1.4em; margin: 8px 0; color: #ff9a7f; font-size: 13px; }
-  #nick small { display: block; margin-top: 10px; color: #9fb4ee; font-size: 12px; }
-  #nick small[hidden] { display: none; }
-  #nick .row { display: flex; gap: 10px; justify-content: flex-end; }
-  #nick button { padding: 9px 16px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45); background: #1d2552; color: #fff; font: 700 14px system-ui, sans-serif; }
-  #nick button[type=submit] { background: #ffd24a; color: #12173a; border-color: #12173a; }
-  #nick button:disabled { opacity: .6; }
+  #nick input:focus, #room input:focus { outline: 2px solid #ffe066; outline-offset: 1px; }
+  #nick p, #room p { min-height: 1.4em; margin: 8px 0; color: #ff9a7f; font-size: 13px; }
+  #nick small, #room small { display: block; margin-top: 10px; color: #9fb4ee; font-size: 12px; }
+  #nick small[hidden], #room small[hidden] { display: none; }
+  #nick .row, #room .row { display: flex; gap: 10px; justify-content: flex-end; }
+  #nick button, #room button { padding: 9px 16px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45); background: #1d2552; color: #fff; font: 700 14px system-ui, sans-serif; }
+  #nick button[type=submit], #room button[type=submit] { background: #ffd24a; color: #12173a; border-color: #12173a; }
+  #nick button:disabled, #room button:disabled { opacity: .6; }
+  #room h2 { margin: 0 0 6px; color: #ffd24a; font-size: 18px; overflow-wrap: anywhere; }
+  #room .info { margin: 0 0 12px; color: #c8d4ff; font-size: 13px; min-height: 0; }
+  #room input { margin-bottom: 10px; }
+  #room .show { display: flex; align-items: center; gap: 6px; margin: -4px 0 4px; color: #9fb4ee; font-size: 12px; }
+  #room .show input { width: auto; margin: 0; }
+  #room .row { flex-wrap: wrap; }
+  #room section[hidden], #room .row[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -494,6 +501,34 @@
   <div class="row"><button type="button" id="nickCancel" data-i18n="nick.cancel">Anuluj</button><button type="submit" id="nickSave" data-i18n="nick.save">Zapisz</button></div>
   <small data-i18n="nick.rules">3–16 znaków: litery, cyfry, _ - i pojedyncze spacje.</small>
   <small id="nickPad" hidden data-i18n="nick.pad">Na padzie: B – graj bez nicku (zapytamy przy następnym uruchomieniu).</small>
+</form>
+
+<form id="room" hidden autocomplete="off" aria-labelledby="roomHead">
+  <section id="roomJoin">
+    <h2 id="roomHead" data-i18n="room.head">Pokój znajomych</h2>
+    <p class="info" data-i18n="room.info">Załóż pokój i podaj znajomym jego nazwę i hasło – zobaczycie osobny ranking tylko waszej paczki.</p>
+    <label for="roomName" data-i18n="room.name">Nazwa pokoju</label>
+    <input id="roomName" maxlength="20" spellcheck="false" autocapitalize="off" enterkeyhint="next">
+    <label for="roomPass" data-i18n="room.pass">Hasło</label>
+    <input id="roomPass" type="password" maxlength="32" spellcheck="false" autocapitalize="off" autocomplete="off" enterkeyhint="done">
+    <label class="show"><input type="checkbox" id="roomShow"><span data-i18n="room.show">Pokaż hasło</span></label>
+    <small data-i18n="room.rules">Nazwa: 3–20 znaków (litery, cyfry, _ - i spacje). Hasło: 4–32 znaki. Możesz być naraz w jednym pokoju.</small>
+  </section>
+  <section id="roomIn" hidden>
+    <h2 id="roomTitle"></h2>
+    <p class="info" id="roomMembers"></p>
+  </section>
+  <p id="roomErr" role="alert"></p>
+  <div class="row" id="roomJoinRow">
+    <button type="button" id="roomCancel" data-i18n="nick.cancel">Anuluj</button>
+    <button type="button" id="roomCreate" data-i18n="room.create">Utwórz</button>
+    <button type="submit" id="roomJoinBtn" data-i18n="room.join">Dołącz</button>
+  </div>
+  <div class="row" id="roomInRow" hidden>
+    <button type="button" id="roomLeave" data-i18n="room.leave">Opuść pokój</button>
+    <button type="button" id="roomOther" data-i18n="room.other">Inny pokój</button>
+    <button type="button" id="roomClose" data-i18n="room.close">Zamknij</button>
+  </div>
 </form>
 
 <script type="module" src="/src/main.js"></script>

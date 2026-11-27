@@ -130,6 +130,10 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
   i mapie – start / pauza (Spacja, P), stop (S), tempo 1× / 2× / 4× (← →), wyjście (Esc), na końcu ekran „KONIEC POWTÓRKI”.
 - **Podsumowanie tygodnia**: po zamknięciu tygodnia, przy pierwszym uruchomieniu gra raz pokazuje podium najlepszej trójki
   (z powtórkami) i miejsce gracza.
+- **Pokoje znajomych** (RANKING → ⚙ POKÓJ, klawisz **J**; `src/game/roomform.js`): pokój zakłada się unikalną nazwą
+  i hasłem, inni dołączają tą samą nazwą i hasłem; gracz jest naraz w jednym pokoju (do 50 osób). Przyciski WSZYSCY / POKÓJ
+  w lewym górnym rogu rankingu (klawisz **G**, Y na padzie) przełączają ranking całego świata i ranking pokoju – te same
+  wyniki, okresy i powtórki, tylko graczy z pokoju.
 - W grze: RANKING (R), OPCJE (O) i NOWOŚCI (N) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, sterowanie, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
   i usunięcie swoich danych z serwera.
 

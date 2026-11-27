@@ -5,6 +5,29 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.22.0', date: '2026-11-27',
+    pl: [
+      'Pokoje znajomych: w RANKINGU dotknij ⚙ POKÓJ, załóż pokój z nazwą i hasłem i podaj je znajomym. Kto wpisze tę samą nazwę i hasło, dołączy do was.',
+      'Przycisk POKÓJ w lewym górnym rogu RANKINGU pokazuje wyniki tylko graczy z twojego pokoju – DZIŚ, TYDZIEŃ, ZESZŁY TYDZIEŃ i OGÓŁEM, z powtórkami najlepszej trójki. WSZYSCY wraca do rankingu całego świata.',
+    ],
+    en: [
+      'Friends’ rooms: on the LEADERBOARD tap ⚙ ROOM, create a room with a name and password and give them to your friends. Anyone who enters the same name and password joins you.',
+      'The ROOM button in the top left corner of the LEADERBOARD shows scores of just the players in your room – TODAY, WEEK, LAST WEEK and ALL TIME, with replays of the top three. EVERYONE takes you back to the worldwide leaderboard.',
+    ],
+    de: [
+      'Räume für Freunde: Tippe in der RANGLISTE auf ⚙ RAUM, leg einen Raum mit Namen und Passwort an und gib beides deinen Freunden. Wer denselben Namen und dasselbe Passwort eingibt, ist dabei.',
+      'Der Knopf RAUM oben links in der RANGLISTE zeigt nur die Ergebnisse der Spieler in deinem Raum – HEUTE, WOCHE, LETZTE WOCHE und GESAMT, mit Wiederholungen der besten drei. ALLE bringt dich zurück zur weltweiten Rangliste.',
+    ],
+    fr: [
+      'Salons d’amis : dans le CLASSEMENT, touchez ⚙ SALON, créez un salon avec un nom et un mot de passe et donnez-les à vos amis. Qui saisit le même nom et le même mot de passe vous rejoint.',
+      'Le bouton SALON en haut à gauche du CLASSEMENT n’affiche que les scores des joueurs de votre salon – AUJOURD’HUI, SEMAINE, SEMAINE DERNIÈRE et GÉNÉRAL, avec les rediffusions du trio de tête. TOUS vous ramène au classement mondial.',
+    ],
+    es: [
+      'Salas de amigos: en el RANKING toca ⚙ SALA, crea una sala con nombre y contraseña y pásaselos a tus amigos. Quien escriba el mismo nombre y la misma contraseña entrará con vosotros.',
+      'El botón SALA arriba a la izquierda del RANKING muestra solo las puntuaciones de los jugadores de tu sala – HOY, SEMANA, SEMANA PASADA y TOTAL, con las repeticiones de los tres primeros. TODOS te devuelve al ranking mundial.',
+    ],
+  },
+  {
     v: '0.21.0', date: '2026-11-26',
     pl: [
       'Nowość w KREATORZE: przycisk „Głowa z aparatu”. Ustaw twarz w owalu, a gra podpowie, co poprawić („Podejdź bliżej”, „Patrz prosto w aparat”…), sama zrobi zdjęcie, wytnie tło i wstawi twoją głowę na postać. Dłonie dostają kolor twojej skóry.',

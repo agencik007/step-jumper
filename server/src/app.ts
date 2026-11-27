@@ -5,9 +5,9 @@ import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { SIM_VERSION, TICK_RATE, score } from '../../src/sim';
 import type { SimState } from '../../src/sim';
-import { newSecret, parseBearer, sameHash, sha256hex } from './auth';
+import { checkPassword, newSalt, newSecret, parseBearer, passwordHash, sameHash, sha256hex } from './auth';
 import type { Env, Player } from './env';
-import { checkNick } from './nick';
+import { checkNick, checkRoomName } from './nick';
 import { boardKey, isBoardKind, periodKeys } from './periods';
 import type { PeriodKind } from './periods';
 import { CHUNK_TICKS, MAX_CHUNKS, Rejected, verifyChunk } from './verify';
@@ -27,6 +27,10 @@ const REPLAY_TOP = 3;
 /** Paczka własnej postaci (ZIP z kreatora, klatki do 400 px) – D1 mieści w wierszu do 2 MB. */
 export const MAX_SKIN_BYTES = 1_500_000;
 const HASH_RE = /^[0-9a-f]{64}$/;
+/** Pokoje znajomych: tylu graczy mieści pokój. */
+export const ROOM_MAX_MEMBERS = 50;
+/** Zgadywanie hasła pokoju: najwyżej tyle błędnych prób w oknie czasu – potem pokój czeka na koniec okna. */
+export const ROOM_FAIL_MAX = 20, ROOM_FAIL_WINDOW = 10 * 60_000;
 
 /** Odpowiedź z błędem, którą handler może po prostu rzucić. */
 class ApiError extends Error {
@@ -96,12 +100,12 @@ export function createApp(deps: { now?: () => number } = {}) {
   async function requirePlayer(c: Ctx, next: () => Promise<void>) {
     const cred = parseBearer(c.req.header('authorization'));
     if (!cred) throw fail(401, 'unauthorized');
-    const row = await c.env.DB.prepare('SELECT id, token_hash, nick, banned, created_at, last_seen_at FROM players WHERE id = ?')
+    const row = await c.env.DB.prepare('SELECT id, token_hash, nick, banned, created_at, last_seen_at, room_id FROM players WHERE id = ?')
       .bind(cred.id).first<Player & { token_hash: string; last_seen_at: number }>();
     if (!row || !sameHash(row.token_hash, await sha256hex(cred.secret))) throw fail(401, 'unauthorized');
     const t = now();
     if (t - row.last_seen_at > HOUR) await c.env.DB.prepare('UPDATE players SET last_seen_at = ? WHERE id = ?').bind(t, row.id).run();
-    c.set('player', { id: row.id, nick: row.nick, banned: row.banned, created_at: row.created_at });
+    c.set('player', { id: row.id, nick: row.nick, banned: row.banned, created_at: row.created_at, room_id: row.room_id });
     await next();
   }
 
@@ -121,9 +125,10 @@ export function createApp(deps: { now?: () => number } = {}) {
     return c.json({ playerId: id, token: `${id}.${secret}` }, 201);
   });
 
-  app.get('/v1/me', requirePlayer, (c) => {
+  app.get('/v1/me', requirePlayer, async (c) => {
     const p = c.var.player;
-    return c.json({ playerId: p.id, nick: p.nick, createdAt: p.created_at });
+    const room = p.room_id ? await c.env.DB.prepare('SELECT name FROM rooms WHERE id = ?').bind(p.room_id).first<{ name: string }>() : null;
+    return c.json({ playerId: p.id, nick: p.nick, createdAt: p.created_at, room: room ? { name: room.name } : null });
   });
 
   app.patch('/v1/me', requirePlayer, async (c) => {
@@ -142,6 +147,7 @@ export function createApp(deps: { now?: () => number } = {}) {
   app.delete('/v1/me', requirePlayer, async (c) => {
     const id = c.var.player.id, db = c.env.DB;
     await db.batch([
+      ...leaveRoom(db, c.var.player),
       db.prepare('DELETE FROM run_chunks WHERE run_id IN (SELECT id FROM runs WHERE player_id = ?)').bind(id),
       db.prepare('DELETE FROM skins WHERE player_id = ?').bind(id),
       db.prepare('DELETE FROM bests WHERE player_id = ?').bind(id),
@@ -295,6 +301,8 @@ export function createApp(deps: { now?: () => number } = {}) {
     'EXISTS (SELECT 1 FROM skins s WHERE s.hash = b.skin) AS has_skin ' +
     'FROM bests b JOIN players p ON p.id = b.player_id WHERE b.period = ? AND p.banned = 0 ' +
     'ORDER BY b.score DESC, b.achieved_at ASC, b.player_id ASC LIMIT ? OFFSET ?';
+  const ROOM_BOARD_SELECT = BOARD_SELECT.replace('WHERE b.period = ?', 'WHERE b.period = ? AND p.room_id = ?')
+    .replace(' LIMIT ? OFFSET ?', ` LIMIT ${ROOM_MAX_MEMBERS}`);
   const entry = (r: BoardRow, rank: number) => ({
     rank, nick: r.nick, tag: playerTag(r.player_id), score: r.score, floor: r.floor, combo: r.combo, char: r.char_id, country: r.country,
     // najlepsza trójka: identyfikator biegu do obejrzenia (GET /v1/replays/:id)
@@ -326,6 +334,111 @@ export function createApp(deps: { now?: () => number } = {}) {
     const offset = Math.max(0, rank - 1 - NEIGHBOURS);
     const { results } = await db.prepare(BOARD_SELECT).bind(period, 2 * NEIGHBOURS + 1, offset).all<BoardRow>();
     return c.json({ period, rank, entries: results.map((r, i) => ({ ...entry(r, offset + i + 1), me: r.player_id === me })) });
+  });
+
+  // ───────────────────────── pokoje znajomych ─────────────────────────
+
+  /** Wyjście gracza z pokoju; pusty pokój znika (zwalnia nazwę). */
+  function leaveRoom(db: D1Database, p: Player): D1PreparedStatement[] {
+    if (!p.room_id) return [];
+    return [
+      db.prepare('UPDATE players SET room_id = NULL WHERE id = ?').bind(p.id),
+      db.prepare('DELETE FROM rooms WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM players WHERE room_id = ?1)').bind(p.room_id),
+    ];
+  }
+  /** Wejście do pokoju roomId (z wyjściem z poprzedniego). */
+  function enterRoom(db: D1Database, p: Player, roomId: string): D1PreparedStatement[] {
+    return [
+      db.prepare('UPDATE players SET room_id = ? WHERE id = ?').bind(roomId, p.id),
+      ...(p.room_id && p.room_id !== roomId
+        ? [db.prepare('DELETE FROM rooms WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM players WHERE room_id = ?1)').bind(p.room_id)]
+        : []),
+    ];
+  }
+  const memberCount = async (db: D1Database, roomId: string) =>
+    (await db.prepare('SELECT COUNT(*) AS n FROM players WHERE room_id = ?').bind(roomId).first<{ n: number }>())!.n;
+
+  // Nowy pokój: nazwa unikalna bez względu na wielkość liter, hasło trzymamy tylko jako skrót. Twórca od razu jest w środku.
+  app.post('/v1/rooms', requirePlayer, async (c) => {
+    const body = await readJson(c), p = c.var.player, db = c.env.DB;
+    if (p.banned) throw fail(403, 'banned');
+    const name = checkRoomName(body.name);
+    if (!name.ok) throw fail(400, `room_${name.reason}`);
+    const pass = checkPassword(body.password);
+    if (pass === null) throw fail(400, 'room_pass');
+    const id = crypto.randomUUID(), salt = newSalt();
+    try {
+      await db.batch([
+        db.prepare('INSERT INTO rooms (id, name, name_key, pass_salt, pass_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+          .bind(id, name.nick, name.key, salt, await passwordHash(pass, salt), now()),
+        ...enterRoom(db, p, id),
+      ]);
+    } catch (e) {
+      if (String(e).includes('UNIQUE')) throw fail(409, 'room_taken');
+      throw e;
+    }
+    return c.json({ room: { name: name.nick, members: 1 } }, 201);
+  });
+
+  // Dołączenie nazwą i hasłem. Gracz jest najwyżej w jednym pokoju – wejście do nowego to wyjście ze starego.
+  app.post('/v1/rooms/join', requirePlayer, async (c) => {
+    const body = await readJson(c), p = c.var.player, db = c.env.DB, t = now();
+    if (p.banned) throw fail(403, 'banned');
+    const name = checkRoomName(body.name);
+    const room = name.ok
+      ? await db.prepare('SELECT id, name, pass_salt, pass_hash, fail_window, fail_count FROM rooms WHERE name_key = ?').bind(name.key)
+        .first<{ id: string; name: string; pass_salt: string; pass_hash: string; fail_window: number; fail_count: number }>()
+      : null;
+    if (!room) throw fail(404, 'room_not_found');
+    if (room.id === p.room_id) return c.json({ room: { name: room.name, members: await memberCount(db, room.id) } });
+
+    const win = Math.floor(t / ROOM_FAIL_WINDOW);
+    if (room.fail_window === win && room.fail_count >= ROOM_FAIL_MAX) throw fail(429, 'room_locked');
+    const pass = checkPassword(body.password);
+    if (pass === null || !sameHash(room.pass_hash, await passwordHash(pass, room.pass_salt))) {
+      await db.prepare('UPDATE rooms SET fail_count = CASE WHEN fail_window = ?1 THEN fail_count + 1 ELSE 1 END, fail_window = ?1 WHERE id = ?2')
+        .bind(win, room.id).run();
+      throw fail(403, 'room_password');
+    }
+    const n = await memberCount(db, room.id);
+    if (n >= ROOM_MAX_MEMBERS) throw fail(409, 'room_full');
+    await db.batch(enterRoom(db, p, room.id));
+    return c.json({ room: { name: room.name, members: n + 1 } });
+  });
+
+  app.delete('/v1/rooms/me', requirePlayer, async (c) => {
+    const stmts = leaveRoom(c.env.DB, c.var.player);
+    if (stmts.length) await c.env.DB.batch(stmts);
+    return c.body(null, 204);
+  });
+
+  /** Pokój gracza (nazwa) albo błąd 404 no_room. */
+  async function myRoom(c: Ctx): Promise<{ id: string; name: string }> {
+    const id = c.var.player.room_id;
+    const room = id ? await c.env.DB.prepare('SELECT id, name FROM rooms WHERE id = ?').bind(id).first<{ id: string; name: string }>() : null;
+    if (!room) throw fail(404, 'no_room');
+    return room;
+  }
+
+  // Mój pokój i jego gracze (bez zablokowanych).
+  app.get('/v1/rooms/me', requirePlayer, async (c) => {
+    c.header('cache-control', 'private, no-store');
+    const me = c.var.player.id;
+    if (!c.var.player.room_id) return c.json({ room: null });
+    const room = await myRoom(c);
+    const { results } = await c.env.DB.prepare(
+      'SELECT id, nick FROM players WHERE room_id = ? AND banned = 0 ORDER BY nick_key IS NULL, nick_key, id',
+    ).bind(room.id).all<{ id: string; nick: string | null }>();
+    return c.json({ room: { name: room.name, members: results.map((r) => ({ nick: r.nick, tag: playerTag(r.id), ...(r.id === me ? { me: true } : {}) })) } });
+  });
+
+  // Ranking pokoju: te same najlepsze wyniki co w rankingu ogólnym, tylko graczy z pokoju (wszyscy – pokój jest mały).
+  app.get('/v1/rooms/me/leaderboards/:period', requirePlayer, async (c) => {
+    c.header('cache-control', 'private, no-store');
+    const period = periodParam(c), room = await myRoom(c), me = c.var.player.id;
+    const { results } = await c.env.DB.prepare(ROOM_BOARD_SELECT).bind(period, room.id).all<BoardRow>();
+    const entries = results.map((r, i) => ({ ...entry(r, i + 1), ...(r.player_id === me ? { me: true } : {}) }));
+    return c.json({ period, room: { name: room.name }, rank: entries.find((e) => e.me)?.rank ?? null, entries });
   });
 
   // ───────────────────────── powtórki ─────────────────────────

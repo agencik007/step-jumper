@@ -15,7 +15,7 @@ export const TICKET_RESERVE = 3;
 export const TICKET_MAX_AGE = 6 * DAY;
 const MAX_QUEUE = 20;
 const TIMEOUT_MS = 10_000;
-const KEY = { account: 'sj.account', tickets: 'sj.tickets', queue: 'sj.queue', enabled: 'sj.online', crown: 'sj.crown', skins: 'sj.skins' };
+const KEY = { account: 'sj.account', tickets: 'sj.tickets', queue: 'sj.queue', enabled: 'sj.online', crown: 'sj.crown', skins: 'sj.skins', room: 'sj.room' };
 /** Paczka własnej postaci: najwyżej tyle bajtów (jak MAX_SKIN_BYTES na serwerze). */
 export const MAX_SKIN_BYTES = 1_500_000;
 const HASH_RE = /^[0-9a-f]{64}$/;
@@ -72,6 +72,13 @@ export interface Replay {
   skin: string | null;   // skrót paczki własnej postaci (char = 'custom'), jeśli serwer ją ma
 }
 
+/** Pokój znajomych, w którym jest gracz (najwyżej jeden). */
+export interface Room { name: string }
+export interface RoomMember { nick: string | null; tag: string; me?: boolean }
+export type RoomResult = { ok: true; room: Room } | { ok: false; error: string };
+/** Ranking pokoju w tym samym kształcie co ogólny: najlepsi (top) i moje miejsce (me). */
+export interface RoomBoard { top: Board; me: Around }
+
 /** Korona za miejsce 1–3 w zamkniętym tygodniu; nosi się ją przez cały następny tydzień. */
 export interface Crown { week: string; rank: number }
 
@@ -118,6 +125,7 @@ export class Online {
   private queue: QueuedRun[] = [];
   private results = new Map<string, SubmitResult>();
   private crownSaved: Crown | null = null;
+  private roomSaved: Room | null = null;
   private skinsWaiting: string[] = [];   // paczki postaci, o które prosił serwer, a których nie udało się jeszcze wysłać
   private refilling: Promise<void> | null = null;
   private flushing: Promise<void> | null = null;
@@ -136,6 +144,7 @@ export class Online {
     this.list = parse<Ticket[]>(await s.get(KEY.tickets), []);
     this.queue = parse<QueuedRun[]>(await s.get(KEY.queue), []);
     this.crownSaved = parse<Crown | null>(await s.get(KEY.crown), null);
+    this.roomSaved = parse<Room | null>(await s.get(KEY.room), null);
     this.skinsWaiting = parse<string[]>(await s.get(KEY.skins), []).filter((h) => HASH_RE.test(h));
     this.dropStaleTickets();
     this.loaded = true;
@@ -276,6 +285,74 @@ export class Online {
     } catch { return { ok: false, error: 'offline' }; }
   }
 
+  // ───────────────────────── pokoje znajomych ─────────────────────────
+
+  /** Mój pokój znajomych (zapamiętany na urządzeniu, odświeżany przez roomInfo) albo null. */
+  get room(): Room | null { return this.enabled && this.account ? this.roomSaved : null; }
+
+  /** Nowy pokój o unikalnej nazwie z hasłem; gracz od razu w nim jest (i wychodzi z poprzedniego). */
+  createRoom(name: string, password: string): Promise<RoomResult> { return this.roomCall('/v1/rooms', name, password); }
+  /** Dołączenie do pokoju nazwą i hasłem. */
+  joinRoom(name: string, password: string): Promise<RoomResult> { return this.roomCall('/v1/rooms/join', name, password); }
+
+  /** Wyjście z pokoju. False = brak sieci, nic nie zmieniono. */
+  async leaveRoom(): Promise<boolean> {
+    if (!this.account) { await this.saveRoom(null); return true; }
+    try {
+      const r = await this.req('DELETE', '/v1/rooms/me', { auth: true });
+      if (r.status === 401) await this.forgetAccount();
+      else if (r.status !== 204) return false;
+    } catch { return false; }
+    await this.saveRoom(null);
+    return true;
+  }
+
+  /** Mój pokój i jego gracze prosto z serwera (przy okazji odświeża zapamiętany pokój); null bez sieci i bez pokoju. */
+  async roomInfo(): Promise<(Room & { members: RoomMember[] }) | null> {
+    if (!this.enabled || !this.account) return null;
+    try {
+      const r = await this.req('GET', '/v1/rooms/me', { auth: true });
+      if (r.status === 401) { await this.forgetAccount(); return null; }
+      if (r.status !== 200) return null;
+      const room = r.data.room as (Room & { members: RoomMember[] }) | null;
+      await this.saveRoom(room ? { name: room.name } : null);
+      return room;
+    } catch { return null; }
+  }
+
+  /** Ranking mojego pokoju; null bez sieci albo poza pokojem (wtedy zapomina pokój). */
+  async roomBoard(kind: BoardKind): Promise<RoomBoard | null> {
+    if (!this.enabled || !this.account) return null;
+    try {
+      const r = await this.req('GET', `/v1/rooms/me/leaderboards/${kind}`, { auth: true });
+      if (r.status === 401) { await this.forgetAccount(); return null; }
+      if (r.status === 404 && r.data?.error === 'no_room') { await this.saveRoom(null); return null; }
+      if (r.status !== 200) return null;
+      const d = r.data as { period: string; room: Room; rank: number | null; entries: Entry[] };
+      if (d.room.name !== this.roomSaved?.name) await this.saveRoom(d.room);
+      return { top: { period: d.period, entries: d.entries }, me: { period: d.period, rank: d.rank, entries: d.entries.filter((e) => e.me) } };
+    } catch { return null; }
+  }
+
+  private async roomCall(path: string, name: string, password: string): Promise<RoomResult> {
+    if (!this.loaded || !this.enabled) return { ok: false, error: 'offline' };
+    try {
+      if (!(await this.ensureAccount())) return { ok: false, error: 'offline' };
+      const r = await this.req('POST', path, { auth: true, json: { name, password } });
+      if (r.status === 200 || r.status === 201) {
+        await this.saveRoom({ name: r.data.room.name });
+        return { ok: true, room: this.roomSaved! };
+      }
+      if (r.status === 401) await this.forgetAccount();
+      return { ok: false, error: r.data?.error ?? 'error' };
+    } catch { return { ok: false, error: 'offline' }; }
+  }
+
+  private async saveRoom(room: Room | null): Promise<void> {
+    this.roomSaved = room;
+    if (room) await this.o.store.set(KEY.room, JSON.stringify(room)); else await this.o.store.remove(KEY.room);
+  }
+
   /** Usuwa konto i wyniki z serwera oraz wszystkie dane rankingu z urządzenia. False = brak sieci, nic nie zmieniono. */
   async deleteData(): Promise<boolean> {
     if (!this.loaded) return false;
@@ -286,9 +363,9 @@ export class Online {
         if (r.status !== 204 && r.status !== 401) return false;
       } catch { return false; }
     }
-    this.account = null; this.list = []; this.queue = []; this.results.clear(); this.crownSaved = null; this.skinsWaiting = [];
+    this.account = null; this.list = []; this.queue = []; this.results.clear(); this.crownSaved = null; this.skinsWaiting = []; this.roomSaved = null;
     const s = this.o.store;
-    await Promise.all([s.remove(KEY.account), s.remove(KEY.tickets), s.remove(KEY.queue), s.remove(KEY.crown), s.remove(KEY.skins)]);
+    await Promise.all([s.remove(KEY.account), s.remove(KEY.tickets), s.remove(KEY.queue), s.remove(KEY.crown), s.remove(KEY.skins), s.remove(KEY.room)]);
     return true;
   }
 
@@ -397,7 +474,7 @@ export class Online {
 
   private async forgetAccount(): Promise<void> {
     this.account = null; this.list = [];
-    await Promise.all([this.o.store.remove(KEY.account), this.saveTickets()]);
+    await Promise.all([this.o.store.remove(KEY.account), this.saveTickets(), this.saveRoom(null)]);
   }
 
   private async req(method: string, path: string, o: { auth?: boolean; json?: unknown; body?: Uint8Array; type?: string } = {}): Promise<{ status: number; data: any }> {

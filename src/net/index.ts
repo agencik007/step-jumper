@@ -10,4 +10,4 @@ export const APP_VERSION = `web-${__APP_VERSION__}`;   // wersja z package.json 
 
 export const online = new Online({ baseUrl: API_URL, store: new LocalStore(), platform: 'web', appVersion: APP_VERSION });
 
-export type { Around, Board, Entry, PeriodKind, SubmitResult, Ticket } from './online';
+export type { Around, Board, Entry, PeriodKind, Room, RoomBoard, RoomMember, RoomResult, SubmitResult, Ticket } from './online';

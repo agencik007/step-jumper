@@ -18,6 +18,7 @@ import { t } from './i18n.js';
 import { setEscExitHandler, toggleFullscreen } from './fullscreen.js';
 import { hideInstall, installOpen } from './install.js';
 import { cancelNick, nickOpen } from './nickform.js';
+import { closeRoom, roomOpen } from './roomform.js';
 import { creatorBack, creatorOpen } from './creator.js';
 import { closePadEditor, initPadEditor, padEditing, padScale, restStick, stickHome } from './padlayout.js';
 import { clamp, mod } from './util.js';
@@ -349,6 +350,7 @@ function handlePad(p, B) {
   if (padEditing()) { if (edge(BTN.A) || edge(BTN.B) || edge(BTN.START)) closePadEditor(); return; }
   if (installOpen()) { if (edge(BTN.A) || edge(BTN.B)) hideInstall(); return; }
   if (nickOpen()) { if (edge(BTN.B)) cancelNick(); return; }
+  if (roomOpen()) { if (edge(BTN.B)) closeRoom(); return; }       // okienko pokoju: pad tylko je zamyka
   if (creatorOpen()) { if (edge(BTN.B)) creatorBack(); return; }   // KREATOR to okienko HTML: pad tylko je zamyka
 
   // bieg i skok: przypisane przyciski + lewa gałka (płynnie, z martwą strefą)
@@ -400,6 +402,7 @@ function handlePad(p, B) {
       else if (nav === 'up' || nav === 'down') game.boardMove(nav === 'up' ? -1 : 1);
       if (A) game.boardConfirm();
       else if (X) game.boardLoadChar();
+      else if (Y) game.boardScopeToggle();
       else if (Bk) { sfx.pick(); game.toTitle(); }
       break;
     case 'recap':
@@ -430,6 +433,8 @@ function handlePad(p, B) {
 // ───────────────────────── klawiatura ─────────────────────────
 function onKey(e) {
   if (creatorOpen()) return;                           // KREATOR (okienko HTML) obsługuje klawisze sam
+  // okienko pokoju obsługuje klawisze samo (Esc je zamyka – także ten Esc, który dotarł tu już po zamknięciu)
+  if (roomOpen() || e.target?.closest?.('#room')) return;
   if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;   // pisanie nicku – klawisze należą do pola tekstowego
   // przycisk z fokusem (Tab): Enter i spacja go naciskają, a nie startują gry pod spodem
   if (e.target instanceof HTMLButtonElement && ['Enter', 'NumpadEnter', 'Space'].includes(e.code)) return;
@@ -476,6 +481,8 @@ function onKey(e) {
     if (up || dn) { game.boardMove(up ? -1 : 1); return; }
     if (free && code === 'KeyN') { game.editNick(); return; }
     if (free && code === 'KeyL') { game.boardLoadChar(); return; }
+    if (free && code === 'KeyG') { game.boardScopeToggle(); return; }     // WSZYSCY / POKÓJ
+    if (free && code === 'KeyJ') { game.openRoomForm(); return; }         // okienko pokoju znajomych
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.boardReplay(Number(code.slice(-1))); return; }
   } else if (s === 'recap') {
     if (/^(Digit|Numpad)[123]$/.test(code)) { game.recapReplay(Number(code.slice(-1))); return; }
@@ -515,7 +522,7 @@ export function initInput(theGame) {
   addEventListener('keydown', onKey);
   // Firefox / Safari: ESC w pełnym ekranie zabiera przeglądarka – po wyjściu z pełnego ekranu udajemy naciśnięcie ESC
   setEscExitHandler(() => {
-    if (nickOpen() || creatorOpen() || document.activeElement instanceof HTMLInputElement) return;   // ESC zamknął już pole nicku / kreator
+    if (nickOpen() || roomOpen() || creatorOpen() || document.activeElement instanceof HTMLInputElement) return;   // ESC zamknął już pole nicku / kreator
     onKey({ code: 'Escape', key: 'Escape', repeat: false, target: document.body, preventDefault() {} });
   });
   addEventListener('keyup', (e) => { down.delete(e.code); });

@@ -88,7 +88,7 @@ function describe(g) {
     ];
   }
   if (s === 'board') {
-    const b = g.board, d = b.data[b.kind];
+    const b = g.board, d = g.boardData, room = g.boardScope === 'room';
     let list = t('board.loading');
     if (!g.online.enabled) list = t('board.off');
     else if (d && !d.top) list = t('board.noConn');
@@ -101,7 +101,8 @@ function describe(g) {
     const sel = b.sel >= 0 ? d?.top?.entries.find((e) => e.rank === b.sel + 1) : null;
     const end = periodEnd(b.kind), tab = t(`period.${PERIODS.includes(b.kind) ? b.kind : 'week'}`);
     const ends = end && g.online.enabled ? t(b.kind === 'day' ? 'board.endsDay' : 'board.endsWeek', { when: fmtWhen(end), left: fmtLeft(end) }) : '';
-    return [['screen', t('board.title')], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
+    const screen = room ? t('room.boardTitle', { name: g.online.room.name }) : t('board.title');
+    return [['screen', `${screen}. ${t('sr.boardScope')}`], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
       ['sel', sel ? `${t('sr.boardSel', { rank: sel.rank, name: name(sel) })}${sel.skin ? ` ${t('sr.boardChar')}` : ''}` : '']];
   }
   if (s === 'settings') {

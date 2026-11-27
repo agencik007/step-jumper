@@ -12,4 +12,6 @@ export interface Player {
   nick: string | null;
   banned: number;
   created_at: number;
+  /** Pokój znajomych, w którym jest gracz (najwyżej jeden), albo null. */
+  room_id: string | null;
 }

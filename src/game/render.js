@@ -853,9 +853,15 @@ export function netLine(n) {
 }
 
 function drawBoard(g) {
-  const c = ctx, b = g.board, kind = b.kind, d = b.data[kind], o = g.online;
+  const c = ctx, b = g.board, kind = b.kind, d = g.boardData, o = g.online, room = g.boardScope === 'room';
   dim(0.66);
-  text(t('board.title'), W / 2, 34, { size: 30, color: ui.gold, sw: 6, maxW: 420 });
+  text(room ? t('room.boardTitle', { name: o.room.name }) : t('board.title'), W / 2, 34, { size: room ? 24 : 30, color: ui.gold, sw: 6, maxW: 420 });
+  if (o.enabled) {                                      // WSZYSCY / POKÓJ i okienko pokoju znajomych
+    const key = (s, k) => (g.hint === 'keys' ? `${s} · ${k}` : s);
+    button(UIBOX.bWorld, key(t('board.world'), 'G'), { accent: !room, size: 12, glyph: g.hint === 'pad' && room ? BTN.Y : null });
+    button(UIBOX.bRoom, key(t('board.room'), 'G'), { accent: room, size: 12, glyph: g.hint === 'pad' && !room ? BTN.Y : null });
+    button(UIBOX.bRoomForm, key(t('room.btn'), 'J'), { size: 12 });
+  }
   PERIODS.forEach((k, i) => button(UIBOX.tab(i), t(`period.${k}`), { accent: k === kind, size: 12 }));
 
   const L = UIBOX.list;

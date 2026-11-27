@@ -29,6 +29,8 @@ export const UIBOX = {
   podWatch: (i) => ({ x: [320, 210, 430][i] - 48, y: 346, w: 96, h: 24 }),
   recapBoard: { x: 160, y: 418, w: 150, h: 32 }, recapNext: { x: 330, y: 418, w: 150, h: 32 },
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
+  // ranking, lewy górny róg: WSZYSCY / POKÓJ i okienko pokoju znajomych (prawy róg zajmuje przycisk pełnego ekranu)
+  bWorld: { x: 10, y: 10, w: 92, h: 28 }, bRoom: { x: 10, y: 44, w: 92, h: 28 }, bRoomForm: { x: 10, y: 78, w: 92, h: 28 },
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
 /** Strony opcji z samym tekstem (NOWOŚCI, ZASADY GRY): nic do wybrania, tylko przewijanie, jednolite tło bez mapy. */
