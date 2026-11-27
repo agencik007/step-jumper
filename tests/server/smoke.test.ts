@@ -62,6 +62,10 @@ test.skipIf(!BASE)('pokój znajomych na żywo: WebSocket przez Durable Object', 
   const name = `smoke ${Math.floor(Math.random() * 1e6)}`;
   const sockets: WebSocket[] = [];
   try {
+    // do pokoju wchodzi się tylko z nickiem (inaczej 400 nick_required); nicki są unikalne, więc losowe
+    for (const [i, token] of [a, b].entries()) {
+      expect((await api('PATCH', '/v1/me', { token, json: { nick: `smoke${i}x${Math.floor(Math.random() * 1e8)}` } })).status).toBe(200);
+    }
     expect((await api('POST', '/v1/rooms', { token: a, json: { name, password: 'smoke-test' } })).status).toBe(201);
     expect((await api('POST', '/v1/rooms/join', { token: b, json: { name, password: 'smoke-test' } })).status).toBe(200);
     const url = `${BASE!.replace(/^http/, 'ws')}/v1/live`;
