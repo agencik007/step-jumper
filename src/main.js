@@ -20,7 +20,12 @@ initInstall(game);
 initUpdateCheck();                     // nowa wersja na serwerze → przycisk PRZEŁADUJ na ekranie tytułowym
 
 // ranking online: wczytaj konto, uzupełnij zapas biletów i dośli biegi, które czekały na sieć
-online.init().then(() => { online.refill(); online.flush(); game.loadLastWeek(); game.syncLive(); });
+online.init().then(async () => {
+  online.flush(); game.syncLive();
+  // wyniki zeszłego tygodnia zawsze pytają serwer (bilety nie – zapas może być pełny), więc potem wiadomo, czy odpowiada
+  await Promise.all([online.refill(), game.loadLastWeek()]);
+  game.promptNick();                   // gracz bez nicku: okienko nicku od razu po uruchomieniu
+});
 // pokój na żywo tylko z kartą na wierzchu: w tle gracza i tak nie ma, a połączenie kosztuje
 document.addEventListener('visibilitychange', () => game.syncLive());
 addEventListener('online', () => { online.refill(); online.flush(); });

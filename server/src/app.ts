@@ -371,6 +371,7 @@ export function createApp(deps: { now?: () => number } = {}) {
   app.post('/v1/rooms', requirePlayer, async (c) => {
     const body = await readJson(c), p = c.var.player, db = c.env.DB;
     if (p.banned) throw fail(403, 'banned');
+    if (!p.nick) throw fail(400, 'nick_required');          // znajomi muszą wiedzieć, kto jest w pokoju
     const name = checkRoomName(body.name);
     if (!name.ok) throw fail(400, `room_${name.reason}`);
     const pass = checkPassword(body.password);
@@ -394,6 +395,7 @@ export function createApp(deps: { now?: () => number } = {}) {
   app.post('/v1/rooms/join', requirePlayer, async (c) => {
     const body = await readJson(c), p = c.var.player, db = c.env.DB, t = now();
     if (p.banned) throw fail(403, 'banned');
+    if (!p.nick) throw fail(400, 'nick_required');
     const name = checkRoomName(body.name);
     const room = name.ok
       ? await db.prepare('SELECT id, name, pass_salt, pass_hash, fail_window, fail_count FROM rooms WHERE name_key = ?').bind(name.key)

@@ -500,11 +500,13 @@ const pl = {
   'room.err.banned': 'Twoje konto jest zablokowane.',
   'room.err.offline': 'Brak połączenia z serwerem rankingu.',
   'room.err.generic': 'Nie udało się. Spróbuj jeszcze raz.',
-  'rules.rank.3': 'Pokój znajomych (RANKING → ⚙ POKÓJ): załóż go nazwą i hasłem albo dołącz do istniejącego. Przycisk POKÓJ pokazuje ranking tylko graczy z pokoju – z tymi samymi wynikami, okresami i powtórkami. Naraz jesteś w jednym pokoju. Na ekranie tytułowym widać, kto z pokoju jest teraz w grze i na którym piętrze biegnie.',
+  'rules.rank.3': 'Pokój znajomych (RANKING → ⚙ POKÓJ): załóż go nazwą i hasłem albo dołącz do istniejącego. Przycisk POKÓJ pokazuje ranking tylko graczy z pokoju – z tymi samymi wynikami, okresami i powtórkami. Do pokoju wchodzi się z nickiem i naraz jesteś w jednym pokoju. Na ekranie tytułowym widać, kto z pokoju jest teraz w grze i na którym piętrze biegnie.',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Łączę…', 'live.alone': 'Nikogo więcej', 'live.floor': 'piętro {floor}', 'live.menu': 'w menu',
   'live.more': '+{n} więcej', 'live.play': 'w biegu · piętro {floor} · {score} pkt', 'live.off': 'poza grą',
   'sr.live': 'Pokój {name}, w grze: {list}.', 'sr.liveNone': 'Pokój {name}: nikogo więcej w grze.', 'sr.livePlay': '{name} w biegu', 'sr.liveMenu': '{name} w menu',
+  'nick.room': 'Zanim wejdziesz do pokoju: wybierz nick – po nim poznają cię znajomi',
+  'room.err.nick_required': 'Do pokoju wchodzi się z nickiem – najpierw go wybierz.',
 };
 
 const en = {
@@ -1003,11 +1005,13 @@ const en = {
   'room.err.banned': 'Your account is blocked.',
   'room.err.offline': 'Cannot reach the leaderboard server.',
   'room.err.generic': 'That didn’t work. Please try again.',
-  'rules.rank.3': 'Friends’ room (LEADERBOARD → ⚙ ROOM): create one with a name and password or join an existing one. The ROOM button shows a leaderboard of just the players in the room – with the same scores, periods and replays. You are in one room at a time. The title screen shows who from the room is in the game right now and which floor they are on.',
+  'rules.rank.3': 'Friends’ room (LEADERBOARD → ⚙ ROOM): create one with a name and password or join an existing one. The ROOM button shows a leaderboard of just the players in the room – with the same scores, periods and replays. You need a nickname to enter a room, and you are in one room at a time. The title screen shows who from the room is in the game right now and which floor they are on.',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Connecting…', 'live.alone': 'Nobody else', 'live.floor': 'floor {floor}', 'live.menu': 'in menu',
   'live.more': '+{n} more', 'live.play': 'running · floor {floor} · {score} pts', 'live.off': 'not playing',
   'sr.live': 'Room {name}, playing now: {list}.', 'sr.liveNone': 'Room {name}: nobody else is playing.', 'sr.livePlay': '{name} running', 'sr.liveMenu': '{name} in menu',
+  'nick.room': 'Before you enter a room: pick a nickname – that’s how your friends will know you',
+  'room.err.nick_required': 'You need a nickname to enter a room – pick one first.',
 };
 
 const de = {
@@ -1506,11 +1510,13 @@ const de = {
   'room.err.banned': 'Dein Konto ist gesperrt.',
   'room.err.offline': 'Keine Verbindung zum Ranglisten-Server.',
   'room.err.generic': 'Das hat nicht geklappt. Versuch es noch einmal.',
-  'rules.rank.3': 'Raum für Freunde (RANGLISTE → ⚙ RAUM): Leg einen mit Namen und Passwort an oder tritt einem bestehenden bei. Der Knopf RAUM zeigt eine Rangliste nur mit den Spielern im Raum – mit denselben Ergebnissen, Zeiträumen und Wiederholungen. Du bist immer nur in einem Raum. Auf dem Startbildschirm siehst du, wer aus dem Raum gerade spielt und auf welcher Etage.',
+  'rules.rank.3': 'Raum für Freunde (RANGLISTE → ⚙ RAUM): Leg einen mit Namen und Passwort an oder tritt einem bestehenden bei. Der Knopf RAUM zeigt eine Rangliste nur mit den Spielern im Raum – mit denselben Ergebnissen, Zeiträumen und Wiederholungen. Einen Raum betrittst du nur mit Nick, und du bist immer nur in einem Raum. Auf dem Startbildschirm siehst du, wer aus dem Raum gerade spielt und auf welcher Etage.',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Verbinde…', 'live.alone': 'Sonst niemand', 'live.floor': 'Etage {floor}', 'live.menu': 'im Menü',
   'live.more': '+{n} weitere', 'live.play': 'im Lauf · Etage {floor} · {score} Pkt.', 'live.off': 'nicht im Spiel',
   'sr.live': 'Raum {name}, gerade im Spiel: {list}.', 'sr.liveNone': 'Raum {name}: sonst ist niemand im Spiel.', 'sr.livePlay': '{name} im Lauf', 'sr.liveMenu': '{name} im Menü',
+  'nick.room': 'Bevor du einen Raum betrittst: Wähl einen Nick – daran erkennen dich deine Freunde',
+  'room.err.nick_required': 'Für einen Raum brauchst du einen Nick – wähl zuerst einen.',
 };
 
 const fr = {
@@ -2009,11 +2015,13 @@ const fr = {
   'room.err.banned': 'Votre compte est bloqué.',
   'room.err.offline': 'Impossible de joindre le serveur du classement.',
   'room.err.generic': 'Cela n’a pas fonctionné. Réessayez.',
-  'rules.rank.3': 'Salon d’amis (CLASSEMENT → ⚙ SALON) : créez-en un avec un nom et un mot de passe, ou rejoignez un salon existant. Le bouton SALON affiche un classement des seuls joueurs du salon – avec les mêmes scores, périodes et rediffusions. Vous êtes dans un seul salon à la fois. L’écran titre montre qui, dans le salon, est en jeu en ce moment et à quel étage.',
+  'rules.rank.3': 'Salon d’amis (CLASSEMENT → ⚙ SALON) : créez-en un avec un nom et un mot de passe, ou rejoignez un salon existant. Le bouton SALON affiche un classement des seuls joueurs du salon – avec les mêmes scores, périodes et rediffusions. Il faut un pseudo pour entrer dans un salon, et vous êtes dans un seul salon à la fois. L’écran titre montre qui, dans le salon, est en jeu en ce moment et à quel étage.',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Connexion…', 'live.alone': 'Personne d’autre', 'live.floor': 'étage {floor}', 'live.menu': 'au menu',
   'live.more': '+{n} autres', 'live.play': 'en course · étage {floor} · {score} pts', 'live.off': 'hors du jeu',
   'sr.live': 'Salon {name}, en jeu : {list}.', 'sr.liveNone': 'Salon {name} : personne d’autre n’est en jeu.', 'sr.livePlay': '{name} en course', 'sr.liveMenu': '{name} au menu',
+  'nick.room': 'Avant d’entrer dans un salon : choisissez un pseudo – c’est ainsi que vos amis vous reconnaîtront',
+  'room.err.nick_required': 'Il faut un pseudo pour entrer dans un salon – choisissez-en d’abord un.',
 };
 
 const es = {
@@ -2512,11 +2520,13 @@ const es = {
   'room.err.banned': 'Tu cuenta está bloqueada.',
   'room.err.offline': 'No hay conexión con el servidor del ranking.',
   'room.err.generic': 'No ha funcionado. Inténtalo de nuevo.',
-  'rules.rank.3': 'Sala de amigos (RANKING → ⚙ SALA): créala con un nombre y una contraseña o entra en una que ya exista. El botón SALA muestra un ranking solo con los jugadores de la sala, con las mismas puntuaciones, periodos y repeticiones. Estás en una sola sala a la vez. En la pantalla de título se ve quién de la sala está jugando ahora y en qué piso va.',
+  'rules.rank.3': 'Sala de amigos (RANKING → ⚙ SALA): créala con un nombre y una contraseña o entra en una que ya exista. El botón SALA muestra un ranking solo con los jugadores de la sala, con las mismas puntuaciones, periodos y repeticiones. Para entrar en una sala necesitas un apodo, y estás en una sola sala a la vez. En la pantalla de título se ve quién de la sala está jugando ahora y en qué piso va.',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Conectando…', 'live.alone': 'Nadie más', 'live.floor': 'piso {floor}', 'live.menu': 'en el menú',
   'live.more': '+{n} más', 'live.play': 'corriendo · piso {floor} · {score} pts', 'live.off': 'fuera del juego',
   'sr.live': 'Sala {name}, jugando ahora: {list}.', 'sr.liveNone': 'Sala {name}: nadie más está jugando.', 'sr.livePlay': '{name} corriendo', 'sr.liveMenu': '{name} en el menú',
+  'nick.room': 'Antes de entrar en una sala: elige un apodo – así te reconocerán tus amigos',
+  'room.err.nick_required': 'Para entrar en una sala necesitas un apodo: elige uno primero.',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

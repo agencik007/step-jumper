@@ -4,8 +4,9 @@ import { live } from '../net';
 import { fmt } from './format.js';
 import { focusGame } from './gfx.js';
 import { t } from './i18n.js';
+import { openNick } from './nickform.js';
 
-const KNOWN = ['room_length', 'room_chars', 'room_blocked', 'room_taken', 'room_pass', 'room_not_found', 'room_password',
+const KNOWN = ['nick_required', 'room_length', 'room_chars', 'room_blocked', 'room_taken', 'room_pass', 'room_not_found', 'room_password',
   'room_full', 'room_locked', 'banned', 'offline'];
 const $ = (id) => document.getElementById(id);
 const form = $('room'), joinView = $('roomJoin'), inView = $('roomIn'), err = $('roomErr');
@@ -81,8 +82,25 @@ function close() {
   ctx = null;
 }
 
+/**
+ * Pokój tylko z nickiem (znajomi muszą wiedzieć, kto to): okienko pokoju chowa się na chwilę za okienkiem nicku,
+ * a po zapisaniu nicku wraca z wpisaną nazwą i hasłem i od razu kończy to, co gracz zaczął.
+ */
+function nickFirst(kind) {
+  const keep = { name: nameField.value, pass: passField.value, show: passField.type };
+  form.hidden = true;
+  openNick('', (nick) => ctx.online.setNick(nick), (saved) => {
+    if (!ctx) return;
+    form.hidden = false;
+    nameField.value = keep.name; passField.value = keep.pass; passField.type = keep.show;
+    if (saved) send(kind);
+    else { err.textContent = t('room.err.nick_required'); nameField.focus(); }
+  }, { label: 'nick.room' });
+}
+
 async function send(kind) {
   if (!ctx || busy) return;
+  if (!ctx.online.nick) { nickFirst(kind); return; }
   busy = true; err.textContent = t('room.working');
   const o = ctx.online;
   const r = kind === 'create' ? await o.createRoom(nameField.value, passField.value) : await o.joinRoom(nameField.value, passField.value);

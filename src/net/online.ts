@@ -109,6 +109,8 @@ export class Online {
    * serwera. Klient nie blokuje się na stałe: każde uzupełnianie biletów pyta serwer ponownie.
    */
   serverBehind = false;
+  /** Serwer odpowiedział na ostatnie zapytanie (false: brak sieci albo jeszcze nie pytaliśmy). */
+  reachable = false;
   /** Wersja symulacji, którą deklaruje klient (pole, żeby testy mogły udawać starą aplikację). */
   simVersion = SIM_VERSION;
   /** Wywoływane dla każdego biegu, który opuścił kolejkę (także wysłanego później, po powrocie sieci). */
@@ -490,8 +492,10 @@ export class Online {
       // cache: no-store – gra sama trzyma ranking 30 s, a po zmianie nicku albo nowym wyniku musi zobaczyć świeże dane
       res = await this.fetchFn(this.o.baseUrl + path, { method, headers, body, cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
     } catch {
+      this.reachable = false;
       throw new Offline();
     }
+    this.reachable = true;
     const text = await res.text().catch(() => '');
     let data: any = null;
     try { data = text ? JSON.parse(text) : null; } catch { /* nie-JSON, np. strona błędu */ }

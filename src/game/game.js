@@ -452,8 +452,16 @@ export class Game {
     r.ended = true; r.playing = false; this.msgs = [];
     sfx.over();
   }
-  /** Pierwsza gra: formularz nicku, a po zapisaniu od razu bieg. Anuluj = zostajemy na ekranie tytułowym. */
-  askNick() {
+  /**
+   * Zaraz po uruchomieniu (main.js): gracz bez nicku dostaje okienko nicku od razu, a nie dopiero przed pierwszym biegiem.
+   * Tylko gdy serwer rankingu odpowiada – bez sieci i tak nie da się zapisać nicku – i gdy gracz nie zaczął już czegoś innego.
+   */
+  promptNick() {
+    if (this.state !== 'title' || !this.needsNick || !online.reachable || nickOpen() || creatorOpen() || roomOpen()) return;
+    this.askNick(false);
+  }
+  /** Formularz nicku (wymagany); startAfter – po zapisaniu od razu bieg. Anuluj = zostajemy na ekranie tytułowym. */
+  askNick(startAfter = true) {
     sfx.pick();
     openNick('', async (nick) => {
       const r = await online.setNick(nick);
@@ -463,7 +471,9 @@ export class Game {
       this.board.at = {};
       // sam pad nie napisze nicku: B (anuluj) = gramy teraz bez nicku, a zapytamy przy następnym uruchomieniu
       if (!saved && this.hint === 'pad') this.nickLater = true;
-      if ((saved || this.nickLater) && this.state === 'title') this.start();
+      if (startAfter && (saved || this.nickLater) && this.state === 'title') this.start();
+      else if (this.recapPending && this.state === 'title') this.openRecap();   // podsumowanie tygodnia czekało na okienko
+      if (saved) { live.stop(); this.syncLive(); }
     }, { required: true, pad: this.hint === 'pad' });
   }
   editNick() {

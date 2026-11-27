@@ -47,6 +47,15 @@ describe('zakładanie pokoju', () => {
     expect((await create(b, 'ŻÓŁWIE')).data).toEqual({ error: 'room_taken' });
   });
 
+  test('bez nicku nie da się założyć pokoju ani do niego dołączyć', async () => {
+    const a = await player('Ala'), anon = await srv.newPlayer();
+    expect((await create(anon, 'Ekipa')).data).toEqual({ error: 'nick_required' });
+    await create(a, 'Ekipa');
+    expect((await join(anon, 'Ekipa')).data).toEqual({ error: 'nick_required' });
+    await srv.call('PATCH', '/v1/me', { token: anon, json: { nick: 'Anonim' } });
+    expect((await join(anon, 'Ekipa')).status).toBe(200);
+  });
+
   test('walidacja nazwy i hasła', async () => {
     const a = await player('Ala');
     expect((await create(a, 'ab')).data).toEqual({ error: 'room_length' });

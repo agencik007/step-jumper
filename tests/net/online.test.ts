@@ -322,6 +322,8 @@ describe('pokoje znajomych', () => {
     const store = new MemoryStore();
     const a = client(store); await a.init(); await a.refill();
     const b = await ready();
+    expect(await a.createRoom('Ekipa', 'tajne123')).toEqual({ ok: false, error: 'nick_required' });   // najpierw nick
+    await a.setNick('Ala'); await b.setNick('Bartek');
     expect(await a.createRoom('Ekipa', 'tajne123')).toEqual({ ok: true, room: { name: 'Ekipa' } });
     expect(a.room).toEqual({ name: 'Ekipa' });
     expect(await b.joinRoom('ekipa', 'zle')).toEqual({ ok: false, error: 'room_password' });
@@ -345,6 +347,7 @@ describe('pokoje znajomych', () => {
 
   test('pokój usunięty po stronie serwera – klient go zapomina; bez sieci zostaje', async () => {
     const a = await ready(), b = await ready();
+    await a.setNick('Ala'); await b.setNick('Bartek');
     await a.createRoom('Ekipa', 'tajne123');
     await b.joinRoom('Ekipa', 'tajne123');
     net.down = true;
@@ -359,8 +362,19 @@ describe('pokoje znajomych', () => {
 
   test('usunięcie danych zapomina pokój', async () => {
     const a = await ready();
+    await a.setNick('Ala');
     await a.createRoom('Ekipa', 'tajne123');
     expect(await a.deleteData()).toBe(true);
     expect(a.room).toBeNull();
+  });
+
+  test('reachable: czy serwer odpowiada (gra pyta o nick od razu tylko wtedy)', async () => {
+    const o = client(); await o.init();
+    expect(o.reachable).toBe(false);
+    await o.refill();
+    expect(o.reachable).toBe(true);
+    net.down = true;
+    await o.leaderboard('week');
+    expect(o.reachable).toBe(false);
   });
 });
