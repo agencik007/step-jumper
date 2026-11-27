@@ -7,7 +7,7 @@ import { SIM_VERSION, TICK_RATE, score } from '../../src/sim';
 import type { SimState } from '../../src/sim';
 import { checkPassword, newSalt, newSecret, parseBearer, passwordHash, sameHash, sha256hex } from './auth';
 import type { Env, Player } from './env';
-import { kickFromRoom } from './live';
+import { kickFromRoom, liveKey, roomEvent } from './live';
 import { checkNick, checkRoomName } from './nick';
 import { boardKey, isBoardKind, periodKeys } from './periods';
 import type { PeriodKind } from './periods';
@@ -79,8 +79,16 @@ interface BoardRow {
   run_id: string; has_replay: number; skin: string | null; has_skin: number;
 }
 
-export function createApp(deps: { now?: () => number } = {}) {
+/** Wysyłka zdarzenia do pokoju na żywo; testy podmieniają ją, żeby zobaczyć, co poszłoby do znajomych. */
+type RoomEventFn = (env: Env, roomId: string, msg: { k: string } & Record<string, unknown>) => Promise<void> | void;
+
+export function createApp(deps: { now?: () => number; roomEvent?: RoomEventFn } = {}) {
   const now = deps.now ?? Date.now;
+  const sendRoomEvent: RoomEventFn = deps.roomEvent ?? roomEvent;
+  /** Praca w tle po odpowiedzi (waitUntil); bez kontekstu wykonania (testy) – czekamy na nią od razu. */
+  async function later(c: Ctx, job: Promise<unknown>) {
+    try { c.executionCtx.waitUntil(job); } catch { await job; }
+  }
   const app = new Hono<AppEnv>();
 
   app.use('*', cors({
@@ -292,6 +300,24 @@ export function createApp(deps: { now?: () => number } = {}) {
     // bieg z własną postacią wszedł do najlepszej trójki, a serwer nie ma jeszcze tej paczki – gra ją dośle (PUT /v1/skins/:hash)
     const top = PERIODS.some((k) => improved[k] && ranks[k] <= REPLAY_TOP);
     const needSkin = !!skin && top && !(await db.prepare('SELECT 1 FROM skins WHERE hash = ?').bind(skin).first());
+    // pokój znajomych: wynik idzie do znajomych na żywo, ale tylko gdy coś znaczy – najlepszy dziś (stąd też rekord
+    // życiowy, rekord pokoju i wyprzedzenie kogoś w tygodniu). Co gorszego niż rekord dnia – znajomych nie zajmuje.
+    if (p.room_id && improved.day) {
+      await later(c, (async () => {
+        const others = (await db.prepare(
+          'SELECT b.period, b.player_id, b.score FROM bests b JOIN players q ON q.id = b.player_id ' +
+          'WHERE b.period IN (?, ?) AND q.room_id = ? AND q.banned = 0 AND b.player_id != ?',
+        ).bind(keys.week, keys.all, p.room_id, p.id).all<{ period: string; player_id: string; score: number }>()).results;
+        const oldWeek = prev.get(keys.week)?.score ?? null, allTime = others.filter((r) => r.period === keys.all);
+        // wyprzedzeni w tygodniu: byli nad (albo równo z) moim starym wynikiem, a są pod nowym
+        const over = improved.week ? others.filter((r) => r.period === keys.week && r.score < sc && (oldWeek === null || r.score >= oldWeek)) : [];
+        await sendRoomEvent(c.env, p.room_id!, {
+          t: 'ev', e: 'score', k: await liveKey(p.id), nick: p.nick, tag: playerTag(p.id), score: sc, floor: state.maxFloor,
+          best: improved.all, roomBest: improved.all && allTime.length > 0 && allTime.every((r) => r.score < sc),
+          over: await Promise.all(over.map((r) => liveKey(r.player_id))),
+        });
+      })().catch((e) => console.error('room score', e)));
+    }
     return c.json({ status: 'verified', score: sc, floor: state.maxFloor, combo: state.bestCombo, ticks: state.tick, improved, ranks, ...(needSkin ? { needSkin } : {}) });
   });
 
@@ -343,8 +369,7 @@ export function createApp(deps: { now?: () => number } = {}) {
   /** Po wyjściu z pokoju (oldRoom) jego obiekt na żywo zamyka połączenia gracza – w tle, odpowiedź na to nie czeka. */
   function kickLater(c: Ctx, oldRoom: string | null, newRoom: string | null = null) {
     if (!oldRoom || oldRoom === newRoom) return;
-    const job = kickFromRoom(c.env, oldRoom, c.var.player.id);
-    try { c.executionCtx.waitUntil(job); } catch { void job; }   // bez kontekstu wykonania (testy) – po prostu leci
+    void later(c, kickFromRoom(c.env, oldRoom, c.var.player.id));
   }
 
   /** Wyjście gracza z pokoju; pusty pokój znika (zwalnia nazwę). */

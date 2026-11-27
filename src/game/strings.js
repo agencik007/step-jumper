@@ -501,12 +501,18 @@ const pl = {
   'room.err.offline': 'Brak połączenia z serwerem rankingu.',
   'room.err.generic': 'Nie udało się. Spróbuj jeszcze raz.',
   'rules.rank.3': 'Pokój znajomych (RANKING → ⚙ POKÓJ): załóż go nazwą i hasłem albo dołącz do istniejącego. Przycisk POKÓJ pokazuje ranking tylko graczy z pokoju – z tymi samymi wynikami, okresami i powtórkami. Do pokoju wchodzi się z nickiem i naraz jesteś w jednym pokoju. Na ekranie tytułowym widać, kto z pokoju jest teraz w grze i na którym piętrze biegnie.',
+  'rules.rank.4': 'Gdy ktoś z twojego pokoju w biegu do rankingu dojdzie do kolejnych {liveFloors} pięter albo zrobi combo na co najmniej {liveCombo} pięter, u góry ekranu pojawi się komunikat. Po zatwierdzeniu biegu przez serwer zobaczysz też jego wynik – gdy to jego najlepszy dziś, rekord, rekord pokoju albo gdy cię wyprzedza w tym tygodniu. Wyłączysz to w OPCJACH (Komunikaty znajomych).',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Łączę…', 'live.alone': 'Nikogo więcej', 'live.floor': 'piętro {floor}', 'live.menu': 'w menu',
   'live.more': '+{n} więcej', 'live.play': 'w biegu · piętro {floor} · {score} pkt', 'live.off': 'poza grą',
   'sr.live': 'Pokój {name}, w grze: {list}.', 'sr.liveNone': 'Pokój {name}: nikogo więcej w grze.', 'sr.livePlay': '{name} w biegu', 'sr.liveMenu': '{name} w menu',
   'nick.room': 'Zanim wejdziesz do pokoju: wybierz nick – po nim poznają cię znajomi',
   'room.err.nick_required': 'Do pokoju wchodzi się z nickiem – najpierw go wybierz.',
+  // komunikaty o znajomych z pokoju (pasek u góry ekranu; game.friendEvent) i ich przełącznik w OPCJACH
+  'feed.floor': '{name} na piętrze {n}!', 'feed.combo': '{name}: combo na {n} pięter!', 'feed.score': '{name} zdobywa {score} pkt',
+  'feed.best': '{name} bije swój rekord: {score} pkt!', 'feed.roomBest': '{name} bije rekord pokoju: {score} pkt!',
+  'feed.over': '{name} wyprzedza cię w tym tygodniu: {score} pkt!',
+  'set.feed': 'Komunikaty znajomych', 'set.feedTip': 'Pasek u góry ekranu, gdy ktoś z twojego pokoju dojdzie do kolejnej setki pięter, zrobi duże combo, pobije rekord albo cię wyprzedzi.',
 };
 
 const en = {
@@ -1006,12 +1012,18 @@ const en = {
   'room.err.offline': 'Cannot reach the leaderboard server.',
   'room.err.generic': 'That didn’t work. Please try again.',
   'rules.rank.3': 'Friends’ room (LEADERBOARD → ⚙ ROOM): create one with a name and password or join an existing one. The ROOM button shows a leaderboard of just the players in the room – with the same scores, periods and replays. You need a nickname to enter a room, and you are in one room at a time. The title screen shows who from the room is in the game right now and which floor they are on.',
+  'rules.rank.4': 'When someone from your room reaches another {liveFloors} floors or makes a combo of at least {liveCombo} floors in a leaderboard run, a message appears at the top of the screen. Once the server confirms the run, you also see its score – if it is their best today, a record, a room record or if they pass you this week. Turn it off in OPTIONS (Friends’ updates).',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Connecting…', 'live.alone': 'Nobody else', 'live.floor': 'floor {floor}', 'live.menu': 'in menu',
   'live.more': '+{n} more', 'live.play': 'running · floor {floor} · {score} pts', 'live.off': 'not playing',
   'sr.live': 'Room {name}, playing now: {list}.', 'sr.liveNone': 'Room {name}: nobody else is playing.', 'sr.livePlay': '{name} running', 'sr.liveMenu': '{name} in menu',
   'nick.room': 'Before you enter a room: pick a nickname – that’s how your friends will know you',
   'room.err.nick_required': 'You need a nickname to enter a room – pick one first.',
+  // komunikaty o znajomych z pokoju (pasek u góry ekranu; game.friendEvent) i ich przełącznik w OPCJACH
+  'feed.floor': '{name} reached floor {n}!', 'feed.combo': '{name}: a {n}-floor combo!', 'feed.score': '{name} scored {score} pts',
+  'feed.best': '{name} beat their record: {score} pts!', 'feed.roomBest': '{name} set a new room record: {score} pts!',
+  'feed.over': '{name} passed you this week: {score} pts!',
+  'set.feed': 'Friends’ updates', 'set.feedTip': 'A bar at the top of the screen when someone from your room reaches another hundred floors, makes a big combo, beats a record or passes you.',
 };
 
 const de = {
@@ -1511,12 +1523,18 @@ const de = {
   'room.err.offline': 'Keine Verbindung zum Ranglisten-Server.',
   'room.err.generic': 'Das hat nicht geklappt. Versuch es noch einmal.',
   'rules.rank.3': 'Raum für Freunde (RANGLISTE → ⚙ RAUM): Leg einen mit Namen und Passwort an oder tritt einem bestehenden bei. Der Knopf RAUM zeigt eine Rangliste nur mit den Spielern im Raum – mit denselben Ergebnissen, Zeiträumen und Wiederholungen. Einen Raum betrittst du nur mit Nick, und du bist immer nur in einem Raum. Auf dem Startbildschirm siehst du, wer aus dem Raum gerade spielt und auf welcher Etage.',
+  'rules.rank.4': 'Schafft jemand aus deinem Raum in einem Ranglisten-Lauf die nächsten {liveFloors} Etagen oder ein Combo über mindestens {liveCombo} Etagen, erscheint oben eine Meldung. Hat der Server den Lauf bestätigt, siehst du auch das Ergebnis – wenn es das beste des Tages, ein Rekord oder ein Raumrekord ist oder wenn du diese Woche überholt wirst. Ausschalten kannst du das in den OPTIONEN (Meldungen von Freunden).',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Verbinde…', 'live.alone': 'Sonst niemand', 'live.floor': 'Etage {floor}', 'live.menu': 'im Menü',
   'live.more': '+{n} weitere', 'live.play': 'im Lauf · Etage {floor} · {score} Pkt.', 'live.off': 'nicht im Spiel',
   'sr.live': 'Raum {name}, gerade im Spiel: {list}.', 'sr.liveNone': 'Raum {name}: sonst ist niemand im Spiel.', 'sr.livePlay': '{name} im Lauf', 'sr.liveMenu': '{name} im Menü',
   'nick.room': 'Bevor du einen Raum betrittst: Wähl einen Nick – daran erkennen dich deine Freunde',
   'room.err.nick_required': 'Für einen Raum brauchst du einen Nick – wähl zuerst einen.',
+  // komunikaty o znajomych z pokoju (pasek u góry ekranu; game.friendEvent) i ich przełącznik w OPCJACH
+  'feed.floor': '{name} ist auf Etage {n}!', 'feed.combo': '{name}: Combo über {n} Etagen!', 'feed.score': '{name} holt {score} Pkt.',
+  'feed.best': '{name} knackt den eigenen Rekord: {score} Pkt.!', 'feed.roomBest': '{name} holt den Raumrekord: {score} Pkt.!',
+  'feed.over': '{name} überholt dich diese Woche: {score} Pkt.!',
+  'set.feed': 'Meldungen von Freunden', 'set.feedTip': 'Ein Balken oben am Bildschirm, wenn jemand aus deinem Raum die nächsten hundert Etagen schafft, ein großes Combo macht, einen Rekord knackt oder dich überholt.',
 };
 
 const fr = {
@@ -2016,12 +2034,18 @@ const fr = {
   'room.err.offline': 'Impossible de joindre le serveur du classement.',
   'room.err.generic': 'Cela n’a pas fonctionné. Réessayez.',
   'rules.rank.3': 'Salon d’amis (CLASSEMENT → ⚙ SALON) : créez-en un avec un nom et un mot de passe, ou rejoignez un salon existant. Le bouton SALON affiche un classement des seuls joueurs du salon – avec les mêmes scores, périodes et rediffusions. Il faut un pseudo pour entrer dans un salon, et vous êtes dans un seul salon à la fois. L’écran titre montre qui, dans le salon, est en jeu en ce moment et à quel étage.',
+  'rules.rank.4': 'Quand quelqu’un de votre salon franchit {liveFloors} étages de plus ou réussit un combo d’au moins {liveCombo} étages dans une partie classée, un message apparaît en haut de l’écran. Une fois la partie validée par le serveur, vous voyez aussi son score – si c’est son meilleur du jour, un record, le record du salon ou s’il vous dépasse cette semaine. Désactivez-le dans les OPTIONS (Nouvelles des amis).',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Connexion…', 'live.alone': 'Personne d’autre', 'live.floor': 'étage {floor}', 'live.menu': 'au menu',
   'live.more': '+{n} autres', 'live.play': 'en course · étage {floor} · {score} pts', 'live.off': 'hors du jeu',
   'sr.live': 'Salon {name}, en jeu : {list}.', 'sr.liveNone': 'Salon {name} : personne d’autre n’est en jeu.', 'sr.livePlay': '{name} en course', 'sr.liveMenu': '{name} au menu',
   'nick.room': 'Avant d’entrer dans un salon : choisissez un pseudo – c’est ainsi que vos amis vous reconnaîtront',
   'room.err.nick_required': 'Il faut un pseudo pour entrer dans un salon – choisissez-en d’abord un.',
+  // komunikaty o znajomych z pokoju (pasek u góry ekranu; game.friendEvent) i ich przełącznik w OPCJACH
+  'feed.floor': '{name} atteint l’étage {n} !', 'feed.combo': '{name} : combo de {n} étages !', 'feed.score': '{name} marque {score} pts',
+  'feed.best': '{name} bat son record : {score} pts !', 'feed.roomBest': '{name} bat le record du salon : {score} pts !',
+  'feed.over': '{name} vous dépasse cette semaine : {score} pts !',
+  'set.feed': 'Nouvelles des amis', 'set.feedTip': 'Un bandeau en haut de l’écran quand quelqu’un de votre salon franchit une nouvelle centaine d’étages, réussit un gros combo, bat un record ou vous dépasse.',
 };
 
 const es = {
@@ -2521,12 +2545,18 @@ const es = {
   'room.err.offline': 'No hay conexión con el servidor del ranking.',
   'room.err.generic': 'No ha funcionado. Inténtalo de nuevo.',
   'rules.rank.3': 'Sala de amigos (RANKING → ⚙ SALA): créala con un nombre y una contraseña o entra en una que ya exista. El botón SALA muestra un ranking solo con los jugadores de la sala, con las mismas puntuaciones, periodos y repeticiones. Para entrar en una sala necesitas un apodo, y estás en una sola sala a la vez. En la pantalla de título se ve quién de la sala está jugando ahora y en qué piso va.',
+  'rules.rank.4': 'Cuando alguien de tu sala, en una partida del ranking, sube otros {liveFloors} pisos o hace un combo de al menos {liveCombo} pisos, aparece un aviso arriba de la pantalla. Cuando el servidor confirma la partida, también ves su puntuación: si es su mejor de hoy, un récord, el récord de la sala o si te adelanta esta semana. Lo desactivas en OPCIONES (Avisos de amigos).',
   // pokój znajomych na żywo (ekran tytułowy, okienko pokoju, czytnik ekranu; src/net/live.ts)
   'live.connecting': 'Conectando…', 'live.alone': 'Nadie más', 'live.floor': 'piso {floor}', 'live.menu': 'en el menú',
   'live.more': '+{n} más', 'live.play': 'corriendo · piso {floor} · {score} pts', 'live.off': 'fuera del juego',
   'sr.live': 'Sala {name}, jugando ahora: {list}.', 'sr.liveNone': 'Sala {name}: nadie más está jugando.', 'sr.livePlay': '{name} corriendo', 'sr.liveMenu': '{name} en el menú',
   'nick.room': 'Antes de entrar en una sala: elige un apodo – así te reconocerán tus amigos',
   'room.err.nick_required': 'Para entrar en una sala necesitas un apodo: elige uno primero.',
+  // komunikaty o znajomych z pokoju (pasek u góry ekranu; game.friendEvent) i ich przełącznik w OPCJACH
+  'feed.floor': '¡{name} llega al piso {n}!', 'feed.combo': '{name}: ¡combo de {n} pisos!', 'feed.score': '{name} consigue {score} pts',
+  'feed.best': '¡{name} bate su récord: {score} pts!', 'feed.roomBest': '¡{name} bate el récord de la sala: {score} pts!',
+  'feed.over': '¡{name} te adelanta esta semana: {score} pts!',
+  'set.feed': 'Avisos de amigos', 'set.feedTip': 'Una barra arriba de la pantalla cuando alguien de tu sala llega a otro centenar de pisos, hace un gran combo, bate un récord o te adelanta.',
 };
 
 export const STRINGS = { pl, en, de, fr, es };

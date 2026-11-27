@@ -83,11 +83,14 @@ Błędy przed połączeniem: `401 unauthorized`, `403 banned/origin`, `404 no_ro
 
 | Kierunek | Wiadomość (JSON) |
 |---|---|
-| gra → serwer | `{t: 'status', s: 'menu'}` · `{t: 'status', s: 'play', floor, score}` (najwyżej co 5 s w biegu; serwer przyjmuje najwyżej 1/s) · `{t: 'ping'}` (po 30 s ciszy) |
-| serwer → gra | `{t: 'list', me, players: [P]}` po połączeniu · `{t: 'up', p: P}` · `{t: 'bye', k}` |
+| gra → serwer | `{t: 'status', s: 'menu'}` · `{t: 'status', s: 'play', floor, score}` (najwyżej co 5 s w biegu; serwer przyjmuje najwyżej 1/s) · `{t: 'ping'}` (po 30 s ciszy) · `{t: 'ev', e: 'floor' \| 'combo', n}` (setka pięter, combo od 25 pięter; najwyżej 1/s) |
+| serwer → gra | `{t: 'list', me, players: [P]}` po połączeniu · `{t: 'up', p: P}` · `{t: 'bye', k}` · `{t: 'ev', e: 'floor' \| 'combo', n, k, nick, tag}` (od gry znajomego) · `{t: 'ev', e: 'score', k, nick, tag, score, floor, best, roomBest, over: [k]}` (od serwera) |
 
 `P = {k, nick, tag, s, floor?, score?}`; `k` to stały klucz gracza (skrót identyfikatora – nie zdradza go). Piętro i wynik
-w biegu podaje gra i serwer ich nie sprawdza – to tylko podgląd, ranking liczy się z weryfikacji biegów. Gniazdo bez
+w biegu oraz zdarzenia `floor` / `combo` podaje gra i serwer ich nie sprawdza – to tylko podgląd, ranking liczy się z weryfikacji
+biegów. Zdarzenie `score` wysyła sam serwer po zatwierdzeniu biegu (`POST /v1/runs/:id/finish` → `HUB_EVENT`), gdy to najlepszy
+wynik gracza dziś: `best` – rekord życiowy, `roomBest` – lepszy od najlepszych wyników wszystkich w pokoju, `over` – klucze
+graczy pokoju wyprzedzonych w rankingu tygodnia. Zdarzenia gracza nie trafiają do jego własnych urządzeń. Gniazdo bez
 wiadomości przez 75 s jest zamykane (kod 4000). Wyjście z pokoju, przejście do innego i usunięcie konta zamykają połączenia
 gracza (kod 4001 – gra nie łączy się wtedy ponownie). Gra łączy się tylko z kartą na wierzchu.
 

@@ -4,7 +4,7 @@
 // Dlatego gra podaje token jako drugi „podprotokół”: new WebSocket(url, ['sj', token]).
 import { parseBearer, sameHash, sha256hex } from './auth';
 import type { Env } from './env';
-import { HUB_CONNECT, HUB_KICK } from './hub';
+import { HUB_CONNECT, HUB_EVENT, HUB_KICK } from './hub';
 
 const json = (status: number, error: string) => new Response(JSON.stringify({ error }), { status, headers: { 'content-type': 'application/json' } });
 
@@ -38,5 +38,15 @@ export async function kickFromRoom(env: Env, roomId: string, pid: string): Promi
     await env.ROOMS.get(env.ROOMS.idFromName(roomId)).fetch(HUB_KICK, { method: 'POST', body: JSON.stringify({ pid }) });
   } catch (e) {
     console.error('kick', e);
+  }
+}
+
+/** Zdarzenie dla wszystkich w pokoju (np. zweryfikowany wynik). Błąd nie psuje zapytania, które to wywołało. */
+export async function roomEvent(env: Env, roomId: string, msg: { k: string } & Record<string, unknown>): Promise<void> {
+  if (!env.ROOMS) return;
+  try {
+    await env.ROOMS.get(env.ROOMS.idFromName(roomId)).fetch(HUB_EVENT, { method: 'POST', body: JSON.stringify(msg) });
+  } catch (e) {
+    console.error('room event', e);
   }
 }

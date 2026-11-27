@@ -27,7 +27,9 @@ export async function startServer() {
   for (const name of Object.keys(MIGRATIONS).sort()) await db.batch(sqlStatements(MIGRATIONS[name]).map((s) => db.prepare(s)));
 
   const clock = { now: START };
-  const app = createApp({ now: () => clock.now });
+  /** Zdarzenia, które poszłyby do pokoi na żywo (Durable Objects nie ma w testach). */
+  const roomEvents: { room: string; msg: any }[] = [];
+  const app = createApp({ now: () => clock.now, roomEvent: (_env, room, msg) => { roomEvents.push({ room, msg }); } });
 
   async function call(method: string, path: string, opts: { token?: string; json?: unknown; body?: BodyInit; headers?: Record<string, string> } = {}) {
     const headers: Record<string, string> = { ...opts.headers };
@@ -78,9 +80,10 @@ export async function startServer() {
   async function reset() {
     await db.batch(['DELETE FROM run_chunks', 'DELETE FROM skins', 'DELETE FROM bests', 'DELETE FROM runs', 'DELETE FROM players', 'DELETE FROM rooms'].map((s) => db.prepare(s)));
     clock.now = START;
+    roomEvents.length = 0;
   }
 
-  return { env, db, app, clock, call, newPlayer, newRun, upload, submit, reset, dispose: () => proxy.dispose() };
+  return { env, db, app, clock, roomEvents, call, newPlayer, newRun, upload, submit, reset, dispose: () => proxy.dispose() };
 }
 
 /** Rozgrywa bieg na podanej wieży aż do końca gry. */

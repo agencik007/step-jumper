@@ -123,3 +123,37 @@ describe('lista obecnych w grze', () => {
     expect(a.find({ tag: 'ALA', nick: 'inny' })).toBeNull();
   });
 });
+
+describe('zdarzenia z biegów', () => {
+  test('piętro i combo od jednego gracza docierają do drugiego; własne nie wracają', async () => {
+    const a = client('ala'), b = client('bob'), gotA: any[] = [], gotB: any[] = [];
+    a.onEvent = (e) => gotA.push(e); b.onEvent = (e) => gotB.push(e);
+    a.start(); b.start(); await settle();
+    a.event('floor', 100);
+    a.event('combo', 30);                                // w tej samej chwili – poczeka na następny takt
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(gotB).toEqual([
+      { t: 'ev', e: 'floor', n: 100, k: 'k-ala', nick: 'ala', tag: 'ALA' },
+      { t: 'ev', e: 'combo', n: 30, k: 'k-ala', nick: 'ala', tag: 'ALA' },
+    ]);
+    expect(gotA).toEqual([]);
+  });
+
+  test('wynik od serwera trafia do znajomych', async () => {
+    const a = client('ala'), b = client('bob'), gotB: any[] = [];
+    b.onEvent = (e) => gotB.push(e);
+    a.start(); b.start(); await settle();
+    hub.event({ t: 'ev', e: 'score', k: 'k-ala', nick: 'ala', tag: 'ALA', score: 500, floor: 40, best: true, roomBest: false, over: ['k-bob'] });
+    await settle();
+    expect(gotB).toEqual([expect.objectContaining({ e: 'score', score: 500, over: ['k-bob'] })]);
+  });
+
+  test('bez połączenia zdarzenia przepadają (nie zalegają na później)', async () => {
+    const a = client('ala');
+    a.event('floor', 100);
+    a.start(); await settle();
+    received = [];
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(received.filter((m) => m.t === 'ev')).toEqual([]);
+  });
+});

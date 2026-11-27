@@ -2,6 +2,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { ROOM_FAIL_MAX, ROOM_FAIL_WINDOW, ROOM_MAX_MEMBERS } from '../../server/src/app';
 import { cleanup } from '../../server/src/cleanup';
+import { liveKey } from '../../server/src/live';
+import { periodKeys } from '../../server/src/periods';
 import { idleThen, momentumPilot } from '../helpers';
 import { playRun, startServer } from './harness';
 
@@ -187,6 +189,54 @@ describe('ranking pokoju', () => {
     await playAndSubmit(a, 1); await playAndSubmit(b, 2);
     await srv.db.prepare('UPDATE players SET banned = 1 WHERE nick = ?').bind('Bartek').run();
     expect((await board(a)).data.entries.map((e: any) => e.nick)).toEqual(['Ala']);
+  });
+});
+
+describe('wynik dla znajomych na żywo (zdarzenie „score”)', () => {
+  /** Najlepszy wynik gracza wpisany wprost do bazy (tydzień i ogółem). */
+  async function best(nick: string, week: number, all: number) {
+    const [{ id }] = await rows('SELECT id FROM players WHERE nick = ?', nick);
+    const keys = periodKeys(srv.clock.now);
+    for (const [period, score] of [[keys.week, week], ['all', all]] as const) {
+      await srv.db.prepare("INSERT INTO bests (period, player_id, score, floor, combo, char_id, run_id, achieved_at) VALUES (?, ?, ?, 1, 0, 'fox', 'x', 0)")
+        .bind(period, id, score).run();
+    }
+    return liveKey(id);
+  }
+
+  test('rekord dnia idzie do pokoju; wyprzedzeni w tygodniu są wymienieni', async () => {
+    const a = await player('Ala'), b = await player('Bartek'), c = await player('Celina');
+    await create(a, 'Ekipa'); await join(b, 'Ekipa'); await join(c, 'Ekipa');
+    const kb = await best('Bartek', 1, 1), kc = await best('Celina', 1e9, 1e9);
+    const score = await playAndSubmit(a, 1);
+    expect(srv.roomEvents).toHaveLength(1);
+    const { room, msg } = srv.roomEvents[0];
+    expect(room).toBe((await rows('SELECT id FROM rooms'))[0].id);
+    expect(msg).toEqual({
+      t: 'ev', e: 'score', k: await liveKey(a.split('.')[0]), nick: 'Ala', tag: expect.any(String), score, floor: expect.any(Number),
+      best: true, roomBest: false, over: [kb],
+    });
+    expect(msg.over).not.toContain(kc);
+  });
+
+  test('rekord pokoju: lepszy od najlepszych wyników wszystkich w pokoju', async () => {
+    const a = await player('Ala'), b = await player('Bartek');
+    await create(a, 'Ekipa'); await join(b, 'Ekipa');
+    await best('Bartek', 1, 1);
+    await playAndSubmit(a, 1);
+    expect(srv.roomEvents[0].msg).toMatchObject({ best: true, roomBest: true });
+  });
+
+  test('sam w pokoju – bez „rekordu pokoju”; bieg gorszy od dzisiejszego – bez zdarzenia; poza pokojem – nic', async () => {
+    const a = await player('Ala'), solo = await player('Sam');
+    await create(a, 'Ekipa');
+    const first = await playAndSubmit(a, 1);
+    expect(srv.roomEvents[0].msg).toMatchObject({ best: true, roomBest: false, over: [] });
+    // drugi bieg: zdarzenie tylko, jeśli pobił dzisiejszy wynik
+    const second = await playAndSubmit(a, 1);
+    expect(srv.roomEvents).toHaveLength(second > first ? 2 : 1);
+    await playAndSubmit(solo, 2);
+    expect(srv.roomEvents.every((e) => e.msg.nick === 'Ala')).toBe(true);
   });
 });
 

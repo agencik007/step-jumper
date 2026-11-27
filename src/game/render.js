@@ -64,6 +64,7 @@ export function render(g) {
   else if (g.state === 'replay') drawReplay(g);
   else if (g.state === 'recap') drawRecap(g);
   drawMessages(g);
+  drawFeed(g);
   if (access.fx) style.post?.(g);                     // ziarno, rysy, linie – wyłączane w OPCJE → DOSTĘPNOŚĆ
 }
 
@@ -547,6 +548,22 @@ function drawMessages(g) {
     if (m.sub) text(m.sub, 0, 30, { size: 14, sw: 4 });
     c.restore();
   });
+}
+
+/** Komunikat o znajomym z pokoju (pasek u góry ekranu, nad wszystkim, po jednym naraz; game.friendEvent). */
+function drawFeed(g) {
+  const m = g.feed[0];
+  if (!m) return;
+  const c = ctx, a = clamp(Math.min(m.t / 0.25, (m.dur - m.t) / 0.4), 0, 1);
+  const slide = reduceMotion ? 0 : (1 - clamp(m.t / 0.25, 0, 1)) * -16;   // wjeżdża z góry (bez ruchu – tylko się pojawia)
+  c.save();
+  c.globalAlpha = a;
+  c.font = `700 ${fontSize(13)}px ${FONT}`;
+  const w = Math.min(440, c.measureText(m.text).width + 36), x = W / 2 - w / 2, y = 6 + slide;
+  c.fillStyle = access.contrast ? '#000' : 'rgba(10,14,40,.88)'; rr(x, y, w, 26, 13); c.fill();
+  c.strokeStyle = ui[m.color] || ui.hint; c.lineWidth = 1.5; c.stroke();
+  text(m.text, W / 2, y + 13.5, { size: 13, color: ui[m.color] || ui.hint, sw: 0, weight: 700, maxW: w - 24 });
+  c.restore();
 }
 
 /** Przyciemnienie pod menu; przy wysokim kontraście prawie nieprzezroczyste. */

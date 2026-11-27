@@ -113,3 +113,34 @@ describe('lista obecnych', () => {
     expect(r.hub.hasRoom).toBe(false);
   });
 });
+
+describe('zdarzenia z biegu', () => {
+  test('piętro i combo od gry idą do pozostałych, z nickiem; nadawca ich nie dostaje', () => {
+    const r = room();
+    const ala = r.connect('ala'), bob = r.connect('bob');
+    r.send(ala, { t: 'ev', e: 'floor', n: 300 });
+    expect(bob.last('ev')).toEqual({ t: 'ev', e: 'floor', n: 300, k: 'k-ala', nick: 'ala', tag: 'ALA' });
+    r.send(ala, { t: 'ev', e: 'combo', n: 42 });
+    expect(bob.last('ev')).toMatchObject({ e: 'combo', n: 42, k: 'k-ala' });
+    expect(ala.got.filter((m) => m.t === 'ev')).toEqual([]);
+  });
+
+  test('złe zdarzenia i za częste są pomijane', () => {
+    const r = room();
+    const ala = r.connect('ala'), bob = r.connect('bob');
+    r.send(ala, { t: 'ev', e: 'hack', n: 1 });
+    r.send(ala, { t: 'ev', e: 'floor', n: 0 });
+    r.send(ala, { t: 'ev', e: 'floor', n: 1.5 });
+    r.send(ala, { t: 'ev', e: 'floor', n: 100 });
+    r.hub.message(ala, JSON.stringify({ t: 'ev', e: 'floor', n: 200 }));   // ta sama chwila
+    expect(bob.got.filter((m) => m.t === 'ev').map((m) => m.n)).toEqual([100]);
+  });
+
+  test('zdarzenie od serwera (zweryfikowany wynik) – do wszystkich poza urządzeniami tego gracza', () => {
+    const r = room();
+    const ala1 = r.connect('ala'), ala2 = r.connect('ala'), bob = r.connect('bob');
+    r.hub.event({ t: 'ev', e: 'score', k: 'k-ala', score: 12345, over: ['k-bob'] });
+    expect(bob.last('ev')).toMatchObject({ e: 'score', score: 12345, over: ['k-bob'] });
+    expect([...ala1.got, ...ala2.got].filter((m) => m.t === 'ev')).toEqual([]);
+  });
+});

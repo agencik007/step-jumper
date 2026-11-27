@@ -10,6 +10,10 @@ export class RoomHub extends DurableObject<Env> {
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
+    if (url.pathname === '/event') {                      // wynik zweryfikowany przez serwer (app.ts → finish)
+      this.hub.event(await req.json());
+      return new Response(null, { status: 204 });
+    }
     if (url.pathname === '/kick') {
       const { pid } = await req.json<{ pid: string }>();
       this.hub.kick(pid);
