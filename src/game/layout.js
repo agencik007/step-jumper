@@ -31,7 +31,7 @@ export const UIBOX = {
   recapBoard: { x: 160, y: 418, w: 150, h: 32 }, recapNext: { x: 330, y: 418, w: 150, h: 32 },
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
   // ranking, lewy górny róg: WSZYSCY / POKÓJ – tylko dla gracza w pokoju znajomych
-  bWorld: { x: 10, y: 10, w: 92, h: 28 }, bRoom: { x: 10, y: 44, w: 92, h: 28 },
+  scope: { x: 10, y: 10, w: 92, h: 60 },                  // jeden przełącznik: górna połowa WSZYSCY, dolna POKÓJ
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
 /** Ekran tytułowy: najwyżej tylu znajomych w panelu pokoju (reszta jako „+n”). */

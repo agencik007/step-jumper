@@ -759,8 +759,8 @@ export class Game {
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
       if (roomOpen()) return;                              // okienko pokoju na wierzchu
-      if (inBox(x, y, UIBOX.bWorld)) return this.boardScopeSet('world');
-      if (inBox(x, y, UIBOX.bRoom)) return this.boardScopeSet('room');
+      const S = UIBOX.scope;                             // WSZYSCY / POKÓJ: górna i dolna połowa przełącznika
+      if (inBox(x, y, S)) return this.boardScopeSet(y < S.y + S.h / 2 ? 'world' : 'room');
       for (let i = 0; i < PERIODS.length; i++) if (inBox(x, y, UIBOX.tab(i))) return this.boardTab(i, true);
       const top = this.boardData?.top?.entries ?? [];
       for (let i = 0; i < 3; i++) if (top[i]?.skin && inBox(x, y, UIBOX.boardChar(i))) return this.loadBoardChar(top[i]);   // „⬇ POSTAĆ”

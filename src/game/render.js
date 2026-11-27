@@ -554,16 +554,39 @@ function drawMessages(g) {
 function drawFeed(g) {
   const m = g.feed[0];
   if (!m) return;
+  // w biegu u góry (tam nic nie ma), w menu na dole – u góry są tytuły ekranów i logo
+  const top = ['play', 'pause', 'over', 'replay'].includes(g.state);
   const c = ctx, a = clamp(Math.min(m.t / 0.25, (m.dur - m.t) / 0.4), 0, 1);
-  const slide = reduceMotion ? 0 : (1 - clamp(m.t / 0.25, 0, 1)) * -16;   // wjeżdża z góry (bez ruchu – tylko się pojawia)
+  const slide = reduceMotion ? 0 : (1 - clamp(m.t / 0.25, 0, 1)) * (top ? -16 : 16);   // wjeżdża od krawędzi (bez ruchu – tylko się pojawia)
   c.save();
   c.globalAlpha = a;
   c.font = `700 ${fontSize(13)}px ${FONT}`;
-  const w = Math.min(440, c.measureText(m.text).width + 36), x = W / 2 - w / 2, y = 6 + slide;
-  c.fillStyle = access.contrast ? '#000' : 'rgba(10,14,40,.88)'; rr(x, y, w, 26, 13); c.fill();
-  c.strokeStyle = ui[m.color] || ui.hint; c.lineWidth = 1.5; c.stroke();
-  text(m.text, W / 2, y + 13.5, { size: 13, color: ui[m.color] || ui.hint, sw: 0, weight: 700, maxW: w - 24 });
+  // na dole: pod przyciskami rankingu (kończą się na y 454) i pod podpowiedziami ekranu tytułowego
+  const h = 24, w = Math.min(440, c.measureText(m.text).width + 36), x = W / 2 - w / 2, y = (top ? 6 : H - h - 2) + slide;
+  solidPanel(x, y, w, h, h / 2);
+  c.strokeStyle = ui[m.color] || ui.hint; c.lineWidth = 1.5; rr(x, y, w, h, h / 2); c.stroke();
+  text(m.text, W / 2, y + h / 2 + 0.5, { size: 13, color: ui[m.color] || ui.hint, sw: 0, weight: 700, maxW: w - 24 });
   c.restore();
+}
+
+/** Panel z pełnym tłem w kolorze przyciemnienia mapy – gdy pod nim jest coś, co nie może prześwitywać. */
+function solidPanel(x, y, w, h, r = 14) {
+  ctx.fillStyle = `rgb(${ui.dim})`; rr(x, y, w, h, r); ctx.fill();
+  ctx.fillStyle = ui.panel; ctx.fill();
+  ctx.strokeStyle = access.contrast ? ui.text : ui.line; ctx.lineWidth = access.contrast ? 2 : 1.5; ctx.stroke();
+}
+
+/** Przełącznik z dwiema połówkami w jednej ramce, pionowo (a – górna, b – dolna); on: 0 albo 1. */
+function segmented(box, a, b, on, glyphs = [null, null]) {
+  const c = ctx, h = box.h / 2;
+  c.fillStyle = `rgb(${ui.dim})`; rr(box.x, box.y, box.w, box.h, 10); c.fill();   // pełne tło – zegar HUD pod spodem nie prześwituje
+  c.fillStyle = ui.panel; c.fill();
+  c.fillStyle = ui.btn; rr(box.x + 3, box.y + 3 + on * h, box.w - 6, h - 6, 8); c.fill();
+  c.strokeStyle = access.contrast ? ui.text : ui.frame; c.lineWidth = 1.5; rr(box.x, box.y, box.w, box.h, 10); c.stroke();
+  [a, b].forEach((label, i) => {
+    const gw = glyphs[i] != null ? padGlyph(glyphs[i], box.x + 8, box.y + h * i + h / 2, 14) + 3 : 0;
+    text(label, box.x + box.w / 2 + gw / 2, box.y + h * i + h / 2 + 1, { size: 12, color: i === on ? ui.btnText : ui.hint, sw: 0, maxW: box.w - 14 - gw });
+  });
 }
 
 /** Przyciemnienie pod menu; przy wysokim kontraście prawie nieprzezroczyste. */
@@ -865,7 +888,7 @@ function drawOver(g) {
 function drawRoomPanel(g) {
   if (!g.roomPanelOn) return;
   const P = g.roomPanel(), room = g.online.room, keys = g.hint === 'keys', cx = P.x + P.w / 2;
-  panel(P.x, P.y, P.w, P.h);
+  solidPanel(P.x, P.y, P.w, P.h);                       // pełne tło: HUD pod spodem nie prześwituje między nickami
   if (!room) {
     text(t('room.panelHead'), cx, P.y + 13, { size: 10, color: ui.gold, sw: 0, weight: 700, maxW: P.w - 10 });
     button(P.join, keys ? `${t('room.joinBtn')} · J` : t('room.joinBtn'), { size: 11, accent: true });
@@ -909,10 +932,9 @@ function drawBoard(g) {
   const c = ctx, b = g.board, kind = b.kind, d = g.boardData, o = g.online, room = g.boardScope === 'room';
   dim(0.66);
   text(room ? t('room.boardTitle', { name: o.room.name }) : t('board.title'), W / 2, 34, { size: room ? 24 : 30, color: ui.gold, sw: 6, maxW: 420 });
-  if (o.enabled && o.room) {                            // WSZYSCY / POKÓJ – tylko w pokoju znajomych
-    const key = (s) => (g.hint === 'keys' ? `${s} · G` : s);
-    button(UIBOX.bWorld, key(t('board.world')), { accent: !room, size: 12, glyph: g.hint === 'pad' && room ? BTN.Y : null });
-    button(UIBOX.bRoom, key(t('board.room')), { accent: room, size: 12, glyph: g.hint === 'pad' && !room ? BTN.Y : null });
+  if (o.enabled && o.room) {                            // WSZYSCY / POKÓJ – jeden przełącznik, tylko w pokoju znajomych
+    const key = (s) => (g.hint === 'keys' ? `${s} · G` : s), pad = g.hint === 'pad';
+    segmented(UIBOX.scope, key(t('board.world')), key(t('board.room')), room ? 1 : 0, [pad && room ? BTN.Y : null, pad && !room ? BTN.Y : null]);
   }
   PERIODS.forEach((k, i) => button(UIBOX.tab(i), t(`period.${k}`), { accent: k === kind, size: 12 }));
 

@@ -303,7 +303,19 @@
   #nick button, #room button { padding: 9px 16px; border-radius: 9px; border: 1.5px solid rgba(159,216,255,.45); background: #1d2552; color: #fff; font: 700 14px system-ui, sans-serif; }
   #nick button[type=submit], #room button[type=submit] { background: #ffd24a; color: #12173a; border-color: #12173a; }
   #nick button:disabled, #room button:disabled { opacity: .6; }
+  /* okienko pokoju jest wyższe od okienka nicku: na niskim ekranie (telefon w poziomie, klawiatura ekranowa) przewija się,
+     a przyciski zostają osiągalne; zoom (rozmiar tekstu) powiększa okienko, więc wysokość dzielimy przez niego */
+  #room { max-height: calc((78dvh - 12px) / var(--text-k, 1)); overflow-y: auto; overscroll-behavior: contain; }
   #room h2 { margin: 0 0 6px; color: #ffd24a; font-size: 18px; overflow-wrap: anywhere; }
+  @media (max-height: 560px) {
+    #room { top: 8px; max-height: calc((100dvh - 16px) / var(--text-k, 1)); padding: 12px 14px 10px; }
+    #room h2 { font-size: 16px; margin-bottom: 2px; }
+    #room .info { font-size: 12px; margin-bottom: 8px; }
+    #room label { margin-bottom: 4px; }
+    #room input { padding: 7px 10px; font-size: 16px; margin-bottom: 6px; }
+    #room p { margin: 4px 0; }
+    #room small { margin-top: 6px; }
+  }
   #room .info { margin: 0 0 12px; color: #c8d4ff; font-size: 13px; min-height: 0; }
   #room input { margin-bottom: 10px; }
   #room .show { display: flex; align-items: center; gap: 6px; margin: -4px 0 4px; color: #9fb4ee; font-size: 12px; }
