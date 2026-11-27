@@ -4,7 +4,7 @@ import {
   AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, HW, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs,
   narrowLevel, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
 } from '../sim';
-import { online } from '../net';
+import { live, online } from '../net';
 import { VOL_STEPS, sfx } from './audio.js';
 import { access, fontSize, loadAccess } from './access.js';
 import { CHARS } from './characters.js';
@@ -20,7 +20,7 @@ import {
 } from './input.js';
 import { ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, charX, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
-import { openRoom, roomOpen } from './roomform.js';
+import { openRoom, refreshRoomLive, roomOpen } from './roomform.js';
 import { buildNews, buildPages, buildRules, selectable } from './options.js';
 import { loadPads, mirrorPads, resetPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
@@ -62,6 +62,9 @@ export class Game {
     this.charLoad = null;                // „⬇ POSTAĆ” w rankingu: pobieranie w toku
     this.charArm = null;                 // „⬇ POSTAĆ” dotknięte raz: { hash, until } – drugie dotknięcie do until wczytuje
     online.skinSource = packBytes;
+    // serwer zamknął połączenie z pokojem, bo gracz wyszedł z niego na innym urządzeniu: odśwież pokój i ranking
+    live.onLeft = () => { online.roomInfo().then(() => this.roomChanged()); };
+    live.onChange = refreshRoomLive;
     if (this.customId) this.loadCustom(this.customId);
     else if (this.charIdx === CUSTOM) this.charIdx = 0;
     this.styleIdx = clamp(prefs.style | 0, 0, STYLES.length - 1);
@@ -259,6 +262,17 @@ export class Game {
   }
 
   // ── ranking ──
+  // ── pokój znajomych na żywo (src/net/live.ts) ──
+  /** Połączenie na żywo tylko w pokoju, z włączonym rankingiem i z kartą na wierzchu. */
+  syncLive() {
+    if (online.enabled && online.room && !document.hidden) live.start(); else live.stop();
+  }
+  /** Stan dla znajomych w pokoju: menu albo bieg z piętrem i wynikiem (live.ts wysyła go oszczędnie). */
+  liveStatus() {
+    if (this.state === 'play' || this.state === 'pause') live.setStatus('play', this.sim.maxFloor, this.score);
+    else live.setStatus('menu');
+  }
+
   openBoard() {
     sfx.pick(); this.state = 'board'; this.board.sel = -1;
     this.board.scope ??= online.room ? 'room' : 'world';   // gracz w pokoju znajomych widzi najpierw ranking pokoju
@@ -292,6 +306,7 @@ export class Game {
     for (const k of Object.keys(b.data)) if (k.startsWith('room:')) { delete b.data[k]; delete b.at[k]; }
     b.scope = online.room ? 'room' : 'world'; b.sel = -1;
     if (this.state === 'board') this.loadBoard(true);
+    live.stop(); this.syncLive();                          // połączenie z nowym pokojem (albo żadnym)
   }
   boardTab(d, abs = false) {
     const i = abs ? d : mod(PERIODS.indexOf(this.board.kind) + d, PERIODS.length);
@@ -454,7 +469,10 @@ export class Game {
   editNick() {
     if (!online.enabled) return;
     sfx.pick();
-    openNick(online.nick, (nick) => online.setNick(nick), () => { this.board.at = {}; this.loadBoard(); });
+    openNick(online.nick, (nick) => online.setNick(nick), (saved) => {
+      this.board.at = {}; this.loadBoard();
+      if (saved) { live.stop(); this.syncLive(); }         // znajomi zobaczą nowy nick po ponownym połączeniu
+    });
   }
 
   // ── opcje ──
@@ -546,7 +564,7 @@ export class Game {
   }
   toggleOnline() {
     sfx.pick();
-    online.setEnabled(!online.enabled).then(() => { if (online.enabled) { online.refill(); online.flush(); } });
+    online.setEnabled(!online.enabled).then(() => { if (online.enabled) { online.refill(); online.flush(); } this.syncLive(); });
     this.board.at = {};
   }
   deleteData() {
@@ -555,6 +573,7 @@ export class Game {
     online.deleteData().then((ok) => {
       st.note = ok ? 'set.deleted' : 'set.deleteFail';   // klucz tekstu – tłumaczony przy rysowaniu
       this.board.at = {}; this.board.data = {}; this.board.scope = null;
+      this.syncLive();
     });
   }
 
@@ -939,6 +958,7 @@ export class Game {
 
   frame(dt) {
     this.t += dt;
+    this.liveStatus();
     const edge = input.takeEdge();
     const camBefore = this.sim.camY;
     if (this.state === 'title') { if (edge) this.start(); }

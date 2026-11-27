@@ -3,6 +3,8 @@ export interface Env {
   DB: D1Database;
   /** Limit zakładania kont na adres IP (Cloudflare Rate Limiting). */
   RL_NEW_PLAYER?: RateLimit;
+  /** Pokoje znajomych na żywo: jeden Durable Object (RoomHub) na pokój. Brak w testach API. */
+  ROOMS?: DurableObjectNamespace;
   /** Lista stron (origin) oddzielonych przecinkami, z których przeglądarka może wołać API. */
   ALLOWED_ORIGINS?: string;
 }

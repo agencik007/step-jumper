@@ -156,6 +156,8 @@ export class Online {
   get pending(): number { return this.queue.length; }
   get nick(): string | null { return this.account?.nick ?? null; }
   get hasAccount(): boolean { return !!this.account; }
+  /** Token konta (połączenie na żywo z pokojem podaje go sam – live.ts); null bez konta. */
+  get token(): string | null { return this.account?.token ?? null; }
   /** Znacznik gracza bez nicku – ten sam, który serwer podaje w rankingu (pole tag). */
   get tag(): string | null { return this.account ? this.account.playerId.slice(0, 4).toUpperCase() : null; }
 

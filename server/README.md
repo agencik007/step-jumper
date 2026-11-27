@@ -52,6 +52,7 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | `POST /v1/rooms/join` `{name, password}` | dołączenie; gracz jest najwyżej w jednym pokoju, więc wychodzi z poprzedniego | `{room: {name, members}}` · `404 room_not_found` · `403 room_password` · `409 room_full` (50 graczy) · `429 room_locked` |
 | `DELETE /v1/rooms/me` | wyjście z pokoju; pusty pokój znika i zwalnia nazwę | `204` |
 | `GET /v1/rooms/me` | mój pokój i jego gracze | `{room: null}` · `{room: {name, members: [{nick, tag, me?}]}}` |
+| `GET /v1/live` (WebSocket, token w podprotokole) | pokój na żywo: lista obecnych i ich stan – opis niżej | `101` |
 | `GET /v1/rooms/me/leaderboards/:okres` | ranking pokoju: te same najlepsze wyniki co w rankingu ogólnym, tylko graczy z pokoju (wszyscy) | `{period, room: {name}, rank, entries: [... , me?]}` · `404 no_room` |
 
 Powody odrzucenia biegu (`reason`): `corrupt`, `empty_chunk`, `chunk_too_long`, `short_chunk`, `inputs_after_end`,
@@ -71,6 +72,29 @@ Pokoje znajomych: tabela `rooms`, a członkostwo to kolumna `players.room_id` (j
 własnych wyników – to zapytanie o `bests` ograniczone do graczy pokoju, więc weryfikacja biegów i powtórki działają bez zmian.
 Hasło: PBKDF2-SHA256 z solą (`auth.ts`). Przed zgadywaniem chroni limit: po 20 błędnych hasłach pokój nie przyjmuje
 nikogo do końca 10-minutowego okna (`fail_window`, `fail_count`).
+
+### Pokój na żywo (lista obecnych)
+
+`GET /v1/live` to WebSocket. Przeglądarka nie doda do niego nagłówka `Authorization`, a token w adresie trafiałby do logów,
+więc gra podaje token jako drugi podprotokół: `new WebSocket(url, ['sj', token])` (serwer odpowiada protokołem `sj`).
+Worker sprawdza token i członkostwo (`src/live.ts`) i przekazuje połączenie do Durable Object pokoju `RoomHub`
+(`src/room-hub.ts`, jeden na pokój, `idFromName(room_id)`); logika obecności jest w `src/hub.ts` (testy: `tests/server/hub.test.ts`).
+Błędy przed połączeniem: `401 unauthorized`, `403 banned/origin`, `404 no_room`, `426` (to nie WebSocket).
+
+| Kierunek | Wiadomość (JSON) |
+|---|---|
+| gra → serwer | `{t: 'status', s: 'menu'}` · `{t: 'status', s: 'play', floor, score}` (najwyżej co 5 s w biegu; serwer przyjmuje najwyżej 1/s) · `{t: 'ping'}` (po 30 s ciszy) |
+| serwer → gra | `{t: 'list', me, players: [P]}` po połączeniu · `{t: 'up', p: P}` · `{t: 'bye', k}` |
+
+`P = {k, nick, tag, s, floor?, score?}`; `k` to stały klucz gracza (skrót identyfikatora – nie zdradza go). Piętro i wynik
+w biegu podaje gra i serwer ich nie sprawdza – to tylko podgląd, ranking liczy się z weryfikacji biegów. Gniazdo bez
+wiadomości przez 75 s jest zamykane (kod 4000). Wyjście z pokoju, przejście do innego i usunięcie konta zamykają połączenia
+gracza (kod 4001 – gra nie łączy się wtedy ponownie). Gra łączy się tylko z kartą na wierzchu.
+
+Koszty (plan Workers Free, stan na 2026 – sprawdź aktualny cennik): każda wiadomość od gry to 1/20 zapytania Durable Object
+(100 000 zapytań dziennie), a obiekt pokoju jest aktywny, dopóki ktoś w nim gra (wiadomości co kilka sekund nie pozwalają
+mu zasnąć). Czas aktywności to 128 MB × sekundy: godzina gry w jednym pokoju ≈ 450 GB-s z dziennych 13 000 GB-s,
+czyli ok. 29 „pokojogodzin” dziennie za darmo. Pomiar: panel Cloudflare → Durable Objects → step-jumper-api.
 
 Powtórki: przyjęte porcje zapisu trafiają do tabeli `run_chunks`. Zostają tylko dla biegów, które są czyimś najlepszym
 wynikiem w którymś okresie (`bests`); zatwierdzenie biegu od razu usuwa porcje biegów gracza, które rekordem nie są.

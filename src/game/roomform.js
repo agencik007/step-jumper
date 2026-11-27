@@ -1,5 +1,7 @@
 // Okienko pokoju znajomych (RANKING → POKÓJ): założenie albo dołączenie nazwą i hasłem, a w pokoju – lista graczy
 // i wyjście. Zwykły formularz HTML nad grą, jak okienko nicku (nickform.js): na canvasie nie da się wygodnie pisać.
+import { live } from '../net';
+import { fmt } from './format.js';
 import { focusGame } from './gfx.js';
 import { t } from './i18n.js';
 
@@ -12,6 +14,8 @@ const nameField = $('roomName'), passField = $('roomPass'), leaveBtn = $('roomLe
 /** @type {{ online: any, onChange: () => void } | null} */
 let ctx = null;
 let busy = false, leaveArmed = false;
+/** Gracze pokoju z ostatniego roomInfo – lista w okienku dokleja do nich stan na żywo. */
+let members = [];
 
 export const roomOpen = () => !form.hidden;
 
@@ -39,16 +43,35 @@ async function showIn(name) {
   view('in');
   leaveArmed = false; leaveBtn.textContent = t('room.leave');
   $('roomTitle').textContent = name;
-  const list = $('roomMembers');
-  list.textContent = t('board.loading');
+  const count = $('roomCount');
+  members = []; renderMembers();
+  count.textContent = t('board.loading');
   setTimeout(() => $('roomClose').focus(), 0);
   const info = await ctx?.online.roomInfo();
   if (!ctx || inView.hidden) return;
-  if (!info) { list.textContent = ctx.online.room ? t('room.noConn') : ''; if (!ctx.online.room) { ctx.onChange(); showJoin(); } return; }
+  if (!info) { count.textContent = ctx.online.room ? t('room.noConn') : ''; if (!ctx.online.room) { ctx.onChange(); showJoin(); } return; }
   $('roomTitle').textContent = info.name;
-  const names = info.members.map((m) => (m.nick ?? t('board.player', { tag: m.tag })) + (m.me ? ` (${t('room.you')})` : ''));
-  list.textContent = t('room.members', { n: info.members.length, names: names.join(', ') });
+  count.textContent = t('room.count', { n: info.members.length });
+  members = info.members;
+  renderMembers();
 }
+
+/** Lista graczy pokoju: kto jest teraz w grze (w menu / w biegu z piętrem i wynikiem), a kto poza nią. */
+function renderMembers() {
+  const ul = $('roomMembers');
+  ul.replaceChildren(...members.map((m) => {
+    const p = m.me ? null : live.find(m), li = document.createElement('li'), name = document.createElement('span'), st = document.createElement('span');
+    name.textContent = (m.nick ?? t('board.player', { tag: m.tag })) + (m.me ? ` (${t('room.you')})` : '');
+    st.className = 'st';
+    st.textContent = m.me ? '' : !p ? t('live.off') : p.s === 'play' ? t('live.play', { floor: fmt(p.floor ?? 0), score: fmt(p.score ?? 0) }) : t('live.menu');
+    li.className = p ? (p.s === 'play' ? 'on play' : 'on') : '';
+    li.append(name, st);
+    return li;
+  }));
+}
+
+/** Zmiana na liście obecnych (live.ts): odśwież okienko, jeśli jest otwarte. */
+export function refreshRoomLive() { if (!form.hidden && !inView.hidden) renderMembers(); }
 
 function close() {
   if (form.hidden) return;

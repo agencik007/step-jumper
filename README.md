@@ -134,6 +134,9 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
   i hasłem, inni dołączają tą samą nazwą i hasłem; gracz jest naraz w jednym pokoju (do 50 osób). Przyciski WSZYSCY / POKÓJ
   w lewym górnym rogu rankingu (klawisz **G**, Y na padzie) przełączają ranking całego świata i ranking pokoju – te same
   wyniki, okresy i powtórki, tylko graczy z pokoju.
+  **Na żywo** (`src/net/live.ts` → WebSocket → Durable Object pokoju, `server/src/hub.ts`): ekran tytułowy pokazuje w prawej
+  kolumnie, kto z pokoju jest teraz w grze (w menu albo w biegu z piętrem), ranking pokoju ma zieloną kropkę przy obecnych,
+  a okienko ⚙ POKÓJ – stan każdego gracza. Połączenie działa tylko z kartą na wierzchu.
 - W grze: RANKING (R), OPCJE (O) i NOWOŚCI (N) w rogach ekranu tytułowego; w opcjach dźwięk, wibracje, sterowanie, układ przycisków (prawo- lub leworęczny – leworęczny przenosi skok na lewą stronę, a ◀ ▶ na prawą), wyłączenie rankingu
   i usunięcie swoich danych z serwera.
 

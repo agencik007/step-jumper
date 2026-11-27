@@ -310,6 +310,11 @@
   #room .show input { width: auto; margin: 0; }
   #room .row { flex-wrap: wrap; }
   #room section[hidden], #room .row[hidden] { display: none; }
+  #room ul { list-style: none; margin: 0 0 10px; padding: 0; max-height: 40vh; overflow-y: auto; }
+  #room li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid rgba(159,216,255,.15); }
+  #room li .st { color: #9fb4ee; font-weight: 600; font-size: 12px; text-align: right; }
+  #room li.on .st { color: #7ef0e0; }
+  #room li.play .st { color: #ffe066; }
 </style>
 </head>
 <body>
@@ -516,7 +521,8 @@
   </section>
   <section id="roomIn" hidden>
     <h2 id="roomTitle"></h2>
-    <p class="info" id="roomMembers"></p>
+    <p class="info" id="roomCount"></p>
+    <ul id="roomMembers"></ul>
   </section>
   <p id="roomErr" role="alert"></p>
   <div class="row" id="roomJoinRow">

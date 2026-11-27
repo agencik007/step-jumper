@@ -15,6 +15,7 @@ export const UIBOX = {
   rules: { x: 10, y: 78, w: 92, h: 28 },                  // ZASADY GRY
   creator: { x: 10, y: 112, w: 92, h: 28 },               // KREATOR postaci
   update: { x: 538, y: 44, w: 92, h: 38 },                // PRZEŁADUJ – tylko gdy na serwerze jest nowa wersja
+  live: { x: 538, y: 90, w: 92 },                         // pokój znajomych: kto jest teraz w grze (wysokość wg listy)
   // ranking
   tab: (i) => ({ x: 104 + i * 110, y: 64, w: 102, h: 28 }),
   list: { x: 110, y: 102, w: 420, h: 276 },
@@ -33,6 +34,8 @@ export const UIBOX = {
   bWorld: { x: 10, y: 10, w: 92, h: 28 }, bRoom: { x: 10, y: 44, w: 92, h: 28 }, bRoomForm: { x: 10, y: 78, w: 92, h: 28 },
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
+/** Ekran tytułowy: najwyżej tylu znajomych w panelu pokoju (reszta jako „+n”). */
+export const LIVE_ROWS = 7;
 /** Strony opcji z samym tekstem (NOWOŚCI, ZASADY GRY): nic do wybrania, tylko przewijanie, jednolite tło bez mapy. */
 export const isTextPage = (page) => page === 'news' || page === 'rules';
 

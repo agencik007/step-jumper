@@ -7,6 +7,7 @@ import { SIM_VERSION, TICK_RATE, score } from '../../src/sim';
 import type { SimState } from '../../src/sim';
 import { checkPassword, newSalt, newSecret, parseBearer, passwordHash, sameHash, sha256hex } from './auth';
 import type { Env, Player } from './env';
+import { kickFromRoom } from './live';
 import { checkNick, checkRoomName } from './nick';
 import { boardKey, isBoardKind, periodKeys } from './periods';
 import type { PeriodKind } from './periods';
@@ -154,6 +155,7 @@ export function createApp(deps: { now?: () => number } = {}) {
       db.prepare('DELETE FROM runs WHERE player_id = ?').bind(id),
       db.prepare('DELETE FROM players WHERE id = ?').bind(id),
     ]);
+    kickLater(c, c.var.player.room_id);
     return c.body(null, 204);
   });
 
@@ -338,6 +340,13 @@ export function createApp(deps: { now?: () => number } = {}) {
 
   // ───────────────────────── pokoje znajomych ─────────────────────────
 
+  /** Po wyjściu z pokoju (oldRoom) jego obiekt na żywo zamyka połączenia gracza – w tle, odpowiedź na to nie czeka. */
+  function kickLater(c: Ctx, oldRoom: string | null, newRoom: string | null = null) {
+    if (!oldRoom || oldRoom === newRoom) return;
+    const job = kickFromRoom(c.env, oldRoom, c.var.player.id);
+    try { c.executionCtx.waitUntil(job); } catch { void job; }   // bez kontekstu wykonania (testy) – po prostu leci
+  }
+
   /** Wyjście gracza z pokoju; pusty pokój znika (zwalnia nazwę). */
   function leaveRoom(db: D1Database, p: Player): D1PreparedStatement[] {
     if (!p.room_id) return [];
@@ -377,6 +386,7 @@ export function createApp(deps: { now?: () => number } = {}) {
       if (String(e).includes('UNIQUE')) throw fail(409, 'room_taken');
       throw e;
     }
+    kickLater(c, p.room_id, id);
     return c.json({ room: { name: name.nick, members: 1 } }, 201);
   });
 
@@ -403,12 +413,14 @@ export function createApp(deps: { now?: () => number } = {}) {
     const n = await memberCount(db, room.id);
     if (n >= ROOM_MAX_MEMBERS) throw fail(409, 'room_full');
     await db.batch(enterRoom(db, p, room.id));
+    kickLater(c, p.room_id, room.id);
     return c.json({ room: { name: room.name, members: n + 1 } });
   });
 
   app.delete('/v1/rooms/me', requirePlayer, async (c) => {
     const stmts = leaveRoom(c.env.DB, c.var.player);
     if (stmts.length) await c.env.DB.batch(stmts);
+    kickLater(c, c.var.player.room_id);
     return c.body(null, 204);
   });
 

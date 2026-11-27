@@ -21,6 +21,8 @@ export const START = Date.parse('2026-11-18T12:00:00Z');
 export async function startServer() {
   const proxy = await getPlatformProxy<Env>({ configPath: 'server/wrangler.jsonc', persist: false });
   const env = proxy.env;
+  // Durable Objects nie działają w getPlatformProxy (pokoje na żywo testujemy osobno: tests/server/hub.test.ts)
+  delete env.ROOMS;
   const db = env.DB;
   for (const name of Object.keys(MIGRATIONS).sort()) await db.batch(sqlStatements(MIGRATIONS[name]).map((s) => db.prepare(s)));
 

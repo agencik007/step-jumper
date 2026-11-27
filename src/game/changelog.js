@@ -9,22 +9,27 @@ export const CHANGELOG = [
     pl: [
       'Pokoje znajomych: w RANKINGU dotknij ⚙ POKÓJ, załóż pokój z nazwą i hasłem i podaj je znajomym. Kto wpisze tę samą nazwę i hasło, dołączy do was.',
       'Przycisk POKÓJ w lewym górnym rogu RANKINGU pokazuje wyniki tylko graczy z twojego pokoju – DZIŚ, TYDZIEŃ, ZESZŁY TYDZIEŃ i OGÓŁEM, z powtórkami najlepszej trójki. WSZYSCY wraca do rankingu całego świata.',
+      'Widzisz, kto z pokoju jest teraz w grze: na ekranie tytułowym, pod RANKINGIEM, jest lista znajomych z piętrem, na którym biegną. Zielona kropka przy nicku w rankingu pokoju i lista w ⚙ POKÓJ też pokazują, kto gra.',
     ],
     en: [
       'Friends’ rooms: on the LEADERBOARD tap ⚙ ROOM, create a room with a name and password and give them to your friends. Anyone who enters the same name and password joins you.',
       'The ROOM button in the top left corner of the LEADERBOARD shows scores of just the players in your room – TODAY, WEEK, LAST WEEK and ALL TIME, with replays of the top three. EVERYONE takes you back to the worldwide leaderboard.',
+      'See who from your room is playing right now: the title screen lists your friends under RANKING, with the floor they are on. A green dot next to a name in the room leaderboard and the list in ⚙ ROOM show who is playing too.',
     ],
     de: [
       'Räume für Freunde: Tippe in der RANGLISTE auf ⚙ RAUM, leg einen Raum mit Namen und Passwort an und gib beides deinen Freunden. Wer denselben Namen und dasselbe Passwort eingibt, ist dabei.',
       'Der Knopf RAUM oben links in der RANGLISTE zeigt nur die Ergebnisse der Spieler in deinem Raum – HEUTE, WOCHE, LETZTE WOCHE und GESAMT, mit Wiederholungen der besten drei. ALLE bringt dich zurück zur weltweiten Rangliste.',
+      'Du siehst, wer aus deinem Raum gerade spielt: Auf dem Startbildschirm steht unter RANGLISTE die Liste deiner Freunde mit der Etage, auf der sie laufen. Auch der grüne Punkt neben dem Namen in der Raum-Rangliste und die Liste unter ⚙ RAUM zeigen, wer spielt.',
     ],
     fr: [
       'Salons d’amis : dans le CLASSEMENT, touchez ⚙ SALON, créez un salon avec un nom et un mot de passe et donnez-les à vos amis. Qui saisit le même nom et le même mot de passe vous rejoint.',
       'Le bouton SALON en haut à gauche du CLASSEMENT n’affiche que les scores des joueurs de votre salon – AUJOURD’HUI, SEMAINE, SEMAINE DERNIÈRE et GÉNÉRAL, avec les rediffusions du trio de tête. TOUS vous ramène au classement mondial.',
+      'Voyez qui, dans votre salon, joue en ce moment : l’écran titre affiche sous CLASSEMENT la liste de vos amis avec l’étage où ils courent. Un point vert à côté du nom dans le classement du salon et la liste de ⚙ SALON montrent aussi qui joue.',
     ],
     es: [
       'Salas de amigos: en el RANKING toca ⚙ SALA, crea una sala con nombre y contraseña y pásaselos a tus amigos. Quien escriba el mismo nombre y la misma contraseña entrará con vosotros.',
       'El botón SALA arriba a la izquierda del RANKING muestra solo las puntuaciones de los jugadores de tu sala – HOY, SEMANA, SEMANA PASADA y TOTAL, con las repeticiones de los tres primeros. TODOS te devuelve al ranking mundial.',
+      'Ves quién de tu sala está jugando ahora: en la pantalla de título, bajo RANKING, aparece la lista de tus amigos con el piso en el que van. El punto verde junto al nombre en el ranking de la sala y la lista de ⚙ SALA también muestran quién juega.',
     ],
   },
   {
