@@ -5,6 +5,39 @@
 // Każdy język ma tyle samo punktów, w tej samej kolejności. Tylko to, co zauważy gracz – bez spraw deweloperskich.
 export const CHANGELOG = [
   {
+    v: '0.22.0', date: '2026-11-27',
+    pl: [
+      'Pokoje znajomych: w RANKINGU dotknij ⚙ POKÓJ, załóż pokój z nazwą i hasłem i podaj je znajomym. Przycisk POKÓJ pokazuje ranking tylko waszej paczki – z okresami i powtórkami – a WSZYSCY wraca do rankingu świata.',
+      'Widzisz, kto z pokoju jest teraz w grze: na ekranie tytułowym, pod RANKINGIEM, jest lista znajomych z piętrem, na którym biegną. Zielona kropka przy nicku w rankingu pokoju i lista w ⚙ POKÓJ też pokazują, kto gra.',
+      'W trakcie gry u góry ekranu pojawiają się komunikaty o znajomych z pokoju: „Ala na piętrze 300!”, duże combo, nowy rekord albo „Ala wyprzedza cię w tym tygodniu”. Wyłączysz je w OPCJACH (Komunikaty znajomych).',
+      'Gra pyta o nick zaraz po uruchomieniu, a nie dopiero przed pierwszym biegiem. Do pokoju znajomych wchodzi się tylko z nickiem, żeby wszyscy wiedzieli, kto gra.',
+    ],
+    en: [
+      'Friends’ rooms: on the LEADERBOARD tap ⚙ ROOM, create a room with a name and password and give them to your friends. The ROOM button shows a leaderboard of just your crew – with all periods and replays – and EVERYONE takes you back to the worldwide one.',
+      'See who from your room is playing right now: the title screen lists your friends under RANKING, with the floor they are on. A green dot next to a name in the room leaderboard and the list in ⚙ ROOM show who is playing too.',
+      'While you play, messages about friends from your room appear at the top of the screen: “Ala reached floor 300!”, big combos, new records or “Ala passed you this week”. Turn them off in OPTIONS (Friends’ updates).',
+      'The game asks for your nickname right after it starts, not just before your first run. You can only enter a friends’ room with a nickname, so everyone knows who is playing.',
+    ],
+    de: [
+      'Räume für Freunde: Tippe in der RANGLISTE auf ⚙ RAUM, leg einen Raum mit Namen und Passwort an und gib beides deinen Freunden. Der Knopf RAUM zeigt eine Rangliste nur eurer Clique – mit allen Zeiträumen und Wiederholungen –, ALLE führt zurück zur weltweiten.',
+      'Du siehst, wer aus deinem Raum gerade spielt: Auf dem Startbildschirm steht unter RANGLISTE die Liste deiner Freunde mit der Etage, auf der sie laufen. Auch der grüne Punkt neben dem Namen in der Raum-Rangliste und die Liste unter ⚙ RAUM zeigen, wer spielt.',
+      'Während du spielst, erscheinen oben Meldungen über Freunde aus deinem Raum: „Ala ist auf Etage 300!“, große Combos, neue Rekorde oder „Ala überholt dich diese Woche“. Ausschalten kannst du sie in den OPTIONEN (Meldungen von Freunden).',
+      'Das Spiel fragt gleich nach dem Start nach deinem Nick und nicht erst vor dem ersten Lauf. Einen Raum für Freunde betrittst du nur mit Nick, damit alle wissen, wer spielt.',
+    ],
+    fr: [
+      'Salons d’amis : dans le CLASSEMENT, touchez ⚙ SALON, créez un salon avec un nom et un mot de passe et donnez-les à vos amis. Le bouton SALON affiche un classement rien que pour votre bande – avec toutes les périodes et les rediffusions – et TOUS ramène au classement mondial.',
+      'Voyez qui, dans votre salon, joue en ce moment : l’écran titre affiche sous CLASSEMENT la liste de vos amis avec l’étage où ils courent. Un point vert à côté du nom dans le classement du salon et la liste de ⚙ SALON montrent aussi qui joue.',
+      'Pendant la partie, des messages sur les amis de votre salon apparaissent en haut de l’écran : « Ala atteint l’étage 300 ! », gros combos, nouveaux records ou « Ala vous dépasse cette semaine ». Désactivez-les dans les OPTIONS (Nouvelles des amis).',
+      'Le jeu demande votre pseudo dès son lancement, et non plus juste avant la première partie. On n’entre dans un salon d’amis qu’avec un pseudo, pour que tout le monde sache qui joue.',
+    ],
+    es: [
+      'Salas de amigos: en el RANKING toca ⚙ SALA, crea una sala con nombre y contraseña y pásaselos a tus amigos. El botón SALA muestra un ranking solo de vuestro grupo, con todos los periodos y repeticiones, y TODOS te devuelve al ranking mundial.',
+      'Ves quién de tu sala está jugando ahora: en la pantalla de título, bajo RANKING, aparece la lista de tus amigos con el piso en el que van. El punto verde junto al nombre en el ranking de la sala y la lista de ⚙ SALA también muestran quién juega.',
+      'Mientras juegas, arriba de la pantalla aparecen avisos sobre los amigos de tu sala: «¡Ala llega al piso 300!», grandes combos, nuevos récords o «Ala te adelanta esta semana». Los desactivas en OPCIONES (Avisos de amigos).',
+      'El juego te pide el apodo nada más abrirlo, no justo antes de la primera partida. A una sala de amigos solo se entra con apodo, para que todos sepan quién juega.',
+    ],
+  },
+  {
     v: '0.21.0', date: '2026-11-26',
     pl: [
       'Nowość w KREATORZE: przycisk „Głowa z aparatu”. Ustaw twarz w owalu, a gra podpowie, co poprawić („Podejdź bliżej”, „Patrz prosto w aparat”…), sama zrobi zdjęcie, wytnie tło i wstawi twoją głowę na postać. Dłonie dostają kolor twojej skóry.',

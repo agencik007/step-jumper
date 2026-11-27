@@ -15,9 +15,10 @@ import { drinkAt } from './drinks.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
 import {
-  ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, charX, isTextPage, noteLine, rowBox, sliderBar, slotX,
+  ARROW_W, CHAR_W, LIST, LIST_BACK, LIVE_ROWS, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, charX, isTextPage, noteLine, rowBox, sliderBar, slotX,
 } from './layout.js';
 import { BUILD_TAG, VERSION, update } from './update.js';
+import { live } from '../net';
 import { clamp, easeOutBack, hash, mod, rand, reduceMotion } from './util.js';
 
 export function render(g) {
@@ -63,6 +64,7 @@ export function render(g) {
   else if (g.state === 'replay') drawReplay(g);
   else if (g.state === 'recap') drawRecap(g);
   drawMessages(g);
+  drawFeed(g);
   if (access.fx) style.post?.(g);                     // ziarno, rysy, linie – wyłączane w OPCJE → DOSTĘPNOŚĆ
 }
 
@@ -548,6 +550,22 @@ function drawMessages(g) {
   });
 }
 
+/** Komunikat o znajomym z pokoju (pasek u góry ekranu, nad wszystkim, po jednym naraz; game.friendEvent). */
+function drawFeed(g) {
+  const m = g.feed[0];
+  if (!m) return;
+  const c = ctx, a = clamp(Math.min(m.t / 0.25, (m.dur - m.t) / 0.4), 0, 1);
+  const slide = reduceMotion ? 0 : (1 - clamp(m.t / 0.25, 0, 1)) * -16;   // wjeżdża z góry (bez ruchu – tylko się pojawia)
+  c.save();
+  c.globalAlpha = a;
+  c.font = `700 ${fontSize(13)}px ${FONT}`;
+  const w = Math.min(440, c.measureText(m.text).width + 36), x = W / 2 - w / 2, y = 6 + slide;
+  c.fillStyle = access.contrast ? '#000' : 'rgba(10,14,40,.88)'; rr(x, y, w, 26, 13); c.fill();
+  c.strokeStyle = ui[m.color] || ui.hint; c.lineWidth = 1.5; c.stroke();
+  text(m.text, W / 2, y + 13.5, { size: 13, color: ui[m.color] || ui.hint, sw: 0, weight: 700, maxW: w - 24 });
+  c.restore();
+}
+
 /** Przyciemnienie pod menu; przy wysokim kontraście prawie nieprzezroczyste. */
 function dim(a) { ctx.fillStyle = `rgba(${ui.dim},${access.contrast ? Math.max(a, 0.93) : a})`; ctx.fillRect(0, 0, W, H); }
 function panel(x, y, w, h) {
@@ -697,6 +715,7 @@ function drawTitle(g) {
   button(UIBOX.creator, hm === 'keys' ? `${t('title.creator')} · K` : t('title.creator'), { size: 11, glyph: hm === 'pad' ? BTN.RT : null });
   text(`v${VERSION}${BUILD_TAG}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
   if (update.available) drawUpdateButton(time, hm);
+  drawLivePanel(g);
   const wob = reduceMotion ? 1 : 1 + Math.sin(time * 2) * 0.02;
   c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(wob, wob);
   text('STEP JUMPER', 0, 4, { size: 54, maxW: 430, color: ui.frame, sw: 14, stroke: ui.frame });
@@ -839,6 +858,28 @@ function drawOver(g) {
 
 // ───────────────────────── ranking online ─────────────────────────
 
+/** Ekran tytułowy, prawa kolumna: kto z pokoju znajomych jest teraz w grze i jak mu idzie (src/net/live.ts). */
+function drawLivePanel(g) {
+  const o = g.online, room = o.room;
+  if (!room) return;
+  const B = UIBOX.live, others = live.players.filter((p) => !p.me), shown = others.slice(0, LIVE_ROWS);
+  const rows = live.connected ? Math.max(1, shown.length) + (others.length > shown.length ? 0.6 : 0) : 1;
+  const h = 26 + rows * 30;
+  panel(B.x, B.y, B.w, h);
+  text(room.name, B.x + B.w / 2, B.y + 13, { size: 11, color: ui.gold, sw: 0, weight: 700, maxW: B.w - 10 });
+  const left = B.x + 8;
+  if (!live.connected) { text(t('live.connecting'), B.x + B.w / 2, B.y + 38, { size: 10, color: ui.label, sw: 0, maxW: B.w - 10 }); return; }
+  if (!shown.length) { text(t('live.alone'), B.x + B.w / 2, B.y + 38, { size: 10, color: ui.label, sw: 0, maxW: B.w - 10 }); return; }
+  shown.forEach((p, i) => {
+    const y = B.y + 34 + i * 30, play = p.s === 'play';
+    ctx.fillStyle = play ? ui.gold : ui.mint; ctx.beginPath(); ctx.arc(left + 3, y, 3, 0, Math.PI * 2); ctx.fill();
+    text(p.nick ?? t('board.player', { tag: p.tag }), left + 10, y, { size: 11, color: ui.text, sw: 0, weight: 700, align: 'left', maxW: B.w - 22 });
+    text(play ? t('live.floor', { floor: fmt(p.floor ?? 0) }) : t('live.menu'), left + 10, y + 13,
+      { size: 9, color: play ? ui.gold : ui.label, sw: 0, align: 'left', maxW: B.w - 22 });
+  });
+  if (others.length > shown.length) text(t('live.more', { n: others.length - shown.length }), B.x + B.w / 2, B.y + 34 + shown.length * 30 - 4, { size: 9, color: ui.label, sw: 0 });
+}
+
 /** Jedna linijka o losie wyniku na ekranie końca gry: [tekst, kolor]. */
 export function netLine(n) {
   if (!n) return null;
@@ -853,9 +894,15 @@ export function netLine(n) {
 }
 
 function drawBoard(g) {
-  const c = ctx, b = g.board, kind = b.kind, d = b.data[kind], o = g.online;
+  const c = ctx, b = g.board, kind = b.kind, d = g.boardData, o = g.online, room = g.boardScope === 'room';
   dim(0.66);
-  text(t('board.title'), W / 2, 34, { size: 30, color: ui.gold, sw: 6, maxW: 420 });
+  text(room ? t('room.boardTitle', { name: o.room.name }) : t('board.title'), W / 2, 34, { size: room ? 24 : 30, color: ui.gold, sw: 6, maxW: 420 });
+  if (o.enabled) {                                      // WSZYSCY / POKÓJ i okienko pokoju znajomych
+    const key = (s, k) => (g.hint === 'keys' ? `${s} · ${k}` : s);
+    button(UIBOX.bWorld, key(t('board.world'), 'G'), { accent: !room, size: 12, glyph: g.hint === 'pad' && room ? BTN.Y : null });
+    button(UIBOX.bRoom, key(t('board.room'), 'G'), { accent: room, size: 12, glyph: g.hint === 'pad' && !room ? BTN.Y : null });
+    button(UIBOX.bRoomForm, key(t('room.btn'), 'J'), { size: 12 });
+  }
   PERIODS.forEach((k, i) => button(UIBOX.tab(i), t(`period.${k}`), { accent: k === kind, size: 12 }));
 
   const L = UIBOX.list;
@@ -886,7 +933,9 @@ function drawBoard(g) {
       const row = { size: 13, sw: 0 };
       if (!medal) text(String(e.rank), L.x + 36, y, { ...row, align: 'right', color: ui.label });
       const nameCol = mine ? ui.gold : medal && style.world !== 'sketch' ? medal.hi : ui.text;
-      text(e.nick ?? t('board.player', { tag: e.tag }), L.x + 52, y, { ...row, align: 'left', color: nameCol, weight: 700, maxW: e.skin ? 110 : e.replay ? 170 : 200 });
+      const here = room && !mine ? live.find(e) : null;  // ranking pokoju: znajomy jest teraz w grze
+      if (here) { c.fillStyle = here.s === 'play' ? ui.gold : ui.mint; c.beginPath(); c.arc(L.x + 56, y, 3, 0, Math.PI * 2); c.fill(); }
+      text(e.nick ?? t('board.player', { tag: e.tag }), L.x + (here ? 63 : 52), y, { ...row, align: 'left', color: nameCol, weight: 700, maxW: e.skin ? 110 : e.replay ? 170 : 200 });
       if (e.skin && e.rank <= 3) {                       // własna postać gracza do wczytania (KREATOR)
         const p = UIBOX.boardChar(e.rank - 1), loading = g.charLoad?.hash === e.skin, ask = !loading && g.charArmed(e.skin);
         c.fillStyle = loading ? ui.panel : ask ? ui.warn : ui.btn; rr(p.x, y - 8.5, p.w, 17, 8.5); c.fill();

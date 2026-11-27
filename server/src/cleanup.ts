@@ -20,5 +20,7 @@ export async function cleanup(db: D1Database, now: number): Promise<void> {
     db.prepare('DELETE FROM run_chunks WHERE run_id NOT IN (SELECT run_id FROM bests)'),
     // paczki własnych postaci, których nie używa już żaden wynik w rankingu
     db.prepare('DELETE FROM skins WHERE hash NOT IN (SELECT skin FROM bests WHERE skin IS NOT NULL)'),
+    // pokoje znajomych, w których nie został już nikt
+    db.prepare('DELETE FROM rooms WHERE NOT EXISTS (SELECT 1 FROM players p WHERE p.room_id = rooms.id)'),
   ]);
 }

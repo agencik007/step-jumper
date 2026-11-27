@@ -55,3 +55,41 @@ test.skipIf(!BASE)('pełna ścieżka na działającym serwerze + czas weryfikacj
     expect((await api('DELETE', '/v1/me', { token })).status).toBe(204);
   }
 }, 120_000);
+
+test.skipIf(!BASE)('pokój znajomych na żywo: WebSocket przez Durable Object', async () => {
+  const a: string = (await api('POST', '/v1/players', { json: { platform: 'web' } })).data.token;
+  const b: string = (await api('POST', '/v1/players', { json: { platform: 'web' } })).data.token;
+  const name = `smoke ${Math.floor(Math.random() * 1e6)}`;
+  const sockets: WebSocket[] = [];
+  try {
+    expect((await api('POST', '/v1/rooms', { token: a, json: { name, password: 'smoke-test' } })).status).toBe(201);
+    expect((await api('POST', '/v1/rooms/join', { token: b, json: { name, password: 'smoke-test' } })).status).toBe(200);
+    const url = `${BASE!.replace(/^http/, 'ws')}/v1/live`;
+    /** Połączenie z kolejką wiadomości; next(t) czeka na wiadomość danego typu. */
+    const open = (token: string) => new Promise<{ next: (t: string) => Promise<any> }>((resolve, reject) => {
+      const ws = new WebSocket(url, ['sj', token]), inbox: any[] = [], waiting: [string, (m: any) => void][] = [];
+      sockets.push(ws);
+      ws.addEventListener('message', (e) => {
+        const m = JSON.parse(String(e.data)), i = waiting.findIndex(([t]) => t === m.t);
+        if (i >= 0) waiting.splice(i, 1)[0][1](m); else inbox.push(m);
+      });
+      ws.addEventListener('error', () => reject(new Error('websocket')));
+      ws.addEventListener('open', () => resolve({
+        next: (t) => new Promise((res) => { const i = inbox.findIndex((m) => m.t === t); if (i >= 0) res(inbox.splice(i, 1)[0]); else waiting.push([t, res]); }),
+      }));
+    });
+    const la = await open(a);
+    expect((await la.next('list')).players).toHaveLength(1);
+    const lb = await open(b);
+    expect((await lb.next('list')).players).toHaveLength(2);
+    expect((await la.next('up')).p.s).toBe('menu');
+    sockets[1].send(JSON.stringify({ t: 'status', s: 'play', floor: 42, score: 777 }));
+    expect((await la.next('up')).p).toMatchObject({ s: 'play', floor: 42, score: 777 });
+    expect((await api('DELETE', '/v1/rooms/me', { token: b })).status).toBe(204);   // wyjście z pokoju zamyka połączenie
+    expect((await la.next('bye')).k).toEqual(expect.any(String));
+  } finally {
+    for (const ws of sockets) ws.close();
+    await api('DELETE', '/v1/me', { token: a });
+    await api('DELETE', '/v1/me', { token: b });
+  }
+}, 30_000);

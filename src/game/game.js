@@ -4,7 +4,8 @@ import {
   AXIS_MAX, DEFAULT_TUNE, H, HURRY_EVERY, HW, InputRecorder, MAX_HURRIES, LEFT, NARROW_MAX, RIGHT, SIM_VERSION, SLOW_TIME, STEP, createState, encodeInputs,
   narrowLevel, packInput, runReplay, score, stateHash, step, unpackAxis, unpackJump,
 } from '../sim';
-import { online } from '../net';
+import { live, online } from '../net';
+import { LIVE_COMBO, LIVE_FLOOR_EVERY } from '../net/live';
 import { VOL_STEPS, sfx } from './audio.js';
 import { access, fontSize, loadAccess } from './access.js';
 import { CHARS } from './characters.js';
@@ -20,10 +21,12 @@ import {
 } from './input.js';
 import { ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, UIBOX, bindCell, charX, inBox, isTextPage, rowBox, sliderBar, sliderValueAt, slotX } from './layout.js';
 import { nickOpen, openNick } from './nickform.js';
+import { openRoom, refreshRoomLive, roomOpen } from './roomform.js';
 import { buildNews, buildPages, buildRules, selectable } from './options.js';
 import { loadPads, mirrorPads, resetPads, savedPads } from './padlayout.js';
 import { render } from './render.js';
 import { announce, speakFrame, speakStatus } from './speech.js';
+import { fmt } from './format.js';
 import { keepAwake } from './wake.js';
 import { power, setPowerMode } from './power.js';
 import { reloadForUpdate, update } from './update.js';
@@ -61,6 +64,12 @@ export class Game {
     this.charLoad = null;                // „⬇ POSTAĆ” w rankingu: pobieranie w toku
     this.charArm = null;                 // „⬇ POSTAĆ” dotknięte raz: { hash, until } – drugie dotknięcie do until wczytuje
     online.skinSource = packBytes;
+    // serwer zamknął połączenie z pokojem, bo gracz wyszedł z niego na innym urządzeniu: odśwież pokój i ranking
+    live.onLeft = () => { online.roomInfo().then(() => this.roomChanged()); };
+    live.onChange = refreshRoomLive;
+    live.onEvent = (ev) => this.friendEvent(ev);
+    this.feed = [];                      // komunikaty o znajomych z pokoju: { text, color, t, dur }, pokazywane po kolei
+    this.feedOn = prefs.feed !== false;  // OPCJE → Komunikaty znajomych
     if (this.customId) this.loadCustom(this.customId);
     else if (this.charIdx === CUSTOM) this.charIdx = 0;
     this.styleIdx = clamp(prefs.style | 0, 0, STYLES.length - 1);
@@ -92,7 +101,7 @@ export class Game {
     this.online = online;
     this.ticket = null;                  // bilet rankingu trwającego biegu (null = bieg poza rankingiem)
     this.net = null;                     // los wyniku ostatniego biegu: wysyłanie / miejsce w rankingu / kolejka / poza rankingiem
-    this.board = { kind: 'week', data: {}, at: {}, loading: false };
+    this.board = { kind: 'week', scope: null, data: {}, at: {}, loading: false };   // scope: 'world' / 'room' (null = jeszcze nie wybrany)
     this.replay = null;                  // oglądana powtórka z rankingu (stan 'replay') albo jej wczytywanie
     this.recap = null;                   // wyniki zamkniętego tygodnia (stan 'recap')
     this.recapPending = false;           // podsumowanie czeka, aż gracz wróci na ekran tytułowy
@@ -115,7 +124,7 @@ export class Game {
     saveJSON(PREFS, {
       char: this.charIdx, style: this.styleIdx, control: ctrl.mode, tiltSens: tilt.sens, tiltZero: tilt.zero, sound: !sfx.muted, fxVol: sfx.fxVol, musicVol: sfx.musicVol,
       vibrate: haptics.level, lefty: this.lefty, lang: lang(), jumpMode: opts.jump, stickDead: opts.stickDead, padDead: opts.padDead,
-      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access }, power: power.mode, custom: this.customId,
+      pads: savedPads(), keys: binds.key, padKeys: binds.pad, keyNames: binds.names, access: { ...access }, power: power.mode, custom: this.customId, feed: this.feedOn,
     });
   }
 
@@ -189,7 +198,7 @@ export class Game {
   charArmed(hash) { return this.charArm?.hash === hash && this.t < this.charArm.until; }
   /** Wiersz rankingu z miejscem 1–3 i postacią do wczytania: wybrany (pad, strzałki) albo pierwszy taki. */
   boardLoadChar() {
-    const rows = this.board.data[this.board.kind]?.top?.entries ?? [];
+    const rows = this.boardData?.top?.entries ?? [];
     const e = this.board.sel >= 0 ? rows.find((x) => x.rank === this.board.sel + 1) : rows.find((x) => x.rank <= 3 && x.skin);
     this.loadBoardChar(e);
   }
@@ -216,6 +225,7 @@ export class Game {
     this.retuned = false;                // suwak ruszony w trakcie biegu – takiego biegu nie da się odtworzyć z zapisu
     this.fx = { angle: 0, squash: 0, runPhase: 0 };   // stan czysto wizualny bohatera
     this.shake = 0; this.parts = []; this.msgs = [];
+    this.liveMark = 0;                   // ostatnia setka pięter ogłoszona znajomym z pokoju
     this.acc = 0; this.trailT = 0; this.rubT = 0; this.jumpLock = true; this.newBest = false; this.overT = 0;
     this.jumpPrev = false; this.latch = false;   // skok „przełącznikiem”: włączony trwa do następnego wciśnięcia
     this.autoDir = 1;                    // tryb jednego przycisku: kierunek biegu
@@ -258,7 +268,75 @@ export class Game {
   }
 
   // ── ranking ──
-  openBoard() { sfx.pick(); this.state = 'board'; this.board.sel = -1; this.loadBoard(); }
+  // ── pokój znajomych na żywo (src/net/live.ts) ──
+  /** Połączenie na żywo tylko w pokoju, z włączonym rankingiem i z kartą na wierzchu. */
+  syncLive() {
+    if (online.enabled && online.room && !document.hidden) live.start(); else live.stop();
+  }
+  /** Stan dla znajomych w pokoju: menu albo bieg z piętrem i wynikiem (live.ts wysyła go oszczędnie). */
+  /** Zdarzenie z biegu znajomego (live.ts) → komunikat na górze ekranu i dla czytnika ekranu. */
+  friendEvent(ev) {
+    if (!this.feedOn) return;
+    const name = ev.nick ?? t('board.player', { tag: ev.tag });
+    let key = 'feed.score', color = 'hint';
+    if (ev.e === 'floor') key = 'feed.floor';
+    else if (ev.e === 'combo') key = 'feed.combo';
+    else if (live.myKey && ev.over.includes(live.myKey)) { key = 'feed.over'; color = 'warn'; }
+    else if (ev.roomBest) { key = 'feed.roomBest'; color = 'gold'; }
+    else if (ev.best) { key = 'feed.best'; color = 'gold'; }
+    const text = t(key, { name, n: fmt(ev.n ?? 0), score: fmt(ev.score ?? 0) });
+    this.feed.push({ text, color, t: 0, dur: 3.4 });
+    if (this.feed.length > 4) this.feed.splice(1, 1);  // zaległe najstarsze przepadają (bieżący zostaje do końca)
+    announce(text);
+  }
+  toggleFeed() { this.feedOn = !this.feedOn; if (!this.feedOn) this.feed = []; this.savePrefs(); sfx.pick(); }
+  /** Własny bieg (tylko oficjalny, z biletem rankingu): setki pięter i duże combo idą do znajomych z pokoju. */
+  liveFloor() {
+    const mark = Math.floor(this.sim.maxFloor / LIVE_FLOOR_EVERY);
+    if (mark <= this.liveMark) return;
+    this.liveMark = mark;
+    if (this.ticket) live.event('floor', mark * LIVE_FLOOR_EVERY);
+  }
+  liveStatus() {
+    if (this.state === 'play' || this.state === 'pause') live.setStatus('play', this.sim.maxFloor, this.score);
+    else live.setStatus('menu');
+  }
+
+  openBoard() {
+    sfx.pick(); this.state = 'board'; this.board.sel = -1;
+    this.board.scope ??= online.room ? 'room' : 'world';   // gracz w pokoju znajomych widzi najpierw ranking pokoju
+    this.loadBoard();
+    if (online.hasAccount) {                               // pokój mógł się zmienić na innym urządzeniu albo zniknąć
+      const before = online.room?.name;
+      online.roomInfo().then(() => { if (online.room?.name !== before) this.roomChanged(); });
+    }
+  }
+  /** Ranking wszystkich ('world') albo mojego pokoju znajomych ('room'). */
+  get boardScope() { return this.board.scope === 'room' && online.room ? 'room' : 'world'; }
+  /** Klucz rankingu w board.data i board.at: okres, a dla pokoju 'room:<okres>'. */
+  boardKey(kind = this.board.kind) { return this.boardScope === 'room' ? `room:${kind}` : kind; }
+  get boardData() { return this.board.data[this.boardKey()]; }
+  /** WSZYSCY / POKÓJ; pokój, gdy gracz w żadnym nie jest, otwiera okienko pokoju. */
+  boardScopeSet(scope) {
+    if (scope === 'room' && !online.room) { this.openRoomForm(); return; }
+    if (scope === this.boardScope) return;
+    this.board.scope = scope; this.board.sel = -1; sfx.pick(); this.loadBoard();
+  }
+  boardScopeToggle() { this.boardScopeSet(this.boardScope === 'room' ? 'world' : 'room'); }
+  /** Okienko pokoju znajomych: założenie, dołączenie, lista graczy, wyjście (roomform.js). */
+  openRoomForm() {
+    if (!online.enabled || roomOpen()) return;
+    sfx.pick();
+    openRoom(online, () => this.roomChanged());
+  }
+  /** Wejście do pokoju, wyjście albo zniknięcie pokoju: stary ranking pokoju idzie do kosza. */
+  roomChanged() {
+    const b = this.board;
+    for (const k of Object.keys(b.data)) if (k.startsWith('room:')) { delete b.data[k]; delete b.at[k]; }
+    b.scope = online.room ? 'room' : 'world'; b.sel = -1;
+    if (this.state === 'board') this.loadBoard(true);
+    live.stop(); this.syncLive();                          // połączenie z nowym pokojem (albo żadnym)
+  }
   boardTab(d, abs = false) {
     const i = abs ? d : mod(PERIODS.indexOf(this.board.kind) + d, PERIODS.length);
     if (PERIODS[i] === this.board.kind) return;
@@ -266,7 +344,7 @@ export class Game {
   }
   /** Strzałki / pad w rankingu: wybór wiersza 1–3 z powtórką (−1 = żaden). */
   boardMove(d) {
-    const rows = (this.board.data[this.board.kind]?.top?.entries ?? []).filter((e) => e.rank <= 3 && (e.replay || e.skin)).map((e) => e.rank - 1);
+    const rows = (this.boardData?.top?.entries ?? []).filter((e) => e.rank <= 3 && (e.replay || e.skin)).map((e) => e.rank - 1);
     if (!rows.length) { this.board.sel = -1; return; }
     const opts2 = [-1, ...rows], i = opts2.indexOf(this.board.sel);
     this.board.sel = opts2[clamp((i < 0 ? 0 : i) + d, 0, opts2.length - 1)];
@@ -274,22 +352,29 @@ export class Game {
   }
   /** Enter / A w rankingu: powtórka wybranego wiersza albo powrót do tytułu. */
   boardConfirm() {
-    const e = this.board.data[this.board.kind]?.top?.entries.find((x) => x.rank === this.board.sel + 1);
+    const e = this.boardData?.top?.entries.find((x) => x.rank === this.board.sel + 1);
     if (this.board.sel >= 0 && e?.replay) this.boardReplay(this.board.sel + 1);
     else if (this.board.sel >= 0 && e?.skin) this.loadBoardChar(e);
     else { sfx.pick(); this.toTitle(); }
   }
   async loadBoard(force = false) {
-    const b = this.board, kind = b.kind;
-    if (!force && b.at[kind] != null && this.t - b.at[kind] < BOARD_TTL) return;
-    b.at[kind] = this.t; b.loading = true;
-    const [top, me] = await Promise.all([online.leaderboard(kind, 10), online.around(kind)]);
-    b.data[kind] = { top, me };
-    if (b.kind === kind) b.loading = false;
+    const b = this.board, kind = b.kind, key = this.boardKey(kind);
+    if (!force && b.at[key] != null && this.t - b.at[key] < BOARD_TTL) return;
+    b.at[key] = this.t; b.loading = true;
+    if (key.startsWith('room:')) {
+      // ranking pokoju: wszyscy gracze pokoju naraz, na ekranie 10 najlepszych, a moje miejsce – jak w rankingu ogólnym
+      const r = await online.roomBoard(kind);
+      if (!online.room) { this.roomChanged(); return; }       // pokój zniknął (serwer mówi: poza pokojem)
+      b.data[key] = r ? { top: { ...r.top, entries: r.top.entries.slice(0, 10) }, me: r.me } : { top: null, me: null };
+    } else {
+      const [top, me] = await Promise.all([online.leaderboard(kind, 10), online.around(kind)]);
+      b.data[key] = { top, me };
+    }
+    if (this.boardKey() === key) b.loading = false;
   }
   /** Wiersz rankingu z miejscem 1–3 (dotknięcie, klawisz 1–3): powtórka biegu. */
   boardReplay(rank) {
-    const e = this.board.data[this.board.kind]?.top?.entries.find((x) => x.rank === rank);
+    const e = this.boardData?.top?.entries.find((x) => x.rank === rank);
     if (e?.replay) this.openReplay(e, 'board');
   }
 
@@ -317,7 +402,7 @@ export class Game {
   }
   closeRecap() { sfx.pick(); this.toTitle(); }
   /** Z podsumowania do pełnego rankingu zeszłego tygodnia. */
-  recapBoard() { this.board.kind = 'lastweek'; this.openBoard(); }
+  recapBoard() { this.board.kind = 'lastweek'; this.board.scope = 'world'; this.openBoard(); }
   /** Strzałki / pad na podium: wybór miejsca (kolejność na ekranie: 2. – 1. – 3.). */
   recapMove(d) {
     const order = [1, 0, 2], i = order.indexOf(this.recapSel);
@@ -396,8 +481,16 @@ export class Game {
     r.ended = true; r.playing = false; this.msgs = [];
     sfx.over();
   }
-  /** Pierwsza gra: formularz nicku, a po zapisaniu od razu bieg. Anuluj = zostajemy na ekranie tytułowym. */
-  askNick() {
+  /**
+   * Zaraz po uruchomieniu (main.js): gracz bez nicku dostaje okienko nicku od razu, a nie dopiero przed pierwszym biegiem.
+   * Tylko gdy serwer rankingu odpowiada – bez sieci i tak nie da się zapisać nicku – i gdy gracz nie zaczął już czegoś innego.
+   */
+  promptNick() {
+    if (this.state !== 'title' || !this.needsNick || !online.reachable || nickOpen() || creatorOpen() || roomOpen()) return;
+    this.askNick(false);
+  }
+  /** Formularz nicku (wymagany); startAfter – po zapisaniu od razu bieg. Anuluj = zostajemy na ekranie tytułowym. */
+  askNick(startAfter = true) {
     sfx.pick();
     openNick('', async (nick) => {
       const r = await online.setNick(nick);
@@ -407,13 +500,18 @@ export class Game {
       this.board.at = {};
       // sam pad nie napisze nicku: B (anuluj) = gramy teraz bez nicku, a zapytamy przy następnym uruchomieniu
       if (!saved && this.hint === 'pad') this.nickLater = true;
-      if ((saved || this.nickLater) && this.state === 'title') this.start();
+      if (startAfter && (saved || this.nickLater) && this.state === 'title') this.start();
+      else if (this.recapPending && this.state === 'title') this.openRecap();   // podsumowanie tygodnia czekało na okienko
+      if (saved) { live.stop(); this.syncLive(); }
     }, { required: true, pad: this.hint === 'pad' });
   }
   editNick() {
     if (!online.enabled) return;
     sfx.pick();
-    openNick(online.nick, (nick) => online.setNick(nick), () => { this.board.at = {}; this.loadBoard(); });
+    openNick(online.nick, (nick) => online.setNick(nick), (saved) => {
+      this.board.at = {}; this.loadBoard();
+      if (saved) { live.stop(); this.syncLive(); }         // znajomi zobaczą nowy nick po ponownym połączeniu
+    });
   }
 
   // ── opcje ──
@@ -505,7 +603,7 @@ export class Game {
   }
   toggleOnline() {
     sfx.pick();
-    online.setEnabled(!online.enabled).then(() => { if (online.enabled) { online.refill(); online.flush(); } });
+    online.setEnabled(!online.enabled).then(() => { if (online.enabled) { online.refill(); online.flush(); } this.syncLive(); });
     this.board.at = {};
   }
   deleteData() {
@@ -513,7 +611,8 @@ export class Game {
     st.note = 'set.deleting';
     online.deleteData().then((ok) => {
       st.note = ok ? 'set.deleted' : 'set.deleteFail';   // klucz tekstu – tłumaczony przy rysowaniu
-      this.board.at = {}; this.board.data = {};
+      this.board.at = {}; this.board.data = {}; this.board.scope = null;
+      this.syncLive();
     });
   }
 
@@ -625,8 +724,12 @@ export class Game {
       else if (update.available && inBox(x, y, UIBOX.update)) this.reloadGame();
       else if ((isTouch || ctrl.mode !== 'buttons') && inBox(x, y, UIBOX.ctrl)) this.openSettings('controls');
     } else if (this.state === 'board') {
+      if (roomOpen()) return;                              // okienko pokoju na wierzchu
+      if (inBox(x, y, UIBOX.bWorld)) return this.boardScopeSet('world');
+      if (inBox(x, y, UIBOX.bRoom)) return this.boardScopeSet('room');
+      if (inBox(x, y, UIBOX.bRoomForm)) return this.openRoomForm();
       for (let i = 0; i < PERIODS.length; i++) if (inBox(x, y, UIBOX.tab(i))) return this.boardTab(i, true);
-      const top = this.board.data[this.board.kind]?.top?.entries ?? [];
+      const top = this.boardData?.top?.entries ?? [];
       for (let i = 0; i < 3; i++) if (top[i]?.skin && inBox(x, y, UIBOX.boardChar(i))) return this.loadBoardChar(top[i]);   // „⬇ POSTAĆ”
       for (let i = 0; i < 3; i++) if (inBox(x, y, UIBOX.boardRow(i))) return this.boardReplay(i + 1);
       if (inBox(x, y, UIBOX.nick)) this.editNick();
@@ -666,7 +769,7 @@ export class Game {
     resetPads(); resetBinds('key'); resetBinds('pad'); setControl('buttons');
     loadAccess(null);
     sfx.muted = false; sfx.fxVol = sfx.musicVol = VOL_STEPS; sfx.applyVolume();
-    haptics.level = 2; this.setLefty(false); setPowerMode('auto');
+    haptics.level = 2; this.setLefty(false); setPowerMode('auto'); this.feedOn = true;
     this.settings.note = 'set.resetAllDone';
     this.savePrefs(); sfx.pick();
   }
@@ -745,6 +848,7 @@ export class Game {
         fx.squash = 0.9; fx.angle = 0;
         this.puff(h.x, h.y, 6, { color: this.dustColor(e.floor), sx: 110, sy: 20, up: 50, life: 0.35 });
         sfx.land();
+        this.liveFloor();
         if (narrowLevel(e.floor) > this.narrow) {      // nowa setka pięter: od teraz piętra są węższe
           this.narrow = narrowLevel(e.floor);
           this.say(t('msg.narrow'), t(this.narrow >= NARROW_MAX ? 'msg.narrowMax' : 'msg.narrowSub'), 'warn', 1.8);
@@ -759,6 +863,7 @@ export class Game {
         const ti = TIERS.findIndex((min) => e.floors >= min);
         const label = ti >= 0 ? t(`tier.${TIERS[ti]}`) : t('msg.combo');
         this.say(label, t('msg.comboSub', { floors: e.floors, points: e.points }), 'gold', 1.8);
+        if (this.ticket && e.floors >= LIVE_COMBO) live.event('combo', e.floors);   // duże combo – znajomi z pokoju też się dowiedzą
         sfx.combo(TIERS.length - 1 - ti);
         this.buzz(30);
         break;
@@ -894,6 +999,7 @@ export class Game {
 
   frame(dt) {
     this.t += dt;
+    this.liveStatus();
     const edge = input.takeEdge();
     const camBefore = this.sim.camY;
     if (this.state === 'title') { if (edge) this.start(); }
@@ -920,6 +1026,7 @@ export class Game {
       while (this.acc >= STEP && this.state === 'play') { this.tick(); this.acc -= STEP; }
     }
     // efekty niezależne od fizyki
+    if (this.feed.length && (this.feed[0].t += dt) >= this.feed[0].dur) this.feed.shift();   // komunikaty znajomych po kolei
     if (this.state !== 'pause') {
       for (const m of this.msgs) m.t += dt;
       this.msgs = this.msgs.filter((m) => m.t < m.dur);
@@ -930,8 +1037,8 @@ export class Game {
         if (s.y > H + 4) { s.y = -4; s.x = rand(LEFT, RIGHT); }
       }
     }
-    const live = this.state === 'play' || (this.state === 'replay' && this.replay?.playing);
-    sfx.song(live ? this.musicParams() : null, dt);
+    const playing = this.state === 'play' || (this.state === 'replay' && this.replay?.playing);
+    sfx.song(playing ? this.musicParams() : null, dt);
     if (document.body.dataset.state !== this.state) this.showState();
     render(this);
     speakFrame(this);                    // czytnik ekranu: opis ekranu i zmian (speech.js)

@@ -1,4 +1,4 @@
-// Nick gracza: 3–16 znaków, litery alfabetu łacińskiego (także z ogonkami), cyfry 0–9, „_”, „-” i pojedyncze spacje.
+// Nick gracza (3–16 znaków) i nazwa pokoju (3–20): litery alfabetu łacińskiego (także z ogonkami), cyfry 0–9, „_”, „-” i pojedyncze spacje.
 // Tylko alfabet łaciński, bo litery innych pism (np. cyrylickie „А”) wyglądają identycznie i pozwalałyby
 // podszyć się pod cudzy nick albo obejść filtr wulgaryzmów.
 
@@ -23,13 +23,20 @@ function squash(s: string): string {
     .replace(/[^a-z]/g, '');
 }
 
-export function checkNick(raw: unknown): NickCheck {
+/** Nazwa wpisana przez gracza (nick, nazwa pokoju): od min do max znaków, te same znaki i ten sam filtr słów. */
+export function checkName(raw: unknown, min: number, max: number): NickCheck {
   if (typeof raw !== 'string') return { ok: false, reason: 'chars' };
   const nick = raw.normalize('NFC').trim();
   const len = [...nick].length;
-  if (len < 3 || len > 16) return { ok: false, reason: 'length' };
+  if (len < min || len > max) return { ok: false, reason: 'length' };
   if (!WORDS.test(nick)) return { ok: false, reason: 'chars' };
   const flat = squash(nick);
   if (BLOCKED.some((w) => flat.includes(w))) return { ok: false, reason: 'blocked' };
   return { ok: true, nick, key: nick.toLowerCase() };
 }
+
+export const checkNick = (raw: unknown): NickCheck => checkName(raw, 3, 16);
+
+/** Nazwa pokoju znajomych: 3–20 znaków, zasady jak przy nicku. */
+export const ROOM_NAME_MAX = 20;
+export const checkRoomName = (raw: unknown): NickCheck => checkName(raw, 3, ROOM_NAME_MAX);

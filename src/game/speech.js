@@ -14,6 +14,7 @@ import { lang, t } from './i18n.js';
 import { binds, ctrl, keyLabel } from './input.js';
 import { netLine } from './render.js';
 import { update } from './update.js';
+import { live } from '../net';
 
 let polite = null, alert = null, flip = false;
 const pending = { polite: [], alert: [] };
@@ -50,6 +51,15 @@ const charLine = (g) => {
 };
 const mapLine = (g) => { const id = STYLES[g.styleIdx].id; return `${t('title.map')}: ${t(`style.${id}.name`)} – ${t(`style.${id}.desc`)}`; };
 const name = (e) => e.nick ?? t('board.player', { tag: e.tag });
+/** Ekran tytułowy: kto z pokoju znajomych jest w grze – bez pięter, żeby czytnik nie mówił przy każdym piętrze. */
+function liveLine(g) {
+  const room = g.online.room;
+  if (!room || !live.connected) return '';
+  const others = live.players.filter((p) => !p.me);
+  return others.length
+    ? t('sr.live', { name: room.name, list: others.map((p) => t(p.s === 'play' ? 'sr.livePlay' : 'sr.liveMenu', { name: name(p) })).join(', ') })
+    : t('sr.liveNone', { name: room.name });
+}
 
 /** Wiersz opcji słowami: nazwa, wartość, a dla przypisań – klawisze w polach. */
 export function itemSpeech(g, it) {
@@ -76,7 +86,7 @@ function describe(g) {
   const s = g.state;
   if (s === 'title') {
     return [['screen', t('sr.title')], ['char', charLine(g)], ['map', mapLine(g)],
-      ['update', update.available ? t('sr.update', { v: update.available }) : '']];
+      ['update', update.available ? t('sr.update', { v: update.available }) : ''], ['live', liveLine(g)]];
   }
   if (s === 'play') return [['screen', t('sr.play')]];
   if (s === 'pause') return [['screen', `${t('pause.title')}. ${t('pause.resume', { key: binds.key.pause.filter(Boolean).map(keyLabel).join(' / ') || '—' })}. ${t('pause.menu')}`]];
@@ -88,7 +98,7 @@ function describe(g) {
     ];
   }
   if (s === 'board') {
-    const b = g.board, d = b.data[b.kind];
+    const b = g.board, d = g.boardData, room = g.boardScope === 'room';
     let list = t('board.loading');
     if (!g.online.enabled) list = t('board.off');
     else if (d && !d.top) list = t('board.noConn');
@@ -101,7 +111,8 @@ function describe(g) {
     const sel = b.sel >= 0 ? d?.top?.entries.find((e) => e.rank === b.sel + 1) : null;
     const end = periodEnd(b.kind), tab = t(`period.${PERIODS.includes(b.kind) ? b.kind : 'week'}`);
     const ends = end && g.online.enabled ? t(b.kind === 'day' ? 'board.endsDay' : 'board.endsWeek', { when: fmtWhen(end), left: fmtLeft(end) }) : '';
-    return [['screen', t('board.title')], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
+    const screen = room ? t('room.boardTitle', { name: g.online.room.name }) : t('board.title');
+    return [['screen', `${screen}. ${t('sr.boardScope')}`], ['tab', ends ? `${tab}. ${ends}` : tab], ['list', list],
       ['sel', sel ? `${t('sr.boardSel', { rank: sel.rank, name: name(sel) })}${sel.skin ? ` ${t('sr.boardChar')}` : ''}` : '']];
   }
   if (s === 'settings') {

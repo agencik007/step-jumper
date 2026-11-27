@@ -37,3 +37,32 @@ export function sameHash(a: string, b: string): boolean {
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
+
+// ───────────────────────── hasła pokoi ─────────────────────────
+
+/** Hasło pokoju: 4–32 znaki, bez znaków sterujących. Nie obcinamy spacji – hasło jest takie, jak je wpisano. */
+export const PASS_MIN = 4, PASS_MAX = 32;
+// Przy darmowym planie Workers (10 ms procesora na zapytanie) więcej iteracji nie zmieści się z resztą zapytania;
+// przed zgadywaniem chroni głównie limit błędnych prób na pokój (app.ts).
+const PBKDF2_ITERATIONS = 10_000;
+
+export function checkPassword(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const p = raw.normalize('NFC'), len = [...p].length;
+  return len >= PASS_MIN && len <= PASS_MAX && !/\p{Cc}/u.test(p) ? p : null;
+}
+
+const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+const unhex = (s: string) => Uint8Array.from(s.match(/../g) ?? [], (h) => parseInt(h, 16));
+
+/** Skrót hasła PBKDF2-SHA256 (hex) z daną solą (hex). */
+export async function passwordHash(password: string, saltHex: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: unhex(saltHex) as Uint8Array<ArrayBuffer>, iterations: PBKDF2_ITERATIONS }, key, 256,
+  );
+  return hex(new Uint8Array(bits));
+}
+
+/** Nowa sól: 16 losowych bajtów (hex). */
+export const newSalt = (): string => hex(crypto.getRandomValues(new Uint8Array(16)));

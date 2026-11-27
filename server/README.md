@@ -37,7 +37,7 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | Metoda i ścieżka | Opis | Odpowiedź |
 |---|---|---|
 | `POST /v1/players` `{platform: "android"\|"web"}` | anonimowe konto urządzenia; limit 10/min na IP | `201 {playerId, token}` |
-| `GET /v1/me` | moje konto | `{playerId, nick, createdAt}` |
+| `GET /v1/me` | moje konto | `{playerId, nick, createdAt, room: {name} \| null}` |
 | `PATCH /v1/me` `{nick}` | nick 3–16 znaków, unikalny bez względu na wielkość liter | `{nick}` · `400 nick_length/nick_chars/nick_blocked` · `409 nick_taken` |
 | `DELETE /v1/me` | usuwa konto, biegi i wyniki | `204` |
 | `POST /v1/runs` `{simVersion}` | bilet: ziarno wieży; maks. 180/h, nadmiar ponad 5 niewykorzystanych przepada | `201 {runId, seed, simVersion, chunkTicks}` · `409 update_required` · `403 banned` · `429 too_many_runs` |
@@ -48,6 +48,12 @@ Uwierzytelnianie: `Authorization: Bearer <playerId>.<sekret>` (token z `POST /v1
 | `GET /v1/replays/:id` | powtórka biegu z rankingu, cache 1 dzień | `{runId, seed, simVersion, ticks, score, floor, combo, char, style, nick, tag, finishedAt, skin?, chunks: [base64 encodeInputs]}` · `404` |
 | `PUT /v1/skins/:hash` (binarnie, ZIP do 1,5 MB) | paczka własnej postaci; tylko gdy skrót SHA-256 zgadza się z zawartością, a wynik gracza w rankingu jest rozegrany tą postacią | `201 {hash}` · `400 bad_skin/hash_mismatch` · `403 not_needed` · `413` |
 | `GET /v1/skins/:hash` | pobranie paczki postaci (ZIP), cache na zawsze (zawartość pod skrótem się nie zmienia) | `200 application/zip` · `404` |
+| `POST /v1/rooms` `{name, password}` | nowy pokój znajomych (gracz musi mieć nick – inaczej `400 nick_required`); nazwa 3–20 znaków (zasady jak nick), unikalna bez względu na wielkość liter, hasło 4–32 znaki; twórca od razu w środku (i poza poprzednim pokojem) | `201 {room: {name, members}}` · `400 room_length/room_chars/room_blocked/room_pass` · `409 room_taken` · `403 banned` |
+| `POST /v1/rooms/join` `{name, password}` | dołączenie (też tylko z nickiem: `400 nick_required`); gracz jest najwyżej w jednym pokoju, więc wychodzi z poprzedniego | `{room: {name, members}}` · `404 room_not_found` · `403 room_password` · `409 room_full` (50 graczy) · `429 room_locked` |
+| `DELETE /v1/rooms/me` | wyjście z pokoju; pusty pokój znika i zwalnia nazwę | `204` |
+| `GET /v1/rooms/me` | mój pokój i jego gracze | `{room: null}` · `{room: {name, members: [{nick, tag, me?}]}}` |
+| `GET /v1/live` (WebSocket, token w podprotokole) | pokój na żywo: lista obecnych i ich stan – opis niżej | `101` |
+| `GET /v1/rooms/me/leaderboards/:okres` | ranking pokoju: te same najlepsze wyniki co w rankingu ogólnym, tylko graczy z pokoju (wszyscy) | `{period, room: {name}, rank, entries: [... , me?]}` · `404 no_room` |
 
 Powody odrzucenia biegu (`reason`): `corrupt`, `empty_chunk`, `chunk_too_long`, `short_chunk`, `inputs_after_end`,
 `not_over`, `score_mismatch`, `too_fast` (bieg krótszy w czasie rzeczywistym niż liczba kroków / 120), `sim_version`, `too_long`.
@@ -61,6 +67,37 @@ Własne postacie (KREATOR w grze, `docs/POSTACIE.md`): bieg postacią z kreatora
 Gdy wejdzie do najlepszej trójki któregoś okresu, serwer prosi o paczkę (`needSkin`), a gra wysyła ją `PUT /v1/skins/:hash`.
 Serwer nie rozpakowuje paczki – sprawdza tylko nagłówek ZIP, rozmiar i skrót; obrazki sprawdza i koduje od nowa gra przy wczytaniu.
 Paczki trzyma tabela `skins`; sprzątanie usuwa te, których nie używa już żaden wynik w `bests`.
+
+Pokoje znajomych: tabela `rooms`, a członkostwo to kolumna `players.room_id` (jeden pokój naraz). Ranking pokoju nie ma
+własnych wyników – to zapytanie o `bests` ograniczone do graczy pokoju, więc weryfikacja biegów i powtórki działają bez zmian.
+Hasło: PBKDF2-SHA256 z solą (`auth.ts`). Przed zgadywaniem chroni limit: po 20 błędnych hasłach pokój nie przyjmuje
+nikogo do końca 10-minutowego okna (`fail_window`, `fail_count`).
+
+### Pokój na żywo (lista obecnych)
+
+`GET /v1/live` to WebSocket. Przeglądarka nie doda do niego nagłówka `Authorization`, a token w adresie trafiałby do logów,
+więc gra podaje token jako drugi podprotokół: `new WebSocket(url, ['sj', token])` (serwer odpowiada protokołem `sj`).
+Worker sprawdza token i członkostwo (`src/live.ts`) i przekazuje połączenie do Durable Object pokoju `RoomHub`
+(`src/room-hub.ts`, jeden na pokój, `idFromName(room_id)`); logika obecności jest w `src/hub.ts` (testy: `tests/server/hub.test.ts`).
+Błędy przed połączeniem: `401 unauthorized`, `403 banned/origin`, `404 no_room`, `426` (to nie WebSocket).
+
+| Kierunek | Wiadomość (JSON) |
+|---|---|
+| gra → serwer | `{t: 'status', s: 'menu'}` · `{t: 'status', s: 'play', floor, score}` (najwyżej co 5 s w biegu; serwer przyjmuje najwyżej 1/s) · `{t: 'ping'}` (po 30 s ciszy) · `{t: 'ev', e: 'floor' \| 'combo', n}` (setka pięter, combo od 25 pięter; najwyżej 1/s) |
+| serwer → gra | `{t: 'list', me, players: [P]}` po połączeniu · `{t: 'up', p: P}` · `{t: 'bye', k}` · `{t: 'ev', e: 'floor' \| 'combo', n, k, nick, tag}` (od gry znajomego) · `{t: 'ev', e: 'score', k, nick, tag, score, floor, best, roomBest, over: [k]}` (od serwera) |
+
+`P = {k, nick, tag, s, floor?, score?}`; `k` to stały klucz gracza (skrót identyfikatora – nie zdradza go). Piętro i wynik
+w biegu oraz zdarzenia `floor` / `combo` podaje gra i serwer ich nie sprawdza – to tylko podgląd, ranking liczy się z weryfikacji
+biegów. Zdarzenie `score` wysyła sam serwer po zatwierdzeniu biegu (`POST /v1/runs/:id/finish` → `HUB_EVENT`), gdy to najlepszy
+wynik gracza dziś: `best` – rekord życiowy, `roomBest` – lepszy od najlepszych wyników wszystkich w pokoju, `over` – klucze
+graczy pokoju wyprzedzonych w rankingu tygodnia. Zdarzenia gracza nie trafiają do jego własnych urządzeń. Gniazdo bez
+wiadomości przez 75 s jest zamykane (kod 4000). Wyjście z pokoju, przejście do innego i usunięcie konta zamykają połączenia
+gracza (kod 4001 – gra nie łączy się wtedy ponownie). Gra łączy się tylko z kartą na wierzchu.
+
+Koszty (plan Workers Free, stan na 2026 – sprawdź aktualny cennik): każda wiadomość od gry to 1/20 zapytania Durable Object
+(100 000 zapytań dziennie), a obiekt pokoju jest aktywny, dopóki ktoś w nim gra (wiadomości co kilka sekund nie pozwalają
+mu zasnąć). Czas aktywności to 128 MB × sekundy: godzina gry w jednym pokoju ≈ 450 GB-s z dziennych 13 000 GB-s,
+czyli ok. 29 „pokojogodzin” dziennie za darmo. Pomiar: panel Cloudflare → Durable Objects → step-jumper-api.
 
 Powtórki: przyjęte porcje zapisu trafiają do tabeli `run_chunks`. Zostają tylko dla biegów, które są czyimś najlepszym
 wynikiem w którymś okresie (`bests`); zatwierdzenie biegu od razu usuwa porcje biegów gracza, które rekordem nie są.
@@ -77,4 +114,4 @@ porcja 6000 kroków kosztowała 4–15 ms CPU (lokalnie w Node ok. 1 ms – serw
 Schemat: `migrations/`. Serwer nie zapisuje adresu IP (służy tylko jako klucz limitu) ani tokenu (tylko jego skrót
 SHA-256). Cron raz na dobę (`src/cleanup.ts`) usuwa bilety starsze niż 7 dni, przerwane wysyłki starsze niż dzień,
 biegi starsze niż 90 dni (poza biegami, które są czyimś rekordem – potrzebne do powtórek), rankingi tygodniowe i dzienne
-starsze niż poprzedni okres, powtórki, które nie są już niczyim rekordem, oraz paczki postaci, których nie używa żaden wynik.
+starsze niż poprzedni okres, powtórki, które nie są już niczyim rekordem, paczki postaci, których nie używa żaden wynik, oraz pokoje znajomych bez graczy.
