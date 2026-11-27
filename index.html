@@ -308,13 +308,6 @@
   #room input { margin-bottom: 10px; }
   #room .show { display: flex; align-items: center; gap: 6px; margin: -4px 0 4px; color: #9fb4ee; font-size: 12px; }
   #room .show input { width: auto; margin: 0; }
-  #room .row { flex-wrap: wrap; }
-  #room section[hidden], #room .row[hidden] { display: none; }
-  #room ul { list-style: none; margin: 0 0 10px; padding: 0; max-height: 40vh; overflow-y: auto; }
-  #room li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid rgba(159,216,255,.15); }
-  #room li .st { color: #9fb4ee; font-weight: 600; font-size: 12px; text-align: right; }
-  #room li.on .st { color: #7ef0e0; }
-  #room li.play .st { color: #ffe066; }
 </style>
 </head>
 <body>
@@ -509,32 +502,19 @@
 </form>
 
 <form id="room" hidden autocomplete="off" aria-labelledby="roomHead">
-  <section id="roomJoin">
-    <h2 id="roomHead" data-i18n="room.head">Pokój znajomych</h2>
-    <p class="info" data-i18n="room.info">Załóż pokój i podaj znajomym jego nazwę i hasło – zobaczycie osobny ranking tylko waszej paczki.</p>
-    <label for="roomName" data-i18n="room.name">Nazwa pokoju</label>
-    <input id="roomName" maxlength="20" spellcheck="false" autocapitalize="off" enterkeyhint="next">
-    <label for="roomPass" data-i18n="room.pass">Hasło</label>
-    <input id="roomPass" type="password" maxlength="32" spellcheck="false" autocapitalize="off" autocomplete="off" enterkeyhint="done">
-    <label class="show"><input type="checkbox" id="roomShow"><span data-i18n="room.show">Pokaż hasło</span></label>
-    <small data-i18n="room.rules">Nazwa: 3–20 znaków (litery, cyfry, _ - i spacje). Hasło: 4–32 znaki. Możesz być naraz w jednym pokoju.</small>
-  </section>
-  <section id="roomIn" hidden>
-    <h2 id="roomTitle"></h2>
-    <p class="info" id="roomCount"></p>
-    <ul id="roomMembers"></ul>
-  </section>
+  <h2 id="roomHead"></h2>
+  <p class="info" id="roomInfo"></p>
+  <label for="roomName" data-i18n="room.name">Nazwa pokoju</label>
+  <input id="roomName" maxlength="20" spellcheck="false" autocapitalize="off" enterkeyhint="next">
+  <label for="roomPass" data-i18n="room.pass">Hasło</label>
+  <input id="roomPass" type="password" maxlength="32" spellcheck="false" autocapitalize="off" autocomplete="off" enterkeyhint="done">
+  <label class="show"><input type="checkbox" id="roomShow"><span data-i18n="room.show">Pokaż hasło</span></label>
   <p id="roomErr" role="alert"></p>
-  <div class="row" id="roomJoinRow">
+  <div class="row">
     <button type="button" id="roomCancel" data-i18n="nick.cancel">Anuluj</button>
-    <button type="button" id="roomCreate" data-i18n="room.create">Utwórz</button>
-    <button type="submit" id="roomJoinBtn" data-i18n="room.join">Dołącz</button>
+    <button type="submit" id="roomGo"></button>
   </div>
-  <div class="row" id="roomInRow" hidden>
-    <button type="button" id="roomLeave" data-i18n="room.leave">Opuść pokój</button>
-    <button type="button" id="roomOther" data-i18n="room.other">Inny pokój</button>
-    <button type="button" id="roomClose" data-i18n="room.close">Zamknij</button>
-  </div>
+  <small data-i18n="room.rules">Nazwa: 3–20 znaków (litery, cyfry, _ - i spacje). Hasło: 4–32 znaki. Możesz być naraz w jednym pokoju.</small>
 </form>
 
 <script type="module" src="/src/main.js"></script>

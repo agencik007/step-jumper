@@ -15,7 +15,7 @@ export const UIBOX = {
   rules: { x: 10, y: 78, w: 92, h: 28 },                  // ZASADY GRY
   creator: { x: 10, y: 112, w: 92, h: 28 },               // KREATOR postaci
   update: { x: 538, y: 44, w: 92, h: 38 },                // PRZEŁADUJ – tylko gdy na serwerze jest nowa wersja
-  live: { x: 538, y: 90, w: 92 },                         // pokój znajomych: kto jest teraz w grze (wysokość wg listy)
+  live: { x: 538, y: 90, w: 92 },                         // pokój znajomych: DOŁĄCZ / UTWÓRZ albo kto gra i OPUŚĆ (game.roomPanel)
   // ranking
   tab: (i) => ({ x: 104 + i * 110, y: 64, w: 102, h: 28 }),
   list: { x: 110, y: 102, w: 420, h: 276 },
@@ -30,12 +30,12 @@ export const UIBOX = {
   podWatch: (i) => ({ x: [320, 210, 430][i] - 48, y: 346, w: 96, h: 24 }),
   recapBoard: { x: 160, y: 418, w: 150, h: 32 }, recapNext: { x: 330, y: 418, w: 150, h: 32 },
   nick: { x: 130, y: 422, w: 250, h: 32 }, back: { x: 390, y: 422, w: 120, h: 32 },
-  // ranking, lewy górny róg: WSZYSCY / POKÓJ i okienko pokoju znajomych (prawy róg zajmuje przycisk pełnego ekranu)
-  bWorld: { x: 10, y: 10, w: 92, h: 28 }, bRoom: { x: 10, y: 44, w: 92, h: 28 }, bRoomForm: { x: 10, y: 78, w: 92, h: 28 },
+  // ranking, lewy górny róg: WSZYSCY / POKÓJ – tylko dla gracza w pokoju znajomych
+  bWorld: { x: 10, y: 10, w: 92, h: 28 }, bRoom: { x: 10, y: 44, w: 92, h: 28 },
 };
 export const PERIODS = ['day', 'week', 'lastweek', 'all'];
 /** Ekran tytułowy: najwyżej tylu znajomych w panelu pokoju (reszta jako „+n”). */
-export const LIVE_ROWS = 7;
+export const LIVE_ROWS = 6;
 /** Strony opcji z samym tekstem (NOWOŚCI, ZASADY GRY): nic do wybrania, tylko przewijanie, jednolite tło bez mapy. */
 export const isTextPage = (page) => page === 'news' || page === 'rules';
 

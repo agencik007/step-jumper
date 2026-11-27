@@ -15,7 +15,7 @@ import { drinkAt } from './drinks.js';
 import { t } from './i18n.js';
 import { binds, ctrl, isTouch, keyLabel, opts, tilt } from './input.js';
 import {
-  ARROW_W, CHAR_W, LIST, LIST_BACK, LIVE_ROWS, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, charX, isTextPage, noteLine, rowBox, sliderBar, slotX,
+  ARROW_W, CHAR_W, LIST, LIST_BACK, NOTE_FONT, PERIODS, SLIDER_STEPS, UIBOX, bindCell, charX, isTextPage, noteLine, rowBox, sliderBar, slotX,
 } from './layout.js';
 import { BUILD_TAG, VERSION, update } from './update.js';
 import { live } from '../net';
@@ -715,7 +715,7 @@ function drawTitle(g) {
   button(UIBOX.creator, hm === 'keys' ? `${t('title.creator')} · K` : t('title.creator'), { size: 11, glyph: hm === 'pad' ? BTN.RT : null });
   text(`v${VERSION}${BUILD_TAG}`, 10, H - 12, { size: 10, color: ui.label, sw: 3, weight: 700, align: 'left' });   // wersja gry w lewym dolnym rogu
   if (update.available) drawUpdateButton(time, hm);
-  drawLivePanel(g);
+  drawRoomPanel(g);
   const wob = reduceMotion ? 1 : 1 + Math.sin(time * 2) * 0.02;
   c.save(); c.translate(W / 2, 54); c.rotate(-0.03); c.scale(wob, wob);
   text('STEP JUMPER', 0, 4, { size: 54, maxW: 430, color: ui.frame, sw: 14, stroke: ui.frame });
@@ -858,26 +858,38 @@ function drawOver(g) {
 
 // ───────────────────────── ranking online ─────────────────────────
 
-/** Ekran tytułowy, prawa kolumna: kto z pokoju znajomych jest teraz w grze i jak mu idzie (src/net/live.ts). */
-function drawLivePanel(g) {
-  const o = g.online, room = o.room;
-  if (!room) return;
-  const B = UIBOX.live, others = live.players.filter((p) => !p.me), shown = others.slice(0, LIVE_ROWS);
-  const rows = live.connected ? Math.max(1, shown.length) + (others.length > shown.length ? 0.6 : 0) : 1;
-  const h = 26 + rows * 30;
-  panel(B.x, B.y, B.w, h);
-  text(room.name, B.x + B.w / 2, B.y + 13, { size: 11, color: ui.gold, sw: 0, weight: 700, maxW: B.w - 10 });
-  const left = B.x + 8;
-  if (!live.connected) { text(t('live.connecting'), B.x + B.w / 2, B.y + 38, { size: 10, color: ui.label, sw: 0, maxW: B.w - 10 }); return; }
-  if (!shown.length) { text(t('live.alone'), B.x + B.w / 2, B.y + 38, { size: 10, color: ui.label, sw: 0, maxW: B.w - 10 }); return; }
-  shown.forEach((p, i) => {
-    const y = B.y + 34 + i * 30, play = p.s === 'play';
+/**
+ * Ekran tytułowy, prawa kolumna: pokój znajomych (układ – game.roomPanel). Poza pokojem DOŁĄCZ / UTWÓRZ,
+ * w pokoju – kto z niego jest teraz w grze i jak mu idzie (src/net/live.ts) oraz OPUŚĆ POKÓJ.
+ */
+function drawRoomPanel(g) {
+  if (!g.roomPanelOn) return;
+  const P = g.roomPanel(), room = g.online.room, keys = g.hint === 'keys', cx = P.x + P.w / 2;
+  panel(P.x, P.y, P.w, P.h);
+  if (!room) {
+    text(t('room.panelHead'), cx, P.y + 13, { size: 10, color: ui.gold, sw: 0, weight: 700, maxW: P.w - 10 });
+    button(P.join, keys ? `${t('room.joinBtn')} · J` : t('room.joinBtn'), { size: 11, accent: true });
+    button(P.create, keys ? `${t('room.createBtn')} · C` : t('room.createBtn'), { size: 11 });
+    return;
+  }
+  text(room.name, cx, P.y + 13, { size: 11, color: ui.gold, sw: 0, weight: 700, maxW: P.w - 10 });
+  const left = P.x + 8, note = { size: 10, color: ui.label, sw: 0, maxW: P.w - 10 };
+  if (!live.connected) text(t('live.connecting'), cx, P.y + 38, note);
+  else if (!P.shown.length) text(t('live.alone'), cx, P.y + 38, note);
+  P.shown.forEach((p, i) => {
+    const y = P.y + 34 + i * 30, play = p.s === 'play';
     ctx.fillStyle = play ? ui.gold : ui.mint; ctx.beginPath(); ctx.arc(left + 3, y, 3, 0, Math.PI * 2); ctx.fill();
-    text(p.nick ?? t('board.player', { tag: p.tag }), left + 10, y, { size: 11, color: ui.text, sw: 0, weight: 700, align: 'left', maxW: B.w - 22 });
+    text(p.nick ?? t('board.player', { tag: p.tag }), left + 10, y, { size: 11, color: ui.text, sw: 0, weight: 700, align: 'left', maxW: P.w - 22 });
     text(play ? t('live.floor', { floor: fmt(p.floor ?? 0) }) : t('live.menu'), left + 10, y + 13,
-      { size: 9, color: play ? ui.gold : ui.label, sw: 0, align: 'left', maxW: B.w - 22 });
+      { size: 9, color: play ? ui.gold : ui.label, sw: 0, align: 'left', maxW: P.w - 22 });
   });
-  if (others.length > shown.length) text(t('live.more', { n: others.length - shown.length }), B.x + B.w / 2, B.y + 34 + shown.length * 30 - 4, { size: 9, color: ui.label, sw: 0 });
+  if (P.others.length > P.shown.length) text(t('live.more', { n: P.others.length - P.shown.length }), cx, P.y + 34 + P.shown.length * 30 - 4, { size: 9, color: ui.label, sw: 0 });
+  // wyjście: pierwsze dotknięcie pyta NA PEWNO?, drugie wychodzi (game.leaveRoom)
+  const armed = g.leaveArmed, L = P.leave;
+  ctx.fillStyle = armed ? ui.warn : ui.panel; rr(L.x, L.y, L.w, L.h, 9); ctx.fill();
+  ctx.strokeStyle = armed ? ui.warn : ui.line; ctx.lineWidth = 1.5; ctx.stroke();
+  const label = g.leaving ? '…' : t(armed ? 'room.leaveSure' : 'room.leave');
+  text(keys && !armed && !g.leaving ? `${label} · L` : label, cx, L.y + L.h / 2 + 1, { size: 10, color: armed ? '#fff' : ui.hint, sw: 0, weight: 700, maxW: L.w - 10 });
 }
 
 /** Jedna linijka o losie wyniku na ekranie końca gry: [tekst, kolor]. */
@@ -897,11 +909,10 @@ function drawBoard(g) {
   const c = ctx, b = g.board, kind = b.kind, d = g.boardData, o = g.online, room = g.boardScope === 'room';
   dim(0.66);
   text(room ? t('room.boardTitle', { name: o.room.name }) : t('board.title'), W / 2, 34, { size: room ? 24 : 30, color: ui.gold, sw: 6, maxW: 420 });
-  if (o.enabled) {                                      // WSZYSCY / POKÓJ i okienko pokoju znajomych
-    const key = (s, k) => (g.hint === 'keys' ? `${s} · ${k}` : s);
-    button(UIBOX.bWorld, key(t('board.world'), 'G'), { accent: !room, size: 12, glyph: g.hint === 'pad' && room ? BTN.Y : null });
-    button(UIBOX.bRoom, key(t('board.room'), 'G'), { accent: room, size: 12, glyph: g.hint === 'pad' && !room ? BTN.Y : null });
-    button(UIBOX.bRoomForm, key(t('room.btn'), 'J'), { size: 12 });
+  if (o.enabled && o.room) {                            // WSZYSCY / POKÓJ – tylko w pokoju znajomych
+    const key = (s) => (g.hint === 'keys' ? `${s} · G` : s);
+    button(UIBOX.bWorld, key(t('board.world')), { accent: !room, size: 12, glyph: g.hint === 'pad' && room ? BTN.Y : null });
+    button(UIBOX.bRoom, key(t('board.room')), { accent: room, size: 12, glyph: g.hint === 'pad' && !room ? BTN.Y : null });
   }
   PERIODS.forEach((k, i) => button(UIBOX.tab(i), t(`period.${k}`), { accent: k === kind, size: 12 }));
 

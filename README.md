@@ -130,13 +130,14 @@ Bez sieci gra działa normalnie: bieg bez biletu jest poza rankingiem, a wynik b
   i mapie – start / pauza (Spacja, P), stop (S), tempo 1× / 2× / 4× (← →), wyjście (Esc), na końcu ekran „KONIEC POWTÓRKI”.
 - **Podsumowanie tygodnia**: po zamknięciu tygodnia, przy pierwszym uruchomieniu gra raz pokazuje podium najlepszej trójki
   (z powtórkami) i miejsce gracza.
-- **Pokoje znajomych** (RANKING → ⚙ POKÓJ, klawisz **J**; `src/game/roomform.js`): pokój zakłada się unikalną nazwą
-  i hasłem, inni dołączają tą samą nazwą i hasłem; gracz jest naraz w jednym pokoju (do 50 osób). Przyciski WSZYSCY / POKÓJ
-  w lewym górnym rogu rankingu (klawisz **G**, Y na padzie) przełączają ranking całego świata i ranking pokoju – te same
-  wyniki, okresy i powtórki, tylko graczy z pokoju.
+- **Pokoje znajomych** (menu główne, prawa kolumna pod RANKINGIEM; `game.roomPanel`, okienko `src/game/roomform.js`):
+  poza pokojem przyciski DOŁĄCZ (klawisz **J**) i UTWÓRZ (**C**) – pokój zakłada się unikalną nazwą i hasłem, inni dołączają
+  tą samą nazwą i hasłem; w pokoju – kto z niego gra i OPUŚĆ POKÓJ (**L**, drugie dotknięcie potwierdza). Gracz jest naraz
+  w jednym pokoju (do 50 osób). W rankingu gracz w pokoju ma przyciski WSZYSCY / POKÓJ w lewym górnym rogu (klawisz **G**,
+  Y na padzie) – ranking całego świata albo pokoju: te same wyniki, okresy i powtórki, tylko graczy z pokoju.
   **Na żywo** (`src/net/live.ts` → WebSocket → Durable Object pokoju, `server/src/hub.ts`): ekran tytułowy pokazuje w prawej
-  kolumnie, kto z pokoju jest teraz w grze (w menu albo w biegu z piętrem), ranking pokoju ma zieloną kropkę przy obecnych,
-  a okienko ⚙ POKÓJ – stan każdego gracza. Połączenie działa tylko z kartą na wierzchu.
+  kolumnie, kto z pokoju jest teraz w grze (w menu albo w biegu z piętrem), a ranking pokoju ma zieloną kropkę przy obecnych.
+  Połączenie działa tylko z kartą na wierzchu.
   **Komunikaty znajomych** (pasek u góry ekranu, `game.friendEvent`, OPCJE → Komunikaty znajomych): setka pięter i combo
   od 25 pięter w biegu znajomego (od jego gry) oraz zweryfikowany przez serwer wynik – najlepszy dziś, rekord, rekord pokoju
   albo „wyprzedza cię w tym tygodniu”.
