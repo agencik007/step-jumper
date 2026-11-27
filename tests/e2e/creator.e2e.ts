@@ -12,6 +12,11 @@ const game = (page: Page) => page.evaluate(() => {
 });
 const FRAMES = ['idle', 'run1', 'run2', 'run3', 'run4', 'jump1', 'jump2', 'jump3', 'land', 'fall', 'dead', 'cheer'];
 
+// Oba testy mielą te same ciężkie operacje na obrazkach (dekodowanie 12 klatek, eksport i import ZIP, pakowanie postaci
+// do rankingu). Puszczone naraz (fullyParallel) zabierały sobie procesor tak, że pakowanie trwało kilkanaście sekund
+// i testy wypadały poza limity czasu. W tym pliku idą więc po kolei (bez pomijania reszty, gdy któryś padnie).
+test.describe.configure({ mode: 'default' });
+
 /** Wybór 12 prostych obrazków PNG (głowa + tułów, różne kolory) w polu „Wczytaj ZIP / PNG” – rysowane w przeglądarce. */
 async function choosePngs(page: Page) {
   await page.evaluate(async (frames) => {
@@ -84,6 +89,9 @@ test('wczytanie 12 klatek, zapis, eksport ZIP, ponowny import i gra własną pos
 });
 
 test('przykładowa postać z kreatora i zgoda na udostępnienie: bez zgody postać nie ma paczki do wysłania', async ({ page }) => {
+  // Pakowanie postaci do rankingu (skins.js → sharePack) skaluje i koduje od nowa 12 klatek przykładu (większych niż
+  // 480 px): zwykle 1–2 s, ale na obciążonej maszynie (równolegle testy aparatu z MediaPipe) zmierzone ponad 14 s.
+  test.slow();
   await page.goto('/');
   await page.evaluate(() => localStorage.setItem('stepjumper.prefs.v1', JSON.stringify({ lang: 'pl' })));
   await page.reload();
@@ -113,7 +121,7 @@ test('przykładowa postać z kreatora i zgoda na udostępnienie: bez zgody posta
   await page.check('#crShare');
   await page.click('#crSave');
   await expect(page.locator('#crList li')).toContainText('udostępniana');
-  await expect.poll(hash, { timeout: 20000 }).toMatch(/^[0-9a-f]{64}$/);
+  await expect.poll(hash, { timeout: 45_000 }).toMatch(/^[0-9a-f]{64}$/);   // pakowanie w tle – zob. test.slow() wyżej
 
   // cofnięcie zgody – skrót znika
   await page.locator('#crList li button', { hasText: 'Edytuj' }).click();
